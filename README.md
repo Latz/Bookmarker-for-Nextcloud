@@ -12,6 +12,11 @@ Fast and easy bookmarking with your Nextcloud installation.
 
 Although it does its job it's a debris. A small popup in the browser with some more (future) fetures fits more into the daily work flow.
 
+# Requirements
+
+- [Nextcloud installation](https://nextcloud.com/)
+- [Bookmark Addon](https://apps.nextcloud.com/apps/bookmarks)
+
 # Installation
 
 This extension is still in early development and hasn't been released to any extension/addon site yet. You have to install the unpacked code. It's a bit complicated but it sonn will change.
@@ -33,6 +38,7 @@ The extension will not appear automatically. You have to click the "Extension pu
 You can simply download this addon from box.com: [Bookmarker for Nextcloud](https://app.box.com/s/6pkcs8g3fb6dq96a5py2dhllj6v5dx6u)
 
 # Granting access
+
 If you click on the icon for the first time, a popup window will open and ask you for the Internet address (URL) of your Nextcloud installation.
 
 ![hostname](https://elektroelch.de/githubpics/Nextcloud-00-hostname.png)
