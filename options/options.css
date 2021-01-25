@@ -1,0 +1,39 @@
+body {
+  width: 300px;
+  height: 600px;
+}
+
+.tabs {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  border-radius: 0.25rem;
+  overflow: hidden;
+}
+.tabs .bar {
+  width: 100%;
+  display: flex;
+}
+.tabs [data-tabby-bar]:first-child {
+  border-left: none;
+}
+.tabs [data-tabby-bar] {
+  padding: 1.25rem;
+  text-align: center;
+  cursor: pointer;
+  flex: 1;
+  color: rgba(33, 33, 33, 0.2);
+  border-bottom: 0.0625rem solid rgba(33, 33, 33, 0.2);
+}
+.tabs [data-tabby-bar]:hover {
+  color: rgba(33, 33, 33, 0.3);
+  border-bottom: 0.0625rem solid rgba(33, 33, 33, 0.3);
+}
+.tabs [data-tabby-bar][data-tabby-active] {
+  color: rgba(33, 33, 33, 1);
+  border-bottom: 0.0625rem solid rgba(33, 33, 33, 1);
+}
+.tabs [data-tabby-content] {
+  padding: 1.25rem;
+}
+

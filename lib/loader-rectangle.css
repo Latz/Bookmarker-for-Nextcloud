@@ -1,0 +1,104 @@
+.loader-rectangle {
+  position: relative;
+
+  width: 10px;
+  height: 10px;
+
+  -webkit-animation: rectangle infinite 1s ease-in-out -0.2s;
+  -moz-animation: rectangle infinite 1s ease-in-out -0.2s;
+  -o-animation: rectangle infinite 1s ease-in-out -0.2s;
+  animation: rectangle infinite 1s ease-in-out -0.2s;
+
+  background-color: #000;
+}
+.loader-rectangle:before,
+.loader-rectangle:after {
+  position: absolute;
+
+  width: 10px;
+  height: 10px;
+
+  content: '';
+
+  background-color: #000;
+}
+.loader-rectangle:before {
+  left: -20px;
+
+  -webkit-animation: rectangle infinite 1s ease-in-out -0.4s;
+  -moz-animation: rectangle infinite 1s ease-in-out -0.4s;
+  -o-animation: rectangle infinite 1s ease-in-out -0.4s;
+  animation: rectangle infinite 1s ease-in-out -0.4s;
+}
+.loader-rectangle:after {
+  right: -20px;
+
+  -webkit-animation: rectangle infinite 1s ease-in-out;
+  -moz-animation: rectangle infinite 1s ease-in-out;
+  -o-animation: rectangle infinite 1s ease-in-out;
+  animation: rectangle infinite 1s ease-in-out;
+}
+@-webkit-keyframes rectangle {
+  0%,
+  80%,
+  100% {
+    height: 15px;
+
+    -webkit-box-shadow: 0 0 #000;
+    box-shadow: 0 0 #000;
+  }
+  40% {
+    height: 25px;
+
+    -webkit-box-shadow: 0 -20px #000;
+    box-shadow: 0 -20px #000;
+  }
+}
+@-moz-keyframes rectangle {
+  0%,
+  80%,
+  100% {
+    height: 25px;
+
+    -webkit-box-shadow: 0 0 #000;
+    box-shadow: 0 0 #000;
+  }
+  40% {
+    height: 25px;
+
+    -webkit-box-shadow: 0 -20px #000;
+    box-shadow: 0 -20px #000;
+  }
+}
+@-o-keyframes rectangle {
+  0%,
+  80%,
+  100% {
+    height: 15px;
+
+    -webkit-box-shadow: 0 0 #000;
+    box-shadow: 0 0 #000;
+  }
+  40% {
+    height: 25px;
+
+    -webkit-box-shadow: 0 -20px #000;
+    box-shadow: 0 -20px #000;
+  }
+}
+@keyframes rectangle {
+  0%,
+  80%,
+  100% {
+    height: 15px;
+
+    -webkit-box-shadow: 0 0 #000;
+    box-shadow: 0 0 #000;
+  }
+  40% {
+    height: 25px;
+
+    -webkit-box-shadow: 0 -20px #000;
+    box-shadow: 0 -20px #000;
+  }
+}

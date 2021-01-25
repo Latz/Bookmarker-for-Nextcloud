@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bookmarker for Nextcloud</title>
+    <script src="../lib/idb-min.js"></script>
+    <script type="module" src="./options.js"></script>
+    <script src="../lib/tabby.iife.js"></script>
+    <link rel="stylesheet" href="./options.css" />
+  </head>
+  <body>
+    <div class="tabs" data-tabby>
+      <div class="bar">
+        <div data-tabby-bar="general" data-tabby-active>General</div>
+        <div data-tabby-bar="credentials">Credentials</div>
+        <div data-tabby-bar="about">About</div>
+      </div>
+      <div class="content">
+        <div id="general_options" data-tabby-content="general" data-tabby-active>
+          <p>
+            <input type="checkbox" id="cbx_zenMode"></label>
+            <label for="cbx_zenMode">Zen Mode
+              <br/>
+              <input type="checkbox" id="cbx_magicMode"></label>
+              <label for="cbx_magicMode">Magic Mode
+            </p>
+        </div>
+        <div data-tabby-content="credentials">
+          <div id="server">
+            <span id="msg">Nextcloud hostname</span>
+            <div><input type="text" id="ncHost" autofocus="true" /></div>
+            <div id="host_msg">&nbsp;</div>
+            <button id="btn_checkHost">Check host</button>
+            <button id="btn_saveHost">Save host</button>
+          </div>
+
+          <div id="credentials">
+            <span id="msg">Credentials</span>
+            <div id="credentials_msg">&nbsp;</div>
+            <div>Username: <input type="text" id="username" /></div>
+            <div>Password: <input type="text" id="password" /></div>
+            <button id="checkCredentials">Check login</button>
+            <button id="saveCredentials" disabled="disabled">Save credentials</button>
+          </div>
+        </div>
+        <div data-tabby-content="about">
+          <p>
+            Minions ipsum sed ut cillum. Tank yuuu! jiji ti aamoo! Aliqua. Potatoooo aaaaaah dolor exercitation
+            consequat ullamco veniam underweaaar tatata bala tu aliqua ex. Dolor po kass po kass eiusmod tank yuuu!
+            Uuuhhh. Para tú esse tatata bala tu dolor exercitation adipisicing enim. Tank yuuu! baboiii tatata bala tu
+            dolore aaaaaah bee do bee do bee do sit amet bee do bee do bee do incididunt sed incididunt. Bananaaaa
+            poulet tikka masala uuuhhh wiiiii eiusmod eiusmod officia. Adipisicing reprehenderit tatata bala tu esse
+            consectetur. Wiiiii para tú occaecat reprehenderit ut.
+          </p>
+        </div>
+      </div>
+      <script src="dist/tabby.iife.js"></script>
+    </div>
+  </body>
+</html>

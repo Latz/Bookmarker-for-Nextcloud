@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <script src="../lib/browser-polyfill.min.js"></script>
+    <script type="module" src="../lib/apiCall.js"></script>
+    <script src="../lib/idb-min.js"></script>
+    <script type="module" src="./initial-options.js"></script>
+
+    <link rel="stylesheet" href="initial-options.css" />
+    <link rel="stylesheet" href="../lib/pushingpixels.css" />
+    <title>Bookmarker for Nextcloud</title>
+  </head>
+  <body>
+    <div id="initial-options">
+      <div id="server">
+        <span id="msg">Nextcloud hostname</span>
+        <div><input type="text" id="host" autofocus="true" /></div>
+        <button id="btn_checkHost">Open Login</button>
+        <div id="host_msg">&nbsp;</div>
+      </div>
+    </div>
+  </body>
+</html>

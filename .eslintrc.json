@@ -1,0 +1,16 @@
+{
+  "extends": ["eslint:recommended"],
+  "plugins": [],
+  "parserOptions": {
+    "ecmaVersion": 2018,
+    "sourceType": "module"
+  },
+
+  "env": { "es6": true, "webextensions": true },
+
+  "globals": { "browser": true, "chrome": true },
+
+  "rules": { "require-atomic-updates": "off", "no-var": 1, "prefer-const": "error" },
+
+  "eslintIgnore": ["tagigy.min.js"]
+}

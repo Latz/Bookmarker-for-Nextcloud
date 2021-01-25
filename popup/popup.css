@@ -1,0 +1,83 @@
+html {
+  box-sizing: border-box;
+}
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+body {
+  width: 350px;
+
+  padding: 5px;
+  font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+
+label:after {
+  content: '\A';
+  white-space: pre;
+}
+
+.load-bar3 {
+  background-color: green;
+}
+
+#title,
+#tagInput,
+#username,
+#password,
+#notes,
+#add {
+  width: 100%;
+  padding: 5px;
+  margin-top: 3px;
+  font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
+  --tags-border-color: black;
+}
+
+#add {
+  height: 3em;
+  text-align: center;
+}
+
+.tagify__input {
+  min-width: 0px;
+}
+
+#popupForm {
+  width: 100%;
+}
+
+.loader {
+  border: 2px solid lightgrey;
+  border-radius: 50%;
+  height: 20 px;
+  width: 20px;
+  border-left-color: red;
+  border-right-color: red;
+  animation: spin 1s infinite linear;
+  float: left;
+  border-right: 5px;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+#startMessage {
+  font-size: 1.5em;
+  text-align: center;
+}
+
+#icon-info {
+  height: 16px;
+  width: 16px;
+}

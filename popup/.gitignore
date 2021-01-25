@@ -1,0 +1,5 @@
+.eslint.json
+.prettierrc.json
+tsconfig.json
+web-ext-artifacts/*
+.vscode/*

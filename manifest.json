@@ -1,0 +1,54 @@
+{
+  "manifest_version": 2,
+  "name": "Bookmarker for Nextcloud",
+  "description": "Bookmarker for Nextcloud",
+  "author": "Latz",
+  "version": "0.13.1",
+
+  "browser_action": {
+    "default_title": "Bookmarker for Nextcloud",
+    "default_popup": "popup/popup.html",
+    "browser_style": true,
+    "default_icon": {
+      "64": "./images/icon-64x64-light.png",
+      "128": "./images/icon-128x128-light.png",
+      "256": "./images/icon-256x256-light.png",
+      "512": "./images/icon-512x512-light.png"
+    },
+
+    "theme_icons": [
+      {
+        "dark": "images/icon-64x64-light.png",
+        "light": "images/icon-64x64-dark.png",
+        "size": 64
+      },
+      {
+        "dark": "images/icon-128x128-light.png",
+        "light": "images/icon-128x128-dark.png",
+        "size": 128
+      },
+      {
+        "dark": "images/icon-256x256-light.png",
+        "light": "images/icon-256x256-dark.png",
+        "size": 256
+      },
+      {
+        "dark": "images/icon-512x512-light.png",
+        "light": "images/icon-512x512-dark.png",
+        "size": 512
+      }
+    ]
+  },
+
+  "background": {
+    "page": "background/background.html"
+  },
+  "options_ui": {
+    "page": "./options/options.html",
+    "open_in_tab": false
+  },
+
+  "permissions": ["<all_urls>", "activeTab", "storage", "contextMenus", "notifications"],
+
+  "web_accessible_resources": ["images/*.gif"]
+}
