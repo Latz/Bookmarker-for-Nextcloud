@@ -2,7 +2,7 @@
 
 ## Caution
 
-This extension is still in early development stage but is fully operational. Nevertheless, it might crash your computer, delete your doctoral thesis, or even kill your cat! 😽
+This Chrome/Firefox/... extension is still in early development stage but is fully operational. Nevertheless, it might crash your computer, delete your doctoral thesis, or even kill your cat! 😽
 
 # What it's for?
 
@@ -57,3 +57,9 @@ Saving a bookmark is straightforward. Click on the Icon in the toolbar of your b
 
 Fill in the information and click "Add" and the bookmark will be stored stored. As easy as that.
 If the bookmark is already stored, the popup will inform you and change the popup accordingly.
+
+# Future steps
+
+- Add distractless mode (Zen mode)
+- Automagically add tags
+- Inform user about possible typos in tags
