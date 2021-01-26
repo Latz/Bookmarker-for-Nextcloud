@@ -37,8 +37,9 @@ document.onreadystatechange = async () => {
 async function addBookmark(tagsArray) {
   const title = document.getElementById('title').value;
   const url = document.getElementById('url').value;
-  let tags = '';
-  tagsArray.forEach((tag) => (tags += `&tags[]=${tag.value}`));
+  let tags = JSON.stringify(tagsArray);
+  // let tags = '';
+  // tagsArray.forEach((tag) => (tags += `&tags[]=${tag.value}`));
   const notes = document.getElementById('notes').value;
 
   // do not wait for a response, background.js should throw an error message

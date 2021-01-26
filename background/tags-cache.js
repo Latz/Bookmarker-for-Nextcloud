@@ -30,6 +30,18 @@ async function TagsCacheAdd(BookmarkTags) {
   db.put('tags', { item: 'created', value: new Date().getTime() });
 }
 // ---------------------------------------------------------------------
+async function TagsCacheTempAdd(BookmarkTags) {
+  const dbVersion = 1;
+
+  const db = await idb.openDB('Cache', dbVersion, {
+    upgrade(db) {
+      db.createObjectStore('tags', { keyPath: 'item' }); //TODO: Flur!
+    },
+  });
+
+  db.put('tags', { item: 'tags', value: BookmarkTags.sort() });
+}
+// ---------------------------------------------------------------------
 function tagsExpired(db, created) {
   const one_day = 60 * 60 * 24 * 1000; // one day in milli seconds
   const diff = new Date().getTime() - created.value;
@@ -42,4 +54,4 @@ function tagsExpired(db, created) {
   return false;
 }
 
-export { TagsCacheAdd, TagsCacheGet };
+export { TagsCacheAdd, TagsCacheGet, TagsCacheTempAdd };

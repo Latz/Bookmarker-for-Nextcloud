@@ -1,7 +1,7 @@
 //@ts-check
 
 import { load_data, store_data, delete_data } from '../lib/storage.js';
-import { TagsCacheGet, TagsCacheAdd } from './tags-cache.js';
+import { TagsCacheGet, TagsCacheAdd, TagsCacheTempAdd } from './tags-cache.js';
 import apiCall from '../lib/apiCall.js';
 
 // set light icon if dark mode ist enabled
@@ -31,8 +31,6 @@ async function checkBookmark(pageUrl) {
   // Check if the bookmark i already stored in the database
   // true  => return database entries
   // false => do nothing
-  //
-
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const method = 'GET';
   const response = await apiCall(endpoint, method, `url=${pageUrl}`);
@@ -91,6 +89,10 @@ async function getTags() {
 }
 // ------------------------------------------------------------------------------------------------
 async function saveBookmark(data) {
+  let tags = '';
+  let tagsArray = JSON.parse(data.tags);
+  tagsArray.forEach((tag) => (tags += `&tags[]=${tag.value}`));
+
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const method = 'POST';
   const description = data.notes.length > 0 ? `&description=${data.notes}` : '';
@@ -98,5 +100,16 @@ async function saveBookmark(data) {
 
   const response = await apiCall(endpoint, method, parameters);
 
+  updateLocalTags(tagsArray);
+
   return new Promise((resolve) => resolve(response));
+}
+// --------------------------------------------------------------------------------------------------
+// Tags are cached for a day. If the user adds a new Tag it needs to be added to the cache.
+async function updateLocalTags(tags) {
+  let cachedTags = await TagsCacheGet();
+  tags.forEach((tag) => {
+    if (cachedTags.value.indexOf(tag.value) < 0) cachedTags.value.push(tag.value);
+  });
+  TagsCacheTempAdd(tags);
 }
