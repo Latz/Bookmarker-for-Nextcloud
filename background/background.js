@@ -92,7 +92,6 @@ async function saveBookmark(data) {
   let tags = '';
   let tagsArray = JSON.parse(data.tags);
   tagsArray.forEach((tag) => (tags += `&tags[]=${tag.value}`));
-  console.log('tags :>> ', tags);
 
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const method = 'POST';
