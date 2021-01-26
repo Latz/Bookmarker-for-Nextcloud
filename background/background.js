@@ -92,11 +92,12 @@ async function saveBookmark(data) {
   let tags = '';
   let tagsArray = JSON.parse(data.tags);
   tagsArray.forEach((tag) => (tags += `&tags[]=${tag.value}`));
+  console.log('tags :>> ', tags);
 
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const method = 'POST';
   const description = data.notes.length > 0 ? `&description=${data.notes}` : '';
-  const parameters = `title=${data.title}&url=${data.url}${description}${data.tags}&page=-1`;
+  const parameters = `title=${data.title}&url=${data.url}${description}${tags}&page=-1`;
 
   const response = await apiCall(endpoint, method, parameters);
 
