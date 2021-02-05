@@ -48,7 +48,7 @@
     "open_in_tab": false
   },
 
-  "permissions": ["<all_urls>", "activeTab", "storage", "contextMenus", "notifications"],
+  "permissions": ["<all_urls>", "activeTab", "notifications"],
 
   "web_accessible_resources": ["images/*.gif"]
 }

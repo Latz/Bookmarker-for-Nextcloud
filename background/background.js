@@ -23,6 +23,9 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'saveBookmark':
       saveBookmark(request.data).then((response) => sendResponse(response));
       break;
+    case 'loadFolders':
+      loadFolders().then((response) => sendResponse(response));
+      break;
   } //switch
   return true;
 });
@@ -96,7 +99,7 @@ async function saveBookmark(data) {
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const method = 'POST';
   const description = data.notes.length > 0 ? `&description=${data.notes}` : '';
-  const parameters = `title=${data.title}&url=${data.url}${description}${tags}&page=-1`;
+  const parameters = `title=${data.title}&url=${data.url}${description}${tags}&folders[]=${data.folders}&page=-1`;
 
   const response = await apiCall(endpoint, method, parameters);
 
@@ -112,4 +115,12 @@ async function updateLocalTags(tags) {
     if (cachedTags.value.indexOf(tag.value) < 0) cachedTags.value.push(tag.value);
   });
   TagsCacheTempAdd(tags);
+}
+// --------------------------------------------------------------------------------------------------
+async function loadFolders() {
+  // TODO: Don't forget to cache the folders
+  const endpoint = 'index.php/apps/bookmarks/public/rest/v2/folder';
+  const method = 'GET';
+  const folders = await apiCall(endpoint, method);
+  return new Promise((resolve) => resolve(folders.data));
 }

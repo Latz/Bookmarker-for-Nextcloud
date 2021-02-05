@@ -38,23 +38,74 @@ async function addBookmark(tagsArray) {
   const title = document.getElementById('title').value;
   const url = document.getElementById('url').value;
   let tags = JSON.stringify(tagsArray);
-  // let tags = '';
-  // tagsArray.forEach((tag) => (tags += `&tags[]=${tag.value}`));
   const notes = document.getElementById('notes').value;
+
+  let folders = [];
+  for (let folder of folderSelect.options) if (folder.selected) folders.push(folder.value);
 
   // do not wait for a response, background.js should throw an error message
   // if the bookmarked cannot be saved TODO:
-  browser.runtime.sendMessage({ msg: 'saveBookmark', data: { title, url, tags, notes } }).catch((error) => {
-    console.log('error');
-  });
+  browser.runtime
+    .sendMessage({ msg: 'saveBookmark', data: { title, url, tags, notes, folders: folders.toString() } })
+    .catch((error) => {
+      console.log('error');
+    });
 }
 // -----------------------------------------------------------------------------
-function displayForm(bookmarked, title, url) {
+async function displayFolders() {
+  let displayFolders = await load_data('options', 'displayFolders');
+  console.log('displayFolders', displayFolders);
+  if (!displayFolders) return '';
+  return `<label for="folderSelect">
+            Folders
+          </label>
+          <select name="folderSelect" placeholder="Loading folders..." disabled="true" id="folderSelect" tabIndex="2" size="5" multiple ></select>
+          </p>
+  `;
+}
+// -----------------------------------------------------------------------------
+async function addFolders() {
+  // asynchronously load folders
+  const folders = browser.runtime
+    .sendMessage({
+      msg: 'loadFolders',
+    })
+    .then((folders) => {
+      let userLang = navigator.language || navigator.userLanguage;
+      var folderStructure = [{ name: 'Root', value: '-1' }]; // root folder
+      function json2tree(folders, x = '') {
+        folders.sort((a, b) => a.title.localeCompare(b.title, userLang) > 0);
+        for (let f of folders) {
+          folderStructure.push({ name: `${x}${f.title}`, value: f.id });
+          if (f.children) json2tree(f.children, `${x}\u2007\u2007`);
+        }
+      }
+      json2tree(folders);
+
+      let folderSelect = document.getElementById('folderSelect');
+      folderStructure.forEach((folder) => {
+        let option = document.createElement('option');
+        option.text = folder.name;
+        option.value = folder.value;
+        option.style = 'font-weight:bold;color:#09C;padding-left:15px;margin-left:15px';
+        folderSelect.add(option);
+      });
+
+      folderSelect.addEventListener('change', (e) => {
+        console.log(folderSelect);
+      });
+
+      folderSelect.disabled = false;
+    });
+}
+// ------------------------------------------------------------------------------
+async function displayForm(bookmarked, title, url) {
   let template = `
   <body>
     <form>
       <label for="title">Title</label><input type="text" id="title" tabIndex="1">
       <label for="tagInput">Tags</label><input name="tagInput" placeholder="Loading tags..." disabled="true" id="tagInput" tabIndex="2" autofocus></p>
+      ${await displayFolders()}
       <label for="notes">Notes</label>
       <textarea id="notes" tabIndex="3"></textarea>
       <button id="add" tabIndex="4">Add</button>
@@ -80,6 +131,7 @@ function displayForm(bookmarked, title, url) {
     document.getElementById('title').value = title;
     document.getElementById('url').value = url;
   }
+  addFolders();
 }
 // -----------------------------------------------------------------------------
 async function openInitialOptionsWindow() {
