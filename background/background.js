@@ -99,10 +99,19 @@ async function saveBookmark(data) {
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const method = 'POST';
   const description = data.notes.length > 0 ? `&description=${data.notes}` : '';
-  const parameters = `title=${data.title}&url=${data.url}${description}${tags}&folders[]=${data.folders}&page=-1`;
+  const folders = data.folders.length > 0 ? `&folders[]=${data.folders}` : '';
+  const parameters = `title=${data.title}&url=${data.url}${description}${tags}${folders}&page=-1`;
 
   const response = await apiCall(endpoint, method, parameters);
 
+  if (response.status !== 'success') {
+    browser.notifications.create('', {
+      title: 'Error saving bookmark!',
+      message: `Error: ${response.statusText}`,
+      iconUrl: '../images/icon-128x128-light.png',
+      type: 'basic',
+    });
+  }
   updateLocalTags(tagsArray);
 
   return new Promise((resolve) => resolve(response));

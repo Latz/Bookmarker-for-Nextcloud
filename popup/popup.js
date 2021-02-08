@@ -28,7 +28,6 @@ document.onreadystatechange = async () => {
       addButton.addEventListener('click', async (event) => {
         event.preventDefault();
         addBookmark(tagify.value);
-        window.close();
       });
     }
   }
@@ -41,8 +40,10 @@ async function addBookmark(tagsArray) {
   const notes = document.getElementById('notes').value;
 
   let folders = [];
-  for (let folder of folderSelect.options) if (folder.selected) folders.push(folder.value);
-
+  let displayFolders = await load_data('options', 'displayFolders');
+  if (displayFolders) {
+    for (let folder of folderSelect.options) if (folder.selected) folders.push(folder.value);
+  }
   // do not wait for a response, background.js should throw an error message
   // if the bookmarked cannot be saved TODO:
   browser.runtime
@@ -50,11 +51,11 @@ async function addBookmark(tagsArray) {
     .catch((error) => {
       console.log('error');
     });
+  window.close();
 }
 // -----------------------------------------------------------------------------
 async function displayFolders() {
   let displayFolders = await load_data('options', 'displayFolders');
-  console.log('displayFolders', displayFolders);
   if (!displayFolders) return '';
   return `<label for="folderSelect">
             Folders
@@ -70,7 +71,7 @@ async function addFolders() {
     .sendMessage({
       msg: 'loadFolders',
     })
-    .then((folders) => {
+    .then(async (folders) => {
       let userLang = navigator.language || navigator.userLanguage;
       var folderStructure = [{ name: 'Root', value: '-1' }]; // root folder
       function json2tree(folders, x = '') {
@@ -82,20 +83,19 @@ async function addFolders() {
       }
       json2tree(folders);
 
-      let folderSelect = document.getElementById('folderSelect');
-      folderStructure.forEach((folder) => {
-        let option = document.createElement('option');
-        option.text = folder.name;
-        option.value = folder.value;
-        option.style = 'font-weight:bold;color:#09C;padding-left:15px;margin-left:15px';
-        folderSelect.add(option);
-      });
+      let displayFolders = await load_data('options', 'displayFolders');
+      if (displayFolders) {
+        let folderSelect = document.getElementById('folderSelect');
+        folderStructure.forEach((folder) => {
+          let option = document.createElement('option');
+          option.text = folder.name;
+          option.value = folder.value;
+          option.style = 'font-weight:bold;color:#09C;padding-left:15px;margin-left:15px';
+          folderSelect.add(option);
+        });
 
-      folderSelect.addEventListener('change', (e) => {
-        console.log(folderSelect);
-      });
-
-      folderSelect.disabled = false;
+        folderSelect.disabled = false;
+      }
     });
 }
 // ------------------------------------------------------------------------------
