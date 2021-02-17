@@ -1,6 +1,6 @@
 import { load_data, store_data, delete_data } from '../lib/storage.js';
 
-document.onreadystatechange = async () => {
+doCument.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     if (!(await openInitialOptionsWindow())) {
       const activeTab = await browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0]);
