@@ -82,7 +82,7 @@ async function poll_login(request) {
 // ------------------------------------------------------------------------------------
 async function getTags() {
   const tags = await CacheGet('tags');
-  if (Object.keys(tags).length > 0) return new Promise((resolve) => resolve(tags.value.sort()));
+  if (tags.length > 0) return new Promise((resolve) => resolve(tags.value.sort()));
 
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/tag';
   const method = 'GET';

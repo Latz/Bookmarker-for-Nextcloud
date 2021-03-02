@@ -204,6 +204,7 @@ async function getTags() {
 async function addTagify(tags) {
   // const tags = await getTags();
   // const tags = ['tag1', 'tag2'];
+  console.log('tags', tags);
   const tagsInput = document.getElementById('tagInput');
   const tagify = new Tagify(tagsInput, {
     whitelist: tags,
