@@ -1,17 +1,17 @@
 import { load_data, store_data, delete_data } from '../lib/storage.js';
 
-doCument.onreadystatechange = async () => {
+document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     if (!(await openInitialOptionsWindow())) {
       const activeTab = await browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0]);
       let title = activeTab.title;
       let url = activeTab.url;
 
-      let bookmarked = await checkBookmark(url);
-      // on Network error bookmarked is undefined
-      if (bookmarked.ok === false) bookmarked = undefined;
-      // let bookmarked = [];
-      // bookmarked['data'] = [];
+      // let bookmarked = await checkBookmark(url);
+      // // on Network error bookmarked is undefined
+      // if (bookmarked.ok === false) bookmarked = undefined;
+      let bookmarked = [];
+      bookmarked['data'] = [];
 
       displayForm(bookmarked, title, url);
 
@@ -44,6 +44,9 @@ async function addBookmark(tagsArray) {
   if (displayFolders) {
     for (let folder of folderSelect.options) if (folder.selected) folders.push(folder.value);
   }
+  //store last selected folders
+  // TODO: move to background.js to avoid await
+  await store_data('options', { last_used_folders: folders });
   // do not wait for a response, background.js should throw an error message
   // if the bookmarked cannot be saved TODO:
   browser.runtime
@@ -74,6 +77,7 @@ async function addFolders() {
     .then(async (folders) => {
       let userLang = navigator.language || navigator.userLanguage;
       var folderStructure = [{ name: 'Root', value: '-1' }]; // root folder
+
       function json2tree(folders, x = '') {
         folders.sort((a, b) => a.title.localeCompare(b.title, userLang) > 0);
         for (let f of folders) {
@@ -86,14 +90,20 @@ async function addFolders() {
       let displayFolders = await load_data('options', 'displayFolders');
       if (displayFolders) {
         let folderSelect = document.getElementById('folderSelect');
-        folderStructure.forEach((folder) => {
+        folderStructure.forEach(async (folder) => {
           let option = document.createElement('option');
           option.text = folder.name;
           option.value = folder.value;
-          option.style = 'font-weight:bold;color:#09C;padding-left:15px;margin-left:15px';
           folderSelect.add(option);
         });
-
+        let last_used_folders = await load_data('options', 'last_used_folders');
+        if (typeof last_used_folders !== 'undefined') {
+          folderSelect.value = null; //deselect all options
+          for (let option of folderSelect) option.selected = last_used_folders.includes(option.value);
+        } else {
+          // set root as default selected folder
+          folderSelect.options[0].selected = true;
+        }
         folderSelect.disabled = false;
       }
     });

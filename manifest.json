@@ -3,7 +3,7 @@
   "name": "Bookmarker for Nextcloud",
   "description": "Bookmarker for Nextcloud",
   "author": "Latz",
-  "version": "0.13.1",
+  "version": "0.14",
 
   "browser_action": {
     "default_title": "Bookmarker for Nextcloud",
@@ -50,16 +50,5 @@
 
   "permissions": ["<all_urls>", "activeTab", "notifications"],
 
-  "web_accessible_resources": ["images/*.gif"],
-
-  "commands": {
-    "test-shortcut": {
-      "suggested_key": {
-        "default": "Ctrl+D",
-        "mac": "Command+D",
-        "linux": "Ctrl+D"
-      },
-      "description": "Whatever you want"
-    }
-  }
+  "web_accessible_resources": ["images/*.gif"]
 }

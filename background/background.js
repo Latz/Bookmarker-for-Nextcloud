@@ -1,7 +1,7 @@
 //@ts-check
 
 import { load_data, store_data, delete_data } from '../lib/storage.js';
-import { TagsCacheGet, TagsCacheAdd, TagsCacheTempAdd } from './tags-cache.js';
+import { CacheGet, CacheAdd, CacheTempAdd } from './cache.js';
 import apiCall from '../lib/apiCall.js';
 
 // set light icon if dark mode ist enabled
@@ -81,13 +81,13 @@ async function poll_login(request) {
 }
 // ------------------------------------------------------------------------------------
 async function getTags() {
-  const tags = await TagsCacheGet();
-  if (Object.keys(tags).length > 0) return new Promise((resolve) => resolve(tags.value));
+  const tags = await CacheGet('tags');
+  if (Object.keys(tags).length > 0) return new Promise((resolve) => resolve(tags.value.sort()));
 
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/tag';
   const method = 'GET';
   const response = await apiCall(endpoint, method);
-  TagsCacheAdd(response);
+  CacheAdd('tags', response.sort());
   return new Promise((resolve) => resolve(response));
 }
 // ------------------------------------------------------------------------------------------------
@@ -119,17 +119,22 @@ async function saveBookmark(data) {
 // --------------------------------------------------------------------------------------------------
 // Tags are cached for a day. If the user adds a new Tag it needs to be added to the cache.
 async function updateLocalTags(tags) {
-  let cachedTags = await TagsCacheGet();
+  let cachedTags = await CacheGet('tags');
   tags.forEach((tag) => {
     if (cachedTags.value.indexOf(tag.value) < 0) cachedTags.value.push(tag.value);
   });
-  TagsCacheTempAdd(tags);
+  CacheTempAdd('tags', tags);
 }
 // --------------------------------------------------------------------------------------------------
 async function loadFolders() {
   // TODO: Don't forget to cache the folders
+
+  let folders = await CacheGet('folders');
+  if (Object.keys(folders).length > 0) return new Promise((resolve) => resolve(folders.value));
+
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/folder';
   const method = 'GET';
-  const folders = await apiCall(endpoint, method);
-  return new Promise((resolve) => resolve(folders.data));
+  let response = await apiCall(endpoint, method);
+  CacheAdd('folders', response.data);
+  return new Promise((resolve) => resolve(response.data));
 }
