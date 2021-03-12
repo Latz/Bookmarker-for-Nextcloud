@@ -3,7 +3,7 @@
   "name": "Bookmarker for Nextcloud",
   "description": "Bookmarker for Nextcloud",
   "author": "Latz",
-  "version": "0.14",
+  "version": "0.15",
 
   "browser_action": {
     "default_title": "Bookmarker for Nextcloud",

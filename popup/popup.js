@@ -2,6 +2,7 @@ import { load_data, store_data, delete_data } from '../lib/storage.js';
 
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
+    darkmode();
     if (!(await openInitialOptionsWindow())) {
       const activeTab = await browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0]);
       let title = activeTab.title;
@@ -32,6 +33,15 @@ document.onreadystatechange = async () => {
     }
   }
 };
+// -----------------------------------------------------------------------------
+function darkmode() {
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    console.log('darkmode');
+    document.body.classList.add('darkmode');
+  } else {
+    console.log('light mode');
+  }
+}
 // -----------------------------------------------------------------------------
 async function addBookmark(tagsArray) {
   const title = document.getElementById('title').value;
@@ -114,7 +124,7 @@ async function displayForm(bookmarked, title, url) {
   <body>
     <form>
       <label for="title">Title</label><input type="text" id="title" tabIndex="1">
-      <label for="tagInput">Tags</label><input name="tagInput" placeholder="Loading tags..." disabled="true" id="tagInput" tabIndex="2" autofocus></p>
+      <label for="tagInput">Tags</label><input class="customlook" name="tagInput" placeholder="Loading tags..." disabled="true" id="tagInput" tabIndex="2" autofocus></p>
       ${await displayFolders()}
       <label for="notes">Notes</label>
       <textarea id="notes" tabIndex="3"></textarea>

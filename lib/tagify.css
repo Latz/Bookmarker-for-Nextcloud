@@ -1,14 +1,36 @@
 @charset "UTF-8";
 :root {
-  --tagify-dd-color-primary: rgb(53, 149, 246);
-  --tagify-dd-bg-color: white;
+  --tagify-dd-color-primary: rgb(80, 78, 78);
+  --tagify-dd-bg-color: black;
+  color: black;
+}
+
+@media (prefers-color-scheme: dark) {
+  .tagify {
+    background-color: #333333;
+    --tags-focus-border-color: rgb(80, 78, 78);
+  }
+
+  .tagify__dropdown__wrapper {
+    max-height: 300px;
+    overflow: hidden;
+    background: #333;
+    border: 1px solid lightgray;
+    border-color: lightgray;
+    border-width: 1.1px;
+    border-top-width: 0;
+    box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+    transition: 0.25s cubic-bezier(0, 1, 0.5, 1);
+  }
+  .tagify__dropdown__wrapper option:checked {
+    background: #1aab8e -webkit-linear-gradient(bottom, #1aab8e 0%, #1aab8e 100%);
+  }
 }
 
 .tagify {
-  --tags-border-color: #ddd;
+  --tags-border-color: darkgray;
   --tags-hover-border-color: #ccc;
-  --tags-focus-border-width: 2px;
-
+  --tags-focus-border-color: #3595f6;
   --tag-bg: #e5e5e5;
   --tag-hover: #d3e2e2;
   --tag-text-color: black;
@@ -38,6 +60,7 @@
   cursor: text;
   outline: none;
   position: relative;
+  box-sizing: border-box;
   transition: 0.1s;
 }
 @keyframes tags--bump {
@@ -57,7 +80,6 @@
 .tagify.tagify--focus {
   transition: 0s;
   border-color: #3595f6;
-  border-width: 1px;
   border-color: var(--tags-focus-border-color);
 }
 .tagify[readonly]:not(.tagify--mix) {
@@ -67,9 +89,6 @@
   visibility: hidden;
   width: 0;
   margin: 5px 0;
-}
-.tagify[readonly]:not(.tagify--mix) .tagify__tag__removeBtn {
-  display: none;
 }
 .tagify[readonly]:not(.tagify--mix) .tagify__tag > div {
   padding: 0.3em 0.5em;
@@ -89,6 +108,9 @@
     0/5px 5px;
   box-shadow: none;
   filter: brightness(0.95);
+}
+.tagify[readonly] .tagify__tag__removeBtn {
+  display: none;
 }
 .tagify--loading .tagify__input::before {
   content: none;
@@ -129,12 +151,11 @@
   box-sizing: border-box;
   max-width: 100%;
   padding: 0.3em 0.5em;
-  padding: var(--tag-pad);
+  padding: var(--tag-pad, 0.3em 0.5em);
   color: black;
-  color: var(--tag-text-color);
+  color: var(--tag-text-color, black);
   line-height: inherit;
   border-radius: 3px;
-  user-select: none;
   white-space: nowrap;
   transition: 0.13s ease-out;
 }
@@ -144,8 +165,10 @@
   text-overflow: ellipsis;
   display: inline-block;
   vertical-align: top;
-  min-width: var(--tag--min-width);
-  max-width: var(--tag--max-width);
+  min-width: 1ch;
+  max-width: auto;
+  min-width: var(--tag--min-width, 1ch);
+  max-width: var(--tag--max-width, auto);
   transition: 0.8s ease, 0.1s color;
 }
 .tagify__tag > div > *[contenteditable] {
@@ -169,7 +192,7 @@
   transition: 120ms ease;
   animation: tags--bump 0.3s ease-out 1;
   box-shadow: 0 0 0 1.1em #e5e5e5 inset;
-  box-shadow: 0 0 0 var(--tag-inset-shadow-size) var(--tag-bg) inset;
+  box-shadow: 0 0 0 var(--tag-inset-shadow-size, 1.1em) var(--tag-bg, #e5e5e5) inset;
 }
 .tagify__tag:hover:not([readonly]) div::before {
   top: -2px;
@@ -177,7 +200,7 @@
   bottom: -2px;
   left: -2px;
   box-shadow: 0 0 0 1.1em #d3e2e2 inset;
-  box-shadow: 0 0 0 var(--tag-inset-shadow-size) var(--tag-hover) inset;
+  box-shadow: 0 0 0 var(--tag-inset-shadow-size, 1.1em) var(--tag-hover, #d3e2e2) inset;
 }
 .tagify__tag--loading {
   pointer-events: none;
@@ -212,8 +235,11 @@
   opacity: 0;
   transform: scale(0);
   transition: 0.3s;
-  transition: var(--tag-hide-transition);
+  transition: var(--tag-hide-transition, 0.3s);
   pointer-events: none;
+}
+.tagify__tag--hide > div > * {
+  white-space: nowrap;
 }
 .tagify__tag.tagify--noAnim > div::before {
   animation: none;
@@ -223,7 +249,7 @@
 }
 .tagify__tag.tagify--notAllowed:not(.tagify__tag--editable) div::before {
   box-shadow: 0 0 0 1.1em rgba(211, 148, 148, 0.5) inset !important;
-  box-shadow: 0 0 0 var(--tag-inset-shadow-size) var(--tag-invalid-bg) inset !important;
+  box-shadow: 0 0 0 var(--tag-inset-shadow-size, 1.1em) var(--tag-invalid-bg, rgba(211, 148, 148, 0.5)) inset !important;
   transition: 0.2s;
 }
 .tagify__tag[readonly] .tagify__tag__removeBtn {
@@ -246,15 +272,22 @@
 }
 .tagify__tag--editable > div {
   color: black;
-  color: var(--tag-text-color--edit);
+  color: var(--tag-text-color--edit, black);
 }
 .tagify__tag--editable > div::before {
   box-shadow: 0 0 0 2px #d3e2e2 inset !important;
-  box-shadow: 0 0 0 2px var(--tag-hover) inset !important;
+  box-shadow: 0 0 0 2px var(--tag-hover, #d3e2e2) inset !important;
+}
+.tagify__tag--editable > .tagify__tag__removeBtn {
+  pointer-events: none;
+}
+.tagify__tag--editable > .tagify__tag__removeBtn::after {
+  opacity: 0;
+  transform: translateX(100%) translateX(5px);
 }
 .tagify__tag--editable.tagify--invalid > div::before {
   box-shadow: 0 0 0 2px #d39494 inset !important;
-  box-shadow: 0 0 0 2px var(--tag-invalid-color) inset !important;
+  box-shadow: 0 0 0 2px var(--tag-invalid-color, #d39494) inset !important;
 }
 .tagify__tag__removeBtn {
   order: 5;
@@ -265,30 +298,32 @@
   cursor: pointer;
   font: 14px/1 Arial;
   background: none;
-  background: var(--tag-remove-btn-bg);
+  background: var(--tag-remove-btn-bg, none);
   color: black;
-  color: var(--tag-remove-btn-color);
+  color: var(--tag-remove-btn-color, black);
   width: 14px;
   height: 14px;
   margin-right: 4.6666666667px;
   margin-left: -4.6666666667px;
+  overflow: hidden;
   transition: 0.2s ease-out;
 }
 .tagify__tag__removeBtn::after {
   content: '×';
+  transition: 0.3s, color 0s;
 }
 .tagify__tag__removeBtn:hover {
   color: white;
   background: #c77777;
-  background: var(--tag-remove-btn-bg--hover);
+  background: var(--tag-remove-btn-bg--hover, #c77777);
 }
 .tagify__tag__removeBtn:hover + div > span {
   opacity: 0.5;
 }
 .tagify__tag__removeBtn:hover + div::before {
   box-shadow: 0 0 0 1.1em rgba(211, 148, 148, 0.3) inset !important;
-  box-shadow: 0 0 0 var(--tag-inset-shadow-size) var(--tag-remove-bg) inset !important;
-  transition: 0.2s;
+  box-shadow: 0 0 0 var(--tag-inset-shadow-size, 1.1em) var(--tag-remove-bg, rgba(211, 148, 148, 0.3)) inset !important;
+  transition: box-shadow 0.2s;
 }
 .tagify:not(.tagify--mix) .tagify__input br {
   display: none;
@@ -308,7 +343,8 @@
   position: relative;
   white-space: pre-wrap;
   color: inherit;
-  color: var(--input-color);
+  color: var(--input-color, inherit);
+  box-sizing: inherit;
   /* Seems firefox newer versions don't need this any more
           @supports ( -moz-appearance:none ){
               &::before{
@@ -318,8 +354,8 @@
           }
   */
   /*
-          in "mix mode" the tags are inside the "input" element
-      */
+      in "mix mode" the tags are inside the "input" element
+  */
 }
 @-moz-document url-prefix() {
 }
@@ -473,14 +509,18 @@
 .tagify__dropdown__wrapper {
   max-height: 300px;
   overflow: hidden;
-  background: white;
-  background: var(--tagify-dd-bg-color);
-  border: 1px solid #3595f6;
-  border-color: var(--tagify-dd-color-primary);
+  background: #333;
+  border: 1px solid lightgray;
+  border-color: lightgray;
+  border-width: 1.1px;
   border-top-width: 0;
   box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.2);
   transition: 0.25s cubic-bezier(0, 1, 0.5, 1);
 }
+.tagify__dropdown__wrapper option:checked {
+  background: #1aab8e -webkit-linear-gradient(bottom, #1aab8e 0%, #1aab8e 100%);
+}
+
 .tagify__dropdown__wrapper:hover {
   overflow: auto;
 }
@@ -508,3 +548,5 @@
 .tagify__dropdown__item:active {
   filter: brightness(105%);
 }
+
+/*# sourceMappingURL=tagify.css.map */

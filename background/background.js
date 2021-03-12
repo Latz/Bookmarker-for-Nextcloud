@@ -8,6 +8,7 @@ import apiCall from '../lib/apiCall.js';
 // chrome does not support theme_icons in manifest.json
 if (window.matchMedia('(prefers-color-scheme: dark)').matches)
   browser.browserAction.setIcon({ path: '../images/icon-64x64-dark.png' });
+else browser.browserAction.setIcon({ path: '../images/icon-64x64-light.png' });
 
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.msg) {
@@ -82,8 +83,7 @@ async function poll_login(request) {
 // ------------------------------------------------------------------------------------
 async function getTags() {
   const tags = await CacheGet('tags');
-  if (tags.length > 0) return new Promise((resolve) => resolve(tags.value.sort()));
-
+  if (Object.keys(tags).length > 0) return new Promise((resolve) => resolve(tags.value.sort()));
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/tag';
   const method = 'GET';
   const response = await apiCall(endpoint, method);

@@ -39,16 +39,11 @@ label:after {
   padding: 5px;
   margin-top: 3px;
   font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
-  --tags-border-color: black;
 }
 
 #add {
   height: 3em;
   text-align: center;
-}
-
-.tagify__input {
-  min-width: 0px;
 }
 
 #popupForm {
@@ -81,4 +76,40 @@ label:after {
 #icon-info {
   height: 16px;
   width: 16px;
+}
+
+input,
+textarea {
+  background-color: white;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #202124;
+    color: white;
+  }
+  label {
+    color: white;
+  }
+
+  input,
+  textarea {
+    background-color: #333333;
+    color: white;
+    border-color: rgb(94, 93, 93);
+    box-shadow: none;
+  }
+
+  input:hover,
+  textarea:hover {
+    border-color: rgb(124, 119, 119);
+  }
+
+  button {
+    background-color: #30363d;
+    color: white;
+    border-color: #e6e6e6;
+    box-shadow: none;
+  }
 }

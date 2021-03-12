@@ -13,9 +13,34 @@ body {
   font-size: 12px;
 }
 
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #202124;
+  }
+
+  #server,
+  #credentials {
+    background-color: #202124;
+    color: #ccc;
+  }
+  input,
+  button {
+    background-color: #333333;
+    color: #ccc;
+    border-color: rgb(94, 93, 93);
+    box-shadow: none;
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  #server,
+  #credentials {
+    background-color: white;
+  }
+}
+
 #server,
 #credentials {
-  background-color: white;
   width: 20em;
   display: -webkit-box;
   display: -ms-flexbox;

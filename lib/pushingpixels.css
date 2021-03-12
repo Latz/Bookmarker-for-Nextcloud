@@ -2,6 +2,14 @@
    * Loading Dots
    * Can we use pseudo elements here instead :after?
    */
+
+@media (prefers-color-scheme: dark) {
+  .loading span {
+    background: #fff;
+    border: 1px solid #fff;
+  }
+}
+
 .loading span {
   display: inline-block;
   vertical-align: middle;
