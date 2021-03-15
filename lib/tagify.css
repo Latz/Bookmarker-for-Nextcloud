@@ -1,6 +1,6 @@
 @charset "UTF-8";
 :root {
-  --tagify-dd-color-primary: rgb(80, 78, 78);
+  --tagify-dd-color-primary: darkgray;
   --tagify-dd-bg-color: black;
   color: black;
 }
@@ -8,13 +8,13 @@
 @media (prefers-color-scheme: dark) {
   .tagify {
     background-color: #333333;
-    --tags-focus-border-color: rgb(80, 78, 78);
+    --tags-focus-border-color: white;
   }
 
   .tagify__dropdown__wrapper {
     max-height: 300px;
     overflow: hidden;
-    background: #333;
+    background: white;
     border: 1px solid lightgray;
     border-color: lightgray;
     border-width: 1.1px;
@@ -22,15 +22,12 @@
     box-shadow: 0 2px 4px -2px rgba(0, 0, 0, 0.2);
     transition: 0.25s cubic-bezier(0, 1, 0.5, 1);
   }
-  .tagify__dropdown__wrapper option:checked {
-    background: #1aab8e -webkit-linear-gradient(bottom, #1aab8e 0%, #1aab8e 100%);
-  }
 }
 
 .tagify {
   --tags-border-color: darkgray;
   --tags-hover-border-color: #ccc;
-  --tags-focus-border-color: #3595f6;
+  --tags-focus-border-color: rgb(80, 78, 78);
   --tag-bg: #e5e5e5;
   --tag-hover: #d3e2e2;
   --tag-text-color: black;

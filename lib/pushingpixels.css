@@ -3,13 +3,6 @@
    * Can we use pseudo elements here instead :after?
    */
 
-@media (prefers-color-scheme: dark) {
-  .loading span {
-    background: #fff;
-    border: 1px solid #fff;
-  }
-}
-
 .loading span {
   display: inline-block;
   vertical-align: middle;
@@ -61,5 +54,61 @@
   }
   100% {
     opacity: 1;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .loading span {
+    display: inline-block;
+    vertical-align: middle;
+    width: 0.6em;
+    height: 0.6em;
+    margin: 0.19em;
+    background: #fff;
+    border: 1px solid #fff;
+    border-radius: 0.6em;
+    animation: loading 1s infinite alternate;
+  }
+
+  /*
+   * Dots Colors
+   * Smarter targeting vs nth-of-type?
+   */
+  .loading span:nth-of-type(2) {
+    background: #fff;
+    animation-delay: 0.2s;
+  }
+  .loading span:nth-of-type(3) {
+    background: #fff;
+    animation-delay: 0.4s;
+  }
+  .loading span:nth-of-type(4) {
+    background: #fff;
+    animation-delay: 0.6s;
+  }
+  .loading span:nth-of-type(5) {
+    background: #fff;
+    animation-delay: 0.8s;
+  }
+  .loading span:nth-of-type(6) {
+    background: #fff;
+    animation-delay: 1s;
+  }
+  .loading span:nth-of-type(7) {
+    background: #fff;
+    animation-delay: 1.2s;
+  }
+
+  /*
+   * Animation keyframes
+   * Use transition opacity instead of keyframes?
+   */
+  @keyframes loading {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
   }
 }
