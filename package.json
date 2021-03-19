@@ -6,7 +6,6 @@
   "directories": {
     "lib": "lib"
   },
-  "dependencies": {},
   "devDependencies": {
     "web-ext-types": "^3.2.1"
   },

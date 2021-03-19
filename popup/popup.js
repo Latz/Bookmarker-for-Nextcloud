@@ -2,7 +2,6 @@ import { load_data, store_data, delete_data } from '../lib/storage.js';
 
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
-    darkmode();
     if (!(await openInitialOptionsWindow())) {
       const activeTab = await browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0]);
       let title = activeTab.title;
@@ -33,15 +32,6 @@ document.onreadystatechange = async () => {
     }
   }
 };
-// -----------------------------------------------------------------------------
-function darkmode() {
-  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    console.log('darkmode');
-    document.body.classList.add('darkmode');
-  } else {
-    console.log('light mode');
-  }
-}
 // -----------------------------------------------------------------------------
 async function addBookmark(tagsArray) {
   const title = document.getElementById('title').value;

@@ -5,10 +5,21 @@ import { CacheGet, CacheAdd, CacheTempAdd } from './cache.js';
 import apiCall from '../lib/apiCall.js';
 
 // set light icon if dark mode ist enabled
-// chrome does not support theme_icons in manifest.json
+// browser does not support theme_icons in manifest.json
 if (window.matchMedia('(prefers-color-scheme: dark)').matches)
   browser.browserAction.setIcon({ path: '../images/icon-64x64-dark.png' });
 else browser.browserAction.setIcon({ path: '../images/icon-64x64-light.png' });
+
+// Check if addon has been updated -> delete cache
+browser.runtime.onInstalled.addListener((reason) => {
+  console.log(reason);
+  if (reason.reason === 'update') {
+    // check if server is defined before trying to load the tags
+    load_data('credentials', 'server').then((server) => {
+      if (server !== undefined) getTags(true); // force update
+    });
+  }
+});
 
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.msg) {
@@ -81,12 +92,12 @@ async function poll_login(request) {
   });
 }
 // ------------------------------------------------------------------------------------
-async function getTags() {
-  const tags = await CacheGet('tags');
-  if (Object.keys(tags).length > 0) return new Promise((resolve) => resolve(tags.value.sort()));
-  const endpoint = 'index.php/apps/bookmarks/public/rest/v2/tag';
-  const method = 'GET';
-  const response = await apiCall(endpoint, method);
+async function getTags(forceUpdate = false) {
+  if (!forceUpdate) {
+    const tags = await CacheGet('tags');
+    if (Object.keys(tags).length > 0) return new Promise((resolve) => resolve(tags.value.sort()));
+  }
+  const response = await apiCall('index.php/apps/bookmarks/public/rest/v2/tag', 'GET');
   CacheAdd('tags', response.sort());
   return new Promise((resolve) => resolve(response));
 }
