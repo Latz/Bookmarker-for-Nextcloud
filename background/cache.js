@@ -34,7 +34,9 @@ async function CacheAdd(type, data) {
   db.put(type, { item: `${type}_created`, value: new Date().getTime() });
 }
 // ---------------------------------------------------------------------
-async function CacheTempAdd(type, data) {
+// If the user enters a tag that's not already in the tags collection,
+// add it to the local cache
+async function CacheTempAdd(type, newTag) {
   const dbVersion = 1;
 
   const db = await idb.openDB('Cache', dbVersion, {
@@ -43,7 +45,9 @@ async function CacheTempAdd(type, data) {
     },
   });
 
-  db.put(type, { item: type, value: data.sort() });
+  let cachedTags = await CacheGet(type);
+  let allTags = cachedTags.concat(newTag);
+  db.put(type, { item: type, value: allTags.sort() });
 }
 // ---------------------------------------------------------------------
 function elementExpired(db, type, created) {
