@@ -21,6 +21,10 @@ browser.runtime.onInstalled.addListener((reason) => {
   }
 });
 
+// check if tags and folder tags cache has expired and update
+// on browser start
+getTags();
+loadFolders();
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.msg) {
     case 'poll':
@@ -90,6 +94,8 @@ async function poll_login(request) {
     loginname: response.loginName,
     server: response.server,
   });
+  getTags();
+  loadFolders();
 }
 // ------------------------------------------------------------------------------------
 async function getTags(forceUpdate = false) {

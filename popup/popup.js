@@ -113,7 +113,8 @@ async function displayForm(bookmarked, title, url) {
   let template = `
   <body>
     <form>
-      <label for="title">Title</label><input type="text" id="title" tabIndex="1">
+      <span><label for="title">Title</label><input type="text" id="title" tabIndex="1">
+      <span id="recentBookarms">▼</span></span>
       <label for="tagInput">Tags</label><input class="customlook" name="tagInput" placeholder="Loading tags..." disabled="true" id="tagInput" tabIndex="2" autofocus></p>
       ${await displayFolders()}
       <label for="notes">Notes</label>
