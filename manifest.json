@@ -48,6 +48,14 @@
     "open_in_tab": false
   },
 
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["./content/content.js"],
+      "run_at": "document_end"
+    }
+  ],
+
   "permissions": ["<all_urls>", "activeTab", "notifications"],
 
   "web_accessible_resources": ["images/*.gif"]

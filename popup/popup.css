@@ -81,6 +81,7 @@ label:after {
 input,
 textarea {
   background-color: white;
+  font: 1em sans-serif;
 }
 
 /* Dark mode */

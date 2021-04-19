@@ -1,4 +1,7 @@
+// https://www.cssscript.com/store-form-data-web-storage/
+
 import { load_data, store_data, delete_data } from '../lib/storage.js';
+import getMeta from './getMeta.js';
 
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
@@ -6,21 +9,24 @@ document.onreadystatechange = async () => {
       const activeTab = await browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0]);
       let title = activeTab.title;
       let url = activeTab.url;
-
+      let keywords = await getMeta(activeTab, 'keywords');
+      let description = await getMeta(activeTab, 'description');
       // let bookmarked = await checkBookmark(url);
       // // on Network error bookmarked is undefined
       // if (bookmarked.ok === false) bookmarked = undefined;
       let bookmarked = [];
       bookmarked['data'] = [];
 
-      displayForm(bookmarked, title, url);
+      await displayForm(bookmarked, title, url, description);
 
-      let tags = await getTags();
       document.getElementById('tagInput').placeholder = '';
 
+      let tags = await getTags();
       const tagify = await addTagify(tags);
+      tagify.addTags(await getKeywords(activeTab, tags));
 
       if (bookmarked && bookmarked.data.length > 0 && bookmarked.data[0].tags) {
+        console.log('bookmarked');
         tagify.addTags(bookmarked.data[0].tags);
       }
 
@@ -109,7 +115,7 @@ async function addFolders() {
     });
 }
 // ------------------------------------------------------------------------------
-async function displayForm(bookmarked, title, url) {
+async function displayForm(bookmarked, title, url, description) {
   let template = `
   <body>
     <form>
@@ -141,6 +147,7 @@ async function displayForm(bookmarked, title, url) {
   } else {
     document.getElementById('title').value = title;
     document.getElementById('url').value = url;
+    document.getElementById('notes').value = description;
   }
   addFolders();
 }
@@ -218,3 +225,37 @@ async function addTagify(tags) {
   return tagify;
 }
 // -----------------------------------------------------------------------------
+function tagsKeywordIntersection(tags, keywords) {
+  // only insert tags if there aren't already any tags
+  if (!keywords) return;
+  return tags.filter((value) => keywords.includes(value));
+}
+// -----------------------------------------------------------------------------
+async function getKeywords(activeTab, tags) {
+  // try <meta name="keywords"> tag
+  let keywords = await getMeta(activeTab, 'keywords');
+  keywords = tagsKeywordIntersection(tags, keywords?.split(','));
+  if (keywords) return keywords;
+
+  // try descriptiom
+  let description = await getMeta(activeTab, 'description');
+  // remove punctuation
+  description = description.replace(/[\p{P}$+<=>^`|~]/gu, '');
+  keywords = tagsKeywordIntersection(tags, description?.split(' '));
+  if (keywords.length > 0) return keywords;
+
+  // extract headings down to <h3>
+  let level = 1;
+  while (level <= 3) {
+    const content = await browser.tabs.sendMessage(activeTab.id, 'getContent');
+    const dom = new DOMParser().parseFromString(content, 'text/html');
+    let headings = Array.from(dom.querySelectorAll(`h${level}`)).map((h) => h.textContent);
+    keywords = headings?.map((heading) => heading.split(' '));
+    keywords = tagsKeywordIntersection(tags, keywords);
+
+    if (keywords.length > 0) break;
+    level++;
+  }
+
+  return keywords;
+}

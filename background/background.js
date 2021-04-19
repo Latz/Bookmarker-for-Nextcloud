@@ -21,6 +21,37 @@ browser.runtime.onInstalled.addListener((reason) => {
   }
 });
 
+// ------------------------------------------------------
+// async function injectKeyInterception() {
+//   function onExecuted(result) {
+//     console.log(`We executed in all subframes`);
+//   }
+
+//   function onError(error) {
+//     console.log(`Error: ${error}`);
+//   }
+
+//   const activeTab = await browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0]);
+
+//   const executing = browser.tabs.executeScript(activeTab.id, {
+//     file: '/content/content.js',
+//   });
+//   executing.then(onExecuted, onError);
+// }
+
+// function test() {
+//   console.log('test');
+// }
+
+// function logOnCompleted(details) {
+//   console.log(`onCompleted: ${details.url}`);
+// }
+
+// console.log('browser :>> ', browser.webNavigation);
+
+// browser.webNavigation.onCompleted.addListener(logOnCompleted);
+// // ---------------------------------------------------------
+
 // check if tags and folder tags cache has expired and update
 // on browser start
 getTags();
@@ -41,6 +72,9 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'loadFolders':
       loadFolders().then((response) => sendResponse(response));
+      break;
+    case 'getKeywords':
+      getKeywords().then((response) => sendResponse(response));
       break;
   } //switch
   return true;
@@ -155,3 +189,4 @@ async function loadFolders() {
   CacheAdd('folders', response.data);
   return new Promise((resolve) => resolve(response.data));
 }
+// -----------------------------------------------------------------------------------------------------
