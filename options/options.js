@@ -1,33 +1,27 @@
-import { load_data, store_data, delete_data } from '../lib/storage.js';
+import { load_data, load_data_all, store_data, delete_data } from '../lib/storage.js';
 
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     const myTabs = Tabby.init();
 
-    const general_options = document.getElementById('general_options');
-    const cbx_zenMode = document.getElementById('cbx_zenMode');
-    const cbx_displayFolders = document.getElementById('cbx_displayFolders');
-    const cbx_magicMode = document.getElementById('cbx_magicMode');
+    const options = document.getElementById('options');
 
     // set initial state of elements
-    let settings = await load_data('options', 'zenMode', 'displayFolders', 'magicMode');
-    cbx_displayFolders.checked = settings.displayFolders;
-    cbx_zenMode.checked = settings.zenMode;
-    cbx_magicMode.checked = settings.magicMode;
+    let optionsData = await load_data_all('options');
+    optionsData.forEach((option) => {
+      if (option.item.startsWith('cbx')) document.getElementById(option.item).checked = option.value;
+    });
 
-    general_options.addEventListener('click', (event) => {
+    // get name of all inputs
+    const inputs = document.getElementsByTagName('input');
+
+    options.addEventListener('click', (event) => {
       // event.preventDefault();
-      switch (event.target) {
-        case cbx_zenMode:
-          store_data('options', { zenMode: cbx_zenMode.checked });
-          break;
-        case cbx_displayFolders:
-          store_data('options', { displayFolders: cbx_displayFolders.checked });
-          break;
-        case cbx_magicMode:
-          store_data('options', { magicMode: cbx_magicMode.checked });
-          break;
-          magic;
+      console.log('click');
+      const inputs = ['checkbox'];
+      if (inputs.includes(event.target.type)) {
+        let data = JSON.parse(`{"${event.target.id}":${event.target.checked}}`);
+        store_data('options', data);
       }
     });
   }

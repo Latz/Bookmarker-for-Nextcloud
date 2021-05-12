@@ -1,2 +1,3 @@
 .vscode
 .eslint.json
+node_modules

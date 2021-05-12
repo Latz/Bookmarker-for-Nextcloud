@@ -9,8 +9,12 @@ document.onreadystatechange = async () => {
       const activeTab = await browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0]);
       let title = activeTab.title;
       let url = activeTab.url;
-      let keywords = await getMeta(activeTab, 'keywords');
-      let description = await getMeta(activeTab, 'description');
+
+      const content = await browser.runtime.sendMessage({ msg: 'getContent' });
+      let description = '';
+      if (await load_data('options', 'cbx_autoDesc')) description = await getMeta(activeTab, content, 'description');
+      description = description ? description : '';
+
       // let bookmarked = await checkBookmark(url);
       // // on Network error bookmarked is undefined
       // if (bookmarked.ok === false) bookmarked = undefined;
@@ -21,9 +25,12 @@ document.onreadystatechange = async () => {
 
       document.getElementById('tagInput').placeholder = '';
 
+      // use keywords as preselected tags
       let tags = await getTags();
       const tagify = await addTagify(tags);
-      tagify.addTags(await getKeywords(activeTab, tags));
+      if (await load_data('options', 'cbx_autoTags')) {
+        tagify.addTags(await getKeywords(activeTab, content, tags));
+      }
 
       if (bookmarked && bookmarked.data.length > 0 && bookmarked.data[0].tags) {
         console.log('bookmarked');
@@ -212,7 +219,6 @@ async function getTags() {
 async function addTagify(tags) {
   // const tags = await getTags();
   // const tags = ['tag1', 'tag2'];
-  console.log('tags', tags);
   const tagsInput = document.getElementById('tagInput');
   const tagify = new Tagify(tagsInput, {
     whitelist: tags,
@@ -226,36 +232,49 @@ async function addTagify(tags) {
 }
 // -----------------------------------------------------------------------------
 function tagsKeywordIntersection(tags, keywords) {
-  // only insert tags if there aren't already any tags
+  console.log('keywords :>> ', keywords);
+  // only insert tags if there aren't already any tag
   if (!keywords) return;
-  return tags.filter((value) => keywords.includes(value));
+  // return tags.filter((value) => keywords.includes(value));
+
+  keywords = keywords.flat().map((keyword) => (keyword = keyword.toLowerCase()));
+
+  let tags_array = [];
+  for (let tag of tags) if (keywords.includes(tag.toLowerCase())) tags_array.push(tag);
+
+  return tags_array;
 }
+
 // -----------------------------------------------------------------------------
-async function getKeywords(activeTab, tags) {
+async function getKeywords(activeTab, content, tags) {
   // try <meta name="keywords"> tag
-  let keywords = await getMeta(activeTab, 'keywords');
+
+  let keywords = await getMeta(activeTab, content, 'keywords');
   keywords = tagsKeywordIntersection(tags, keywords?.split(','));
   if (keywords) return keywords;
 
-  // try descriptiom
-  let description = await getMeta(activeTab, 'description');
+  // try description
+  let description = await getMeta(activeTab, content, 'description');
   // remove punctuation
-  description = description.replace(/[\p{P}$+<=>^`|~]/gu, '');
-  keywords = tagsKeywordIntersection(tags, description?.split(' '));
-  if (keywords.length > 0) return keywords;
-
+  if (description) {
+    description = description.replace(/[\p{P}$+<=>^`|~]/gu, '');
+    keywords = tagsKeywordIntersection(tags, description?.split(' '));
+    if (keywords.length > 0) return keywords;
+  }
   // extract headings down to <h3>
   let level = 1;
   while (level <= 3) {
-    const content = await browser.tabs.sendMessage(activeTab.id, 'getContent');
     const dom = new DOMParser().parseFromString(content, 'text/html');
     let headings = Array.from(dom.querySelectorAll(`h${level}`)).map((h) => h.textContent);
+    console.log('headings :>> ', headings);
     keywords = headings?.map((heading) => heading.split(' '));
     keywords = tagsKeywordIntersection(tags, keywords);
 
     if (keywords.length > 0) break;
     level++;
   }
+
+  console.log('keywords :>> ', keywords);
 
   return keywords;
 }

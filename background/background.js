@@ -21,42 +21,12 @@ browser.runtime.onInstalled.addListener((reason) => {
   }
 });
 
-// ------------------------------------------------------
-// async function injectKeyInterception() {
-//   function onExecuted(result) {
-//     console.log(`We executed in all subframes`);
-//   }
-
-//   function onError(error) {
-//     console.log(`Error: ${error}`);
-//   }
-
-//   const activeTab = await browser.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0]);
-
-//   const executing = browser.tabs.executeScript(activeTab.id, {
-//     file: '/content/content.js',
-//   });
-//   executing.then(onExecuted, onError);
-// }
-
-// function test() {
-//   console.log('test');
-// }
-
-// function logOnCompleted(details) {
-//   console.log(`onCompleted: ${details.url}`);
-// }
-
-// console.log('browser :>> ', browser.webNavigation);
-
-// browser.webNavigation.onCompleted.addListener(logOnCompleted);
-// // ---------------------------------------------------------
-
 // check if tags and folder tags cache has expired and update
 // on browser start
 getTags();
 loadFolders();
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('request :>> ', request);
   switch (request.msg) {
     case 'poll':
       poll_login(request);
@@ -73,9 +43,8 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'loadFolders':
       loadFolders().then((response) => sendResponse(response));
       break;
-    case 'getKeywords':
-      getKeywords().then((response) => sendResponse(response));
-      break;
+    case 'getContent':
+      getContent().then((content) => sendResponse(content));
   } //switch
   return true;
 });
@@ -190,3 +159,9 @@ async function loadFolders() {
   return new Promise((resolve) => resolve(response.data));
 }
 // -----------------------------------------------------------------------------------------------------
+async function getContent() {
+  console.log('get Content');
+  const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+  let content = await browser.tabs.sendMessage(tabs[0].id, { msg: 'getContent' });
+  return new Promise((resolve) => resolve(content));
+}

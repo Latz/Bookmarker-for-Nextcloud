@@ -1,4 +1,4 @@
-chrome.runtime.onMessage.addListener(async function (request, sender, sendResponse) {
+browser.runtime.onMessage.addListener(async function (request) {
   let data = document.documentElement.innerHTML;
   return data;
 });

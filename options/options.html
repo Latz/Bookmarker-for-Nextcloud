@@ -13,21 +13,34 @@
     <div class="tabs" data-tabby>
       <div class="bar">
         <div data-tabby-bar="general" data-tabby-active>General</div>
+        <div data-tabby-bar="zenmode">Zen&nbsp;Mode</div>
         <div data-tabby-bar="credentials">Credentials</div>
         <div data-tabby-bar="about">About</div>
       </div>
-      <div class="content">
+      <div id="options">
         <div id="general_options" data-tabby-content="general" data-tabby-active>
-          <p>
             <input type="checkbox" id="cbx_displayFolders"></label>
             <label for="cbx_displayFolders">Display Folders
               <br/>
-            <input type="checkbox" id="cbx_zenMode"></label>
-            <label for="cbx_zenMode">Zen Mode
+              <input type="checkbox" id="cbx_autoTags"></label>
+            <label for="cbx_autoTags">Auto tags
               <br/>
-              <input type="checkbox" id="cbx_magicMode"></label>
-              <label for="cbx_magicMode">Magic Mode
-            </p>
+              <input type="checkbox" id="cbx_autoDesc"></label>
+              <label for="cbx_autoDesc">Auto Description
+                <br/>
+        </div>
+        <div data-tabby-content="zenmode">
+          <input type="checkbox" id="cbx_zenMode"></label>
+          <label for="cbx_zenMode">Activate Zen Mode
+            <br/>
+            <input type="checkbox" id="cbx_zenMode_autoTags"></label>
+            <label for="cbx_zenMode_autoTags">Auto tags
+              <br/>
+              <input type="checkbox" id="cbx_zenMode_autoDesc"></label>
+              <label for="cbx_zenMode_autoDesc">Auto Description
+                <br/>
+      
+  
         </div>
         <div data-tabby-content="credentials">
           <div id="server">
