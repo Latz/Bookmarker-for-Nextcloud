@@ -4,6 +4,22 @@ import { load_data, store_data, delete_data } from '../lib/storage.js';
 import { CacheGet, CacheAdd, CacheTempAdd } from './cache.js';
 import apiCall from '../lib/apiCall.js';
 
+// check for Firefox and add Options menu to browser action menu
+// https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser/9851769#9851769
+if (typeof InstallTrigger !== 'undefined') {
+  let icon = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'settings-dark.svg' : 'settings.svg';
+  browser.contextMenus.create({
+    title: 'Options',
+    contexts: ['browser_action'],
+    icons: {
+      16: `./images/${icon}`,
+    },
+    onclick: () => {
+      browser.runtime.openOptionsPage();
+    },
+  });
+}
+
 // set light icon if dark mode ist enabled
 // browser does not support theme_icons in manifest.json
 if (window.matchMedia('(prefers-color-scheme: dark)').matches)
@@ -12,7 +28,6 @@ else browser.browserAction.setIcon({ path: '../images/icon-64x64-light.png' });
 
 // Check if addon has been updated -> delete cache
 browser.runtime.onInstalled.addListener((reason) => {
-  console.log(reason);
   if (reason.reason === 'update') {
     // check if server is defined before trying to load the tags
     load_data('credentials', 'server').then((server) => {
@@ -26,7 +41,6 @@ browser.runtime.onInstalled.addListener((reason) => {
 getTags();
 loadFolders();
 browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('request :>> ', request);
   switch (request.msg) {
     case 'poll':
       poll_login(request);
@@ -102,6 +116,7 @@ async function poll_login(request) {
 }
 // ------------------------------------------------------------------------------------
 async function getTags(forceUpdate = false) {
+  console.log('getTags');
   if (!forceUpdate) {
     const tags = await CacheGet('tags');
     if (Object.keys(tags).length > 0) return new Promise((resolve) => resolve(tags.value.sort()));
@@ -160,7 +175,6 @@ async function loadFolders() {
 }
 // -----------------------------------------------------------------------------------------------------
 async function getContent() {
-  console.log('get Content');
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
   let content = await browser.tabs.sendMessage(tabs[0].id, { msg: 'getContent' });
   return new Promise((resolve) => resolve(content));

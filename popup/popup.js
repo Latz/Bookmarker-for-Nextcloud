@@ -13,6 +13,7 @@ document.onreadystatechange = async () => {
       const content = await browser.runtime.sendMessage({ msg: 'getContent' });
       let description = '';
       if (await load_data('options', 'cbx_autoDesc')) description = await getMeta(activeTab, content, 'description');
+      console.log('description', description);
       description = description ? description : '';
 
       // let bookmarked = await checkBookmark(url);
@@ -22,19 +23,17 @@ document.onreadystatechange = async () => {
       bookmarked['data'] = [];
 
       await displayForm(bookmarked, title, url, description);
-
       document.getElementById('tagInput').placeholder = '';
 
       // use keywords as preselected tags
       let tags = await getTags();
-      const tagify = await addTagify(tags);
-      if (await load_data('options', 'cbx_autoTags')) {
-        tagify.addTags(await getKeywords(activeTab, content, tags));
-      }
 
+      const tagify = await addTagify(tags);
       if (bookmarked && bookmarked.data.length > 0 && bookmarked.data[0].tags) {
         console.log('bookmarked');
         tagify.addTags(bookmarked.data[0].tags);
+      } else if (await load_data('options', 'cbx_autoTags')) {
+        tagify.addTags(await getKeywords(activeTab, content, tags));
       }
 
       const addButton = document.getElementById('add');
@@ -232,7 +231,6 @@ async function addTagify(tags) {
 }
 // -----------------------------------------------------------------------------
 function tagsKeywordIntersection(tags, keywords) {
-  console.log('keywords :>> ', keywords);
   // only insert tags if there aren't already any tag
   if (!keywords) return;
   // return tags.filter((value) => keywords.includes(value));
@@ -241,13 +239,18 @@ function tagsKeywordIntersection(tags, keywords) {
 
   let tags_array = [];
   for (let tag of tags) if (keywords.includes(tag.toLowerCase())) tags_array.push(tag);
+  let unique_tags_array = new Map(tags_array.map((s) => [s.toLowerCase(), s]));
 
-  return tags_array;
+  return [...unique_tags_array.values()];
 }
 
 // -----------------------------------------------------------------------------
 async function getKeywords(activeTab, content, tags) {
+  console.log('*** keywords');
+
   // try <meta name="keywords"> tag
+
+  // TODO: doppelte tags rauswerfen: https://github.com/aleksey-hoffman/sigma-file-manager
 
   let keywords = await getMeta(activeTab, content, 'keywords');
   keywords = tagsKeywordIntersection(tags, keywords?.split(','));
