@@ -253,13 +253,8 @@ function tagsKeywordIntersection(tags, keywords) {
 
 // -----------------------------------------------------------------------------
 async function getKeywords(activeTab, content, tags) {
-  console.log('*** keywords');
-
-  // try <meta name="keywords"> tag
-
-  // TODO: doppelte tags rauswerfen: https://github.com/aleksey-hoffman/sigma-file-manager
-
-  let keywords = await getMeta(activeTab, content, 'keywords');
+  let keywords = await getMeta(activeTab, content, { type: 'name', id: 'keywords' });
+  console.log('keywords', keywords);
   keywords = tagsKeywordIntersection(tags, keywords?.split(','));
   if (keywords) return keywords;
 
