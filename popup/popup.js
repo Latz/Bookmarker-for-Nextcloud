@@ -12,12 +12,14 @@ document.onreadystatechange = async () => {
 
       const content = await browser.runtime.sendMessage({ msg: 'getContent' });
       let description = '';
-      // <meta name="twitter:description"
-      // https://www.mindsdelight.de/2021/05/ein-historiker-folgt-hinweisen-auf-3-fotos-von-new-york-um-das-exakte-datum-der-aufnahmen-zu-ermitteln/
-      // <meta property="og:description" content="
-      // https://www.hanselman.com/blog/running-microsoft-edge-on-linux-with-wslg-while-running-visual-studio-2019-and-debugging-a-linux-net-app-with-wsl-on-windows-10
       if (await load_data('options', 'cbx_autoDesc'))
-        description = await getMeta(activeTab, content, 'description', 'twitter:description');
+        description = await getMeta(
+          activeTab,
+          content,
+          { type: 'name', id: 'description' },
+          { type: 'name', id: 'twitter:description' },
+          { type: 'content', id: 'og:description' }
+        );
 
       console.log('description', description);
       description = description ? description : '';
