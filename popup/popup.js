@@ -41,7 +41,8 @@ document.onreadystatechange = async () => {
         console.log('bookmarked');
         tagify.addTags(bookmarked.data[0].tags);
       } else if (await load_data('options', 'cbx_autoTags')) {
-        tagify.addTags(await getKeywords(activeTab, content, tags));
+        let keywords = await getKeywords(activeTab, content, tags);
+        if (keywords.length > 0) tagify.addTags(keywords);
       }
 
       const addButton = document.getElementById('add');
@@ -254,9 +255,29 @@ function tagsKeywordIntersection(tags, keywords) {
 // -----------------------------------------------------------------------------
 async function getKeywords(activeTab, content, tags) {
   let keywords = await getMeta(activeTab, content, { type: 'name', id: 'keywords' });
-  console.log('keywords', keywords);
   keywords = tagsKeywordIntersection(tags, keywords?.split(','));
-  if (keywords) return keywords;
+  console.log('keywords :>> ', keywords);
+  if (keywords.length > 0) return keywords;
+
+  const dom = new DOMParser().parseFromString(content, 'text/html');
+
+  // try <a href="" rel="tag">
+  let relsTag = dom.querySelectorAll('a[rel=tag]');
+  relsTag.forEach((tag) => keywords.push(tag.text));
+  if (keywords.length > 0) return keywords;
+
+  // try <a href="" rel="category">
+  let relsCategories = dom.querySelectorAll('a[rel=category]');
+  relsCategories.forEach((category) => keywords.push(category.text));
+  if (keywords.length > 0) return keywords;
+
+  // try JSON-LD
+  let jsonld = JSON.parse(dom.querySelector('script[type="application/ld+json"]').innerText);
+  jsonld.keywords.forEach((keyword) => {
+    let [id, value] = keyword.split(':');
+    if (id.toLowerCase() === 'tag') keywords.push(value);
+  });
+  if (keywords.length > 0) return keywords;
 
   // try description
   let description = await getMeta(activeTab, content, 'description');
@@ -278,8 +299,6 @@ async function getKeywords(activeTab, content, tags) {
     if (keywords.length > 0) break;
     level++;
   }
-
-  console.log('keywords :>> ', keywords);
 
   return keywords;
 }
