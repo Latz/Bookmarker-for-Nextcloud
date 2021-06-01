@@ -18,7 +18,8 @@ document.onreadystatechange = async () => {
           content,
           { type: 'name', id: 'description' },
           { type: 'name', id: 'twitter:description' },
-          { type: 'content', id: 'og:description' }
+          { type: 'content', id: 'og:description' },
+          { type: 'property', id: 'og:description' }
         );
 
       console.log('description', description);
@@ -241,9 +242,10 @@ async function addTagify(tags) {
 // -----------------------------------------------------------------------------
 function tagsKeywordIntersection(tags, keywords) {
   // only insert tags if there aren't already any tag
-  if (!keywords) return;
+  if (!keywords) return [];
+  console.log('*** keywords :>> ', keywords);
 
-  keywords = keywords.flat().map((keyword) => (keyword = keyword.toLowerCase()));
+  keywords = keywords.flat().map((keyword) => (keyword = keyword.toLowerCase()).trim());
 
   let tags_array = [];
   for (let tag of tags) if (keywords.includes(tag.toLowerCase())) tags_array.push(tag);
@@ -254,51 +256,94 @@ function tagsKeywordIntersection(tags, keywords) {
 
 // -----------------------------------------------------------------------------
 async function getKeywords(activeTab, content, tags) {
-  let keywords = await getMeta(activeTab, content, { type: 'name', id: 'keywords' });
-  keywords = tagsKeywordIntersection(tags, keywords?.split(','));
-  console.log('keywords :>> ', keywords);
+  let keywords = await getMeta(
+    activeTab,
+    content,
+    { type: 'name', id: 'keywords' },
+    { type: 'name', id: 'news_keywords' }
+  );
+
+  console.log('getMeta');
+  keywords = tagsKeywordIntersection(tags, keywords.split(','));
+
   if (keywords.length > 0) return keywords;
 
   const dom = new DOMParser().parseFromString(content, 'text/html');
 
+  // -----
   // try <a href="" rel="tag">
+  console.log('rels tags');
   let relsTag = dom.querySelectorAll('a[rel=tag]');
   relsTag.forEach((tag) => keywords.push(tag.text));
+  keywords = tagsKeywordIntersection(tags, keywords);
+  console.log('keywords :>> ', keywords);
+
   if (keywords.length > 0) return keywords;
 
+  // -----
   // try <a href="" rel="category">
+  console.log('rels category');
   let relsCategories = dom.querySelectorAll('a[rel=category]');
   relsCategories.forEach((category) => keywords.push(category.text));
+  keywords = tagsKeywordIntersection(tags, keywords);
+  console.log('keywords :>> ', keywords);
+
   if (keywords.length > 0) return keywords;
 
+  // -----
   // try JSON-LD
-  let jsonld = JSON.parse(dom.querySelector('script[type="application/ld+json"]').innerText);
-  jsonld.keywords.forEach((keyword) => {
-    let [id, value] = keyword.split(':');
-    if (id.toLowerCase() === 'tag') keywords.push(value);
-  });
-  if (keywords.length > 0) return keywords;
+  let jsonld = dom.querySelector('script[type="application/ld+json"]');
+  if (jsonld) {
+    console.log('JSON.parse(jsonld.innerText) :>> ', JSON.parse(jsonld.innerText));
+    jsonld = JSON.parse(jsonld.innerText);
+    jsonld.keywords?.forEach((keyword) => {
+      let [id, value] = keyword.split(':');
+      if (id.toLowerCase() === 'tag') keywords.push(value);
+    });
+    keywords = tagsKeywordIntersection(tags, keywords);
+    if (keywords.length > 0) return keywords;
+
+    // try @graph -> @type: Article -> keywords
+    jsonld['@graph'].forEach((graph) => {
+      if (typeof graph['@type'] === 'string' && graph['@type'].toLowerCase() === 'article') {
+        keywords = graph.keywords;
+      }
+    });
+    keywords = tagsKeywordIntersection(tags, keywords);
+    if (keywords.length > 0) return keywords;
+  }
 
   // try description
-  let description = await getMeta(activeTab, content, 'description');
+  let description = await getMeta(
+    activeTab,
+    content,
+    { type: 'name', id: 'description' },
+    { type: 'name', id: 'twitter:description' },
+    { type: 'content', id: 'og:description' }
+  );
   // remove punctuation
   if (description) {
     description = description.replace(/[\p{P}$+<=>^`|~]/gu, '');
+    console.log('description :>> ', description);
     keywords = tagsKeywordIntersection(tags, description?.split(' '));
+    console.log('keywords :>> ', keywords);
+    keywords = tagsKeywordIntersection(tags, keywords);
     if (keywords.length > 0) return keywords;
   }
+
   // extract headings down to <h3>
   let level = 1;
-  while (level <= 3) {
+  while (level <= 2) {
     const dom = new DOMParser().parseFromString(content, 'text/html');
     let headings = Array.from(dom.querySelectorAll(`h${level}`)).map((h) => h.textContent);
-    console.log('headings :>> ', headings);
     keywords = headings?.map((heading) => heading.split(' '));
     keywords = tagsKeywordIntersection(tags, keywords);
 
     if (keywords.length > 0) break;
     level++;
   }
+  keywords = tagsKeywordIntersection(tags, keywords);
+  console.log('keywords :>> ', keywords);
 
   return keywords;
 }
