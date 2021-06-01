@@ -6,6 +6,7 @@ import apiCall from '../lib/apiCall.js';
 
 // check for Firefox and add Options menu to browser action menu
 // https://stackoverflow.com/questions/9847580/how-to-detect-safari-chrome-ie-firefox-and-opera-browser/9851769#9851769
+// @ts-ignore
 if (typeof InstallTrigger !== 'undefined') {
   let icon = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'settings-dark.svg' : 'settings.svg';
   browser.contextMenus.create({
