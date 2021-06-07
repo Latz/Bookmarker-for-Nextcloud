@@ -113,4 +113,40 @@ textarea {
     border-color: #e6e6e6;
     box-shadow: none;
   }
+
+  label.custom-select {
+    position: relative;
+    display: inline-block;
+  }
+
+  #folderSelect {
+    display: inline-block;
+    padding: 4px 3px 3px 5px;
+    margin: 0;
+    font: inherit;
+    outline: none; /* remove focus ring from Webkit */
+    line-height: 1.2;
+    background: #000;
+    color: white;
+    border: 0;
+  }
+
+  /* Select arrow styling */
+  #folderSelect:after {
+    content: '▼';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    font-size: 60%;
+    line-height: 30px;
+    padding: 0 7px;
+    background: #000;
+    color: white;
+    pointer-events: none;
+  }
+
+  .no-pointer-events #folderSelect:after {
+    content: none;
+  }
 }

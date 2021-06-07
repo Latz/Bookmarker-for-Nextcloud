@@ -21,8 +21,6 @@ document.onreadystatechange = async () => {
           { type: 'content', id: 'og:description' },
           { type: 'property', id: 'og:description' }
         );
-
-      console.log('description', description);
       description = description ? description : '';
 
       // let bookmarked = await checkBookmark(url);
@@ -62,7 +60,7 @@ async function addBookmark(tagsArray) {
   const notes = document.getElementById('notes').value;
 
   let folders = [];
-  let displayFolders = await load_data('options', 'displayFolders');
+  let displayFolders = await load_data('options', 'cbx_displayFolders');
   if (displayFolders) {
     for (let folder of folderSelect.options) if (folder.selected) folders.push(folder.value);
   }
@@ -80,7 +78,7 @@ async function addBookmark(tagsArray) {
 }
 // -----------------------------------------------------------------------------
 async function displayFolders() {
-  let displayFolders = await load_data('options', 'displayFolders');
+  let displayFolders = await load_data('options', 'cbx_displayFolders');
   if (!displayFolders) return '';
   return `<label for="folderSelect">
             Folders
@@ -109,7 +107,7 @@ async function addFolders() {
       }
       json2tree(folders);
 
-      let displayFolders = await load_data('options', 'displayFolders');
+      let displayFolders = await load_data('options', 'cbx_displayFolders');
       if (displayFolders) {
         let folderSelect = document.getElementById('folderSelect');
         folderStructure.forEach(async (folder) => {
@@ -243,14 +241,13 @@ async function addTagify(tags) {
 function tagsKeywordIntersection(tags, keywords) {
   // only insert tags if there aren't already any tag
   if (!keywords) return [];
-  console.log('*** keywords :>> ', keywords);
 
   keywords = keywords.flat().map((keyword) => (keyword = keyword.toLowerCase()).trim());
 
   let tags_array = [];
   for (let tag of tags) if (keywords.includes(tag.toLowerCase())) tags_array.push(tag);
   let unique_tags_array = new Map(tags_array.map((s) => [s.toLowerCase(), s]));
-
+  return tags_array;
   return [...unique_tags_array.values()];
 }
 
@@ -260,14 +257,11 @@ async function getKeywords(activeTab, content, tags) {
     activeTab,
     content,
     { type: 'name', id: 'keywords' },
-    { type: 'name', id: 'news_keywords' }
+    { type: 'name', id: 'news_keywords' },
+    { type: 'property', id: 'article:tag' }
   );
-
-  console.log('getMeta');
-  keywords = tagsKeywordIntersection(tags, keywords.split(','));
-
+  keywords = tagsKeywordIntersection(tags, keywords);
   if (keywords.length > 0) return keywords;
-
   const dom = new DOMParser().parseFromString(content, 'text/html');
 
   // -----
@@ -276,17 +270,14 @@ async function getKeywords(activeTab, content, tags) {
   let relsTag = dom.querySelectorAll('a[rel=tag]');
   relsTag.forEach((tag) => keywords.push(tag.text));
   keywords = tagsKeywordIntersection(tags, keywords);
-  console.log('keywords :>> ', keywords);
 
   if (keywords.length > 0) return keywords;
 
   // -----
   // try <a href="" rel="category">
-  console.log('rels category');
   let relsCategories = dom.querySelectorAll('a[rel=category]');
   relsCategories.forEach((category) => keywords.push(category.text));
   keywords = tagsKeywordIntersection(tags, keywords);
-  console.log('keywords :>> ', keywords);
 
   if (keywords.length > 0) return keywords;
 
@@ -294,7 +285,6 @@ async function getKeywords(activeTab, content, tags) {
   // try JSON-LD
   let jsonld = dom.querySelector('script[type="application/ld+json"]');
   if (jsonld) {
-    console.log('JSON.parse(jsonld.innerText) :>> ', JSON.parse(jsonld.innerText));
     jsonld = JSON.parse(jsonld.innerText);
     jsonld.keywords?.forEach((keyword) => {
       let [id, value] = keyword.split(':');
@@ -304,11 +294,12 @@ async function getKeywords(activeTab, content, tags) {
     if (keywords.length > 0) return keywords;
 
     // try @graph -> @type: Article -> keywords
-    jsonld['@graph'].forEach((graph) => {
-      if (typeof graph['@type'] === 'string' && graph['@type'].toLowerCase() === 'article') {
-        keywords = graph.keywords;
-      }
-    });
+    if (jsonld['@graph'])
+      jsonld['@graph'].forEach((graph) => {
+        if (typeof graph['@type'] === 'string' && graph['@type'].toLowerCase() === 'article') {
+          keywords = graph.keywords;
+        }
+      });
     keywords = tagsKeywordIntersection(tags, keywords);
     if (keywords.length > 0) return keywords;
   }
@@ -323,10 +314,8 @@ async function getKeywords(activeTab, content, tags) {
   );
   // remove punctuation
   if (description) {
-    description = description.replace(/[\p{P}$+<=>^`|~]/gu, '');
-    console.log('description :>> ', description);
+    description = description[0].replace(/[\p{P}$+<=>^`|~]/gu, '');
     keywords = tagsKeywordIntersection(tags, description?.split(' '));
-    console.log('keywords :>> ', keywords);
     keywords = tagsKeywordIntersection(tags, keywords);
     if (keywords.length > 0) return keywords;
   }

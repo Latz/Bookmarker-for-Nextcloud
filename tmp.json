@@ -3,99 +3,58 @@
   "@graph": [
     {
       "@type": "WebSite",
-      "@id": "https://www.enwipo.de/#website",
-      "url": "https://www.enwipo.de/",
-      "name": "Energie\u00ad\u00b7Wirtschaft\u00b7Politik",
-      "description": "Frank Urbansky, Journalist und Fachautor",
-      "publisher": { "@id": "https://www.enwipo.de/#/schema/person/5f0a111e3f1a23595fad704365386149" },
+      "@id": "https://bicycletimesmag.com/#website",
+      "url": "https://bicycletimesmag.com/",
+      "name": "Bicycle Times",
+      "description": "Let The Good Times Roll",
       "potentialAction": [
         {
           "@type": "SearchAction",
-          "target": "https://www.enwipo.de/?s={search_term_string}",
+          "target": "https://bicycletimesmag.com/?s={search_term_string}",
           "query-input": "required name=search_term_string"
         }
       ],
-      "inLanguage": "de-DE"
+      "inLanguage": "en"
     },
     {
       "@type": "ImageObject",
-      "@id": "https://www.enwipo.de/2020/05/18/5851/#primaryimage",
-      "inLanguage": "de-DE",
-      "url": "https://www.enwipo.de/wp-content/uploads/2020/05/Pruefstand_107_rdax_758x466.jpg",
-      "contentUrl": "https://www.enwipo.de/wp-content/uploads/2020/05/Pruefstand_107_rdax_758x466.jpg",
-      "width": 758,
-      "height": 466,
-      "caption": "Kolbenmotor-Pr\u00fcfstand am KIT. Foto. KIT"
+      "@id": "https://bicycletimesmag.com/opinion-invest-in-your-community-ride-your-bike-share-your-car/#primaryimage",
+      "inLanguage": "en",
+      "url": "https://bicycletimesmag.com/wp-content/uploads/2020/09/IMG_9644.jpg",
+      "width": 750,
+      "height": 744
     },
     {
       "@type": "WebPage",
-      "@id": "https://www.enwipo.de/2020/05/18/5851/#webpage",
-      "url": "https://www.enwipo.de/2020/05/18/5851/",
-      "name": "Der Verbrennungsmotor bleibt, die Kraftstoffe werden andere",
-      "isPartOf": { "@id": "https://www.enwipo.de/#website" },
-      "primaryImageOfPage": { "@id": "https://www.enwipo.de/2020/05/18/5851/#primaryimage" },
-      "datePublished": "2020-05-18T06:14:37+00:00",
-      "dateModified": "2020-05-13T09:19:11+00:00",
-      "breadcrumb": { "@id": "https://www.enwipo.de/2020/05/18/5851/#breadcrumb" },
-      "inLanguage": "de-DE",
-      "potentialAction": [{ "@type": "ReadAction", "target": ["https://www.enwipo.de/2020/05/18/5851/"] }]
-    },
-    {
-      "@type": "BreadcrumbList",
-      "@id": "https://www.enwipo.de/2020/05/18/5851/#breadcrumb",
-      "itemListElement": [
+      "@id": "https://bicycletimesmag.com/opinion-invest-in-your-community-ride-your-bike-share-your-car/#webpage",
+      "url": "https://bicycletimesmag.com/opinion-invest-in-your-community-ride-your-bike-share-your-car/",
+      "name": "Opinion: Invest in your community, ride your bike & share your car! - Bicycle Times",
+      "isPartOf": { "@id": "https://bicycletimesmag.com/#website" },
+      "primaryImageOfPage": {
+        "@id": "https://bicycletimesmag.com/opinion-invest-in-your-community-ride-your-bike-share-your-car/#primaryimage"
+      },
+      "datePublished": "2018-05-21T05:34:45+00:00",
+      "dateModified": "2020-09-26T13:33:29+00:00",
+      "author": { "@id": "https://bicycletimesmag.com/#/schema/person/1d02bf7e5f9302957b6638b7a4acf61a" },
+      "inLanguage": "en",
+      "potentialAction": [
         {
-          "@type": "ListItem",
-          "position": 1,
-          "item": {
-            "@type": "WebPage",
-            "@id": "https://www.enwipo.de/",
-            "url": "https://www.enwipo.de/",
-            "name": "Startseite"
-          }
-        },
-        { "@type": "ListItem", "position": 2, "item": { "@id": "https://www.enwipo.de/2020/05/18/5851/#webpage" } }
+          "@type": "ReadAction",
+          "target": ["https://bicycletimesmag.com/opinion-invest-in-your-community-ride-your-bike-share-your-car/"]
+        }
       ]
     },
     {
-      "@type": "Article",
-      "@id": "https://www.enwipo.de/2020/05/18/5851/#article",
-      "isPartOf": { "@id": "https://www.enwipo.de/2020/05/18/5851/#webpage" },
-      "author": { "@id": "https://www.enwipo.de/#/schema/person/5f0a111e3f1a23595fad704365386149" },
-      "headline": "Der Verbren\u00adnungs\u00admotor bleibt, die Kraft\u00adstoffe werden andere",
-      "datePublished": "2020-05-18T06:14:37+00:00",
-      "dateModified": "2020-05-13T09:19:11+00:00",
-      "mainEntityOfPage": { "@id": "https://www.enwipo.de/2020/05/18/5851/#webpage" },
-      "wordCount": 267,
-      "publisher": { "@id": "https://www.enwipo.de/#/schema/person/5f0a111e3f1a23595fad704365386149" },
-      "image": { "@id": "https://www.enwipo.de/2020/05/18/5851/#primaryimage" },
-      "thumbnailUrl": "https://www.enwipo.de/wp-content/uploads/2020/05/Pruefstand_107_rdax_758x466.jpg",
-      "keywords": ["Motorentechnik"],
-      "articleSection": ["Erneuerbare", "Kraftstoffe"],
-      "inLanguage": "de-DE"
-    },
-    {
-      "@type": ["Person", "Organization"],
-      "@id": "https://www.enwipo.de/#/schema/person/5f0a111e3f1a23595fad704365386149",
-      "name": "Frank Urbansky",
+      "@type": "Person",
+      "@id": "https://bicycletimesmag.com/#/schema/person/1d02bf7e5f9302957b6638b7a4acf61a",
+      "name": "admin3",
       "image": {
         "@type": "ImageObject",
-        "@id": "https://www.enwipo.de/#personlogo",
-        "inLanguage": "de-DE",
-        "url": "https://www.enwipo.de/wp-content/uploads/2021/04/enwipo_FU.jpg",
-        "contentUrl": "https://www.enwipo.de/wp-content/uploads/2021/04/enwipo_FU.jpg",
-        "width": 900,
-        "height": 600,
-        "caption": "Frank Urbansky"
-      },
-      "logo": { "@id": "https://www.enwipo.de/#personlogo" },
-      "description": "Freier Jour\u00adna\u00adlist und Fach\u00adau\u00adtor, unter anderem f\u00fcr die Fach\u00adma\u00adga\u00adzine und Portale Brenn\u00adstoff\u00adspie\u00adgel, Uniti; DW Die Woh\u00adnungs\u00adwirt\u00adschaft und Immo\u00adbi\u00adli\u00aden\u00adwirt\u00adschaft; Haufe-Lexware; Energie&amp;Management; IVV, Huss Medien; Motor\u00adtech\u00adni\u00adsche Zeit\u00adschrift und Sprin\u00adger\u00adPro\u00adfes\u00adsio\u00adnal; Sprin\u00adger Fachverlag; SHK Profi und tab, Bau\u00adver\u00adlag; stadt+werk, k21",
-      "sameAs": [
-        "http://enwipo.de",
-        "https://www.facebook.com/enwipo/",
-        "https://de.linkedin.com/in/frank-urbansky-b4b13552"
-      ],
-      "url": "https://www.enwipo.de/author/urbansky/"
+        "@id": "https://bicycletimesmag.com/#personlogo",
+        "inLanguage": "en",
+        "url": "https://secure.gravatar.com/avatar/b453e1b26e1f08542ff9c96943a06f5e?s=96&d=mm&r=g",
+        "caption": "admin3"
+      }
     }
   ]
 }
