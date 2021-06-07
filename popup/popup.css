@@ -84,6 +84,12 @@ textarea {
   font: 1em sans-serif;
 }
 
+#errorWarningSign {
+  float: left;
+  font-size: 6em;
+  padding: 5px;
+}
+
 #errorHeader {
   font-size: 2em;
   text-align: center;

@@ -14,6 +14,7 @@ document.onreadystatechange = async () => {
       var protocol = new URL(url).protocol;
       if (['about:'].includes(protocol)) {
         document.getElementById('popupForm').innerHTML = `
+        <div id="errorWarningSign">⚠</div>
           <div id="errorHeader">Error</div>
           <div id="errorMessage">Can not bookmark "${protocol}" pages.</div>`;
         return;
