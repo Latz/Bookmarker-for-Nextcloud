@@ -84,6 +84,17 @@ textarea {
   font: 1em sans-serif;
 }
 
+#errorHeader {
+  font-size: 2em;
+  text-align: center;
+  padding: 5px;
+}
+
+#errorMessage {
+  text-align: center;
+  padding: 5px;
+}
+
 /* Dark mode */
 @media (prefers-color-scheme: dark) {
   body {

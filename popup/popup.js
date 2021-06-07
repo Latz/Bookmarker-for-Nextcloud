@@ -10,6 +10,15 @@ document.onreadystatechange = async () => {
       let title = activeTab.title;
       let url = activeTab.url;
 
+      // Display error if it's an internal page
+      var protocol = new URL(url).protocol;
+      if (['about:'].includes(protocol)) {
+        document.getElementById('popupForm').innerHTML = `
+          <div id="errorHeader">Error</div>
+          <div id="errorMessage">Can not bookmark "${protocol}" pages.</div>`;
+        return;
+      }
+
       const content = await browser.runtime.sendMessage({ msg: 'getContent' });
       let description = '';
       if (await load_data('options', 'cbx_autoDesc'))
