@@ -37,3 +37,49 @@ body {
   padding: 1.25rem;
 }
 
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #202124;
+    color: white;
+  }
+  label {
+    color: white;
+  }
+
+  .tabs {
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    background-color: #202124;
+    color: #e3fbfe;
+  }
+  .tabs .bar {
+    width: 100%;
+    display: flex;
+    color: #e3fbfe;
+    border-bottom: solid 1px #4e4d54;
+    border-left: solid 1px #4e4d54;
+    border-right: solid 1px #4e4d54;
+  }
+
+  .tabs [data-tabby-bar] {
+    color: white;
+    background-color: #23222b;
+    border-top: #42414d;
+  }
+  .tabs [data-tabby-bar]:hover {
+    color: white;
+    border-bottom: 0.0625rem solid #42414d;
+    background: #52525e;
+  }
+  .tabs [data-tabby-bar][data-tabby-active] {
+    background: #42414d;
+    color: #12ddff;
+  }
+  .tabs [data-tabby-content] {
+    padding: 1.25rem;
+  }
+}

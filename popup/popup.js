@@ -12,7 +12,7 @@ document.onreadystatechange = async () => {
 
       // Display error if it's an internal page
       var protocol = new URL(url).protocol;
-      if (['about:'].includes(protocol)) {
+      if (['about:', 'chrome:'].includes(protocol)) {
         document.getElementById('popupForm').innerHTML = `
         <div id="errorWarningSign">⚠</div>
           <div id="errorHeader">Error</div>

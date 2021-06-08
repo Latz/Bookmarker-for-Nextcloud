@@ -7,10 +7,10 @@ html {
   box-sizing: inherit;
 }
 body {
+  font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
   width: 350px;
 
   padding: 5px;
-  font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
 }
 
 *,
@@ -99,6 +99,7 @@ textarea {
 #errorMessage {
   text-align: center;
   padding: 5px;
+  width: 100%;
 }
 
 /* Dark mode */
