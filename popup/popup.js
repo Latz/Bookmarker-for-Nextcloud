@@ -270,7 +270,7 @@ async function getKeywords(activeTab, content, tags) {
     { type: 'name', id: 'news_keywords' },
     { type: 'property', id: 'article:tag' }
   );
-  keywords = tagsKeywordIntersection(tags, keywords);
+  // keywords = tagsKeywordIntersection(tags, keywords);
   if (keywords.length > 0) return keywords;
   const dom = new DOMParser().parseFromString(content, 'text/html');
 

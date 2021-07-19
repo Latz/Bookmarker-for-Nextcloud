@@ -138,6 +138,7 @@ async function saveBookmark(data) {
   const folders = data.folders.length > 0 ? `&folders[]=${data.folders}` : '';
   const parameters = `title=${data.title}&url=${data.url}${description}${tags}${folders}&page=-1`;
 
+  console.log(parameters);
   const response = await apiCall(endpoint, method, parameters);
 
   if (response.status !== 'success') {

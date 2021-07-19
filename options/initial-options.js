@@ -49,7 +49,9 @@ async function checkHost(host) {
   // clear host host_msg
   const endpoint = 'index.php/login/v2';
   const method = 'POST';
-  const response = await apiCall(endpoint, method, { host });
+  console.log(endpoint);
+  const response = await apiCall(endpoint, method, { host, loginflow: true });
   host_msg.classList.remove('loader-wave');
+  console.log(response);
   return response;
 }
