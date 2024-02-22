@@ -183,9 +183,9 @@ These options are used during the extension development process.
 - [CSS Loaders](https://css-loaders.com)
 - [readable-http-codes](https://github.com/arsamsarabi/readable-http-codes  )
 - [CSS Loaders](https://css-loaders.com/eyes/)
-- [Tagify]()
-- [idb]()
-- [Parcel]()
+- [Tagify](https://github.com/yairEO/tagify)
+- [idb](https://github.com/jakearchibald/idb)
+- [Parcel](https://parceljs.org)
 
 
 
