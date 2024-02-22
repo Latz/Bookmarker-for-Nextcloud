@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  table {
+    background-color: red;
+  }
+}
+
+.scale {
+  border: 1px solid red;
+}
+
+.heading_selector {
+  cursor: pointer;
+}
+.heading_selector:hover {
+  font-weight: bold;
+}
+
+.selected_heading {
+  color: #3abff8;
+  font-weight: bold;
+}
+
+.unselected_headings {
+  color: inherit;
+}

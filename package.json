@@ -1,0 +1,58 @@
+{
+  "name": "ganzneu",
+  "version": "1.0.0",
+  "description": ":warning: This is an alpha version. Although it is fully functional, it may stop working without notice. :warning:",
+  "main": ".eslintrc.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "targets": {
+    "background": {
+      "source": "src/background/background.js",
+      "distDir": "dist/"
+    },
+    "popup": {
+      "source": "src/popup/popup.html",
+      "publicUrl": "."
+    },
+    "options": {
+      "source": "src/options/options.html",
+      "distDir": "dist/",
+      "publicUrl": "/"
+    },
+    "login": {
+      "source": "src/login/login.html",
+      "publicUrl": "."
+    },
+    "offscreen": {
+      "source": "src/background/modules/offscreen/offscreen.html",
+      "publicUrl": "."
+    }
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch": "npx parcel watch",
+    "build-js": "npx parcel build --no-optimize",
+    "buildoptionscss": "npx tailwindcss build -i ./src/options/input.css -o ./dist/options/options.css",
+    "buildpopupcss": "npx tailwindcss build -i ./src/popup/css/input.css -o ./dist/popup/css/popup.css",
+    "build": "npx tailwindcss build -i ./src/options/input.css -o ./dist/options/options.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build ",
+    "deploy": "npx tailwindcss build -i ./src/options/input.css -o ./dist/options/options.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build --no-source-maps"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "autoprefixer": "^10.4.15",
+    "daisyui": "^4.6.2",
+    "parcel": "^2.9.3",
+    "parcel-reporter-static-files-copy": "^1.5.2",
+    "postcss": "^8.4.29",
+    "tailwindcss": "^3.3.3"
+  },
+  "dependencies": {
+    "@yaireo/tagify": "^4.21.1",
+    "idb": "^8.0.0",
+    "linkedom": "^0.16.8",
+    "readable-http-codes": "^1.1.1"
+  }
+}
