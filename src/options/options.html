@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./options.css" />
+    <script type="module" src="./options.js"></script>
+    <title>Options - Bookmarker for Nextcloud</title>
+  </head>
+
+  <body>
+    <div id="header">
+      <h1
+        class="mb-10 mt-0 text-5xl font-medium leading-tight text-center text-sky-400"
+      >
+        Options - Bookmarker for Nextcloud
+      </h1>
+    </div>
+
+    <div id="container" class="flex justify-center">
+      <div id="clickarea">
+        <div id="tabs">
+          <a id="tab_basic" class="tab tab-bordered tab-lg">Basic</a>
+          <a id="tab_zen" class="tab tab-bordered tab-lg">Zen</a>
+          <a id="tab_advanced" class="tab tab-bordered tab-lg">Advanced</a>
+          <a id="tab_dev" class="tab tab-bordered tab-lg">Development</a>
+        </div>
+        <div id="content" class="p-2 text-lg">
+          <!--- ---------------------------------------------------------------- -->
+          <div id="content_tab_basic" class="hidden">
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_displayFolders"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_displayFolders">Display Folders</label>
+            </div>
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_autoTags"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_autoTags">Auto tags </label>
+            </div>
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_autoDescription"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_autoDescription">Auto Description </label>
+            </div>
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_successMessage"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_successMessage">
+                Display success notification
+              </label>
+            </div>
+          </div>
+          <!--- --------------------------------------------------------------- -->
+          <div id="content_tab_zen" class="hidden">
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_enableZen"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_enableZen"> Enable Zen mode </label>
+            </div>
+          </div>
+          <!--- ---------------------------------------------------------------- -->
+          <div id="content_tab_advanced" class="hidden">
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_alreadyStored"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_alreadyStored">Check for stored bookmarks</label>
+            </div>
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_showUrl"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_showUrl">Show Url</label>
+            </div>
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_showDescription"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_showDescription">Show description</label>
+            </div>
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_showKeywords"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_showKeywords">Show keywords</label>
+            </div>
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_extendedKeywords"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_extendedKeywords"
+                >Use extended keyword detection</label
+              ><br />
+              <div class="flex flex-row">
+                <div class="pl-8">Search depth</div>
+                <div class="pl-2">
+                  <input
+                    type="range"
+                    min="1"
+                    max="6"
+                    value="3"
+                    class="range range-xs range-info"
+                    step="1"
+                    id="input_headings_slider"
+                  />
+                  <div
+                    id="heading_selectors"
+                    class="w-full flex justify-between text-xs px-2"
+                  >
+                    <span class="heading_selector" id="1">1</span>
+                    <span class="heading_selector" id="2">2</span>
+                    <span class="heading_selector" id="3">3</span>
+                    <span class="heading_selector" id="4">4</span>
+                    <span class="heading_selector" id="5">5</span>
+                    <span class="heading_selector" id="6">6</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <table>
+                  <tr>
+                    <td>Network timeout (secs)</td>
+                    <td>
+                      <input type="number" id="input_networkTimeout" class="" />
+                    </td>
+                  </tr>
+                  <tr>
+                    <td></td>
+                    <td><sub>(defaults to 10 seconds if not set)</sub></td>
+                  </tr>
+                </table>
+              </div>
+              <br />
+            </div>
+          </div>
+          <!--- Development tab ------------------------------------------------ -->
+          <!--- ---------------------------------------------------------------- -->
+          <div id="content_tab_dev" class="hidden">
+            <button id="btn_clear_all_data" class="btn btn-info">
+              Clear all data
+            </button>
+
+            <button id="btn_reset_options" class="btn btn-info">
+              Reset options
+            </button>
+
+            <button id="btn_clear_cache" class="btn btn-info">
+              Clear cache
+            </button>
+
+            <div class="mt-10px">
+              <input
+                type="checkbox"
+                id="cbx_reduceKeywords"
+                class="toggle toggle-xs toggle-info"
+              />
+              <label for="cbx_reduceKeywords">Reduce Keywords</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Bookmarker for Nextcloud",
+  "description": "Bookmarker for Nextcloud",
+  "author": "plushbyte",
+  "homepage_url": "https://plushbyte.com/chrome/bookmarker-for-nextcloud",
+  "version": "0.2",
+  "action": {
+    "default_title": "Bookmarker for Nextcloud",
+    "default_popup": "./popup/popup.html",
+    "default_icon": {
+      "64": "/images/icon-64x64-dark.png",
+      "128": "/images/icon-128x128-dark.png",
+      "256": "/images/icon-256x256-dark.png",
+      "512": "/images/icon-512x512-dark.png"
+    }
+  },
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+  "options_page": "/options/options.html",
+  "permissions": [
+    "contextMenus",
+    "tabs",
+    "notifications",
+    "scripting",
+    "offscreen"
+  ],
+  "host_permissions": ["*://*/*"]
+}

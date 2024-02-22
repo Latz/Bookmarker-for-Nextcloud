@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* HTML: <div class="loader"></div> */
+.loader {
+
+  /* center background */
+  margin:auto;
+  left:0;
+  right:0;
+
+  height: 30px;
+  aspect-ratio: 2;
+  display: grid;
+  background: radial-gradient(farthest-side, #000 15%, #0000 18%) 0 0/50% 100%,
+    radial-gradient(50% 100% at 50% 160%, #fff 95%, #0000) 0 0 /50% 50%,
+    radial-gradient(50% 100% at 50% -60%, #fff 95%, #0000) 0 100%/50% 50%;
+  background-repeat: repeat-x;
+  animation: l2 1.5s infinite linear;
+}
+@keyframes l2 {
+  0%,
+  15% {
+    background-position: 0 0, 0 0, 0 100%;
+  }
+  20%,
+  40% {
+    background-position: 5px 0, 0 0, 0 100%;
+  }
+  45%,
+  55% {
+    background-position: 0 0, 0 0, 0 100%;
+  }
+  60%,
+  80% {
+    background-position: -5px 0, 0 0, 0 100%;
+  }
+  85%,
+  100% {
+    background-position: 0 0, 0 0, 0 100%;
+  }
+}
+
+/* --------------------------------------------------------- */
+
+.parent {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  grid-template-rows: repeat(3, 1fr);
+  grid-column-gap: 0px;
+  grid-row-gap: 0px;
+  }
+  
+  .div1 { grid-area: 1 / 1 / 2 / 3; }
+  .div2 { grid-area: 2 / 1 / 4 / 2;  display: flex; flex: 1; align-items: center;}
+  .div3 { grid-area: 2 / 2 / 3 / 3; }
+  .div4 { grid-area: 3 / 2 / 4 / 3; }
+
+  #submessage {
+    text-align: center;
+  }
