@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "@yaireo/tagify": "^4.21.1",
+    "http-status-codes": "^2.3.0",
     "idb": "^8.0.0",
     "linkedom": "^0.16.8",
     "readable-http-codes": "^1.1.1"

@@ -25,6 +25,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         url: 'login/login.html',
       });
       break;
+    case 'maxAttempts':
+      maxAttemptsError(request.loginPage);
+      break;
   }
   return true;
 });
@@ -90,4 +93,47 @@ function init() {
       createOldDatabase();
     }
   });
+}
+
+function insertTimeOutMessage() {
+  const loginForm = document.getElementById('login-form');
+  const appTokenLogin = document.getElementById('app-token-login');
+  loginForm.innerHTML = '';
+  const msg = document.createElement('div');
+  msg.setAttribute(
+    'style',
+    'text-size: 1.2em; font-weight: 600; margin-bottom: 30px;'
+  );
+  msg.innerText =
+    'Timeout. Please close this tab and authorize the  extension again.';
+  loginForm.appendChild(msg);
+  const button = document.createElement('button');
+  button.setAttribute('class', 'login primary');
+  button.setAttribute('style', 'padding: 0 30px 0 30px');
+  button.innerText = 'Close';
+  document.addEventListener('click', (event) => {
+    window.close();
+  });
+  loginForm.appendChild(button);
+
+  loginForm.removeAttribute('action'); // reset default action
+  loginForm.removeAttribute('method'); // reset default action
+  appTokenLogin.innerHTML = '';
+}
+
+function maxAttemptsError(loginPage) {
+  console.log('maxAttemptsError', loginPage);
+  const tabId = loginPage.id;
+
+  chrome.scripting
+    .executeScript({
+      target: { tabId },
+      func: insertTimeOutMessage,
+    })
+    .then(() => {
+      console.log('injected');
+    })
+    .catch((e) => {
+      console.log('!!!', e);
+    });
 }
