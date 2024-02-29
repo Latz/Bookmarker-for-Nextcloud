@@ -1,4 +1,6 @@
 import { cacheGet } from '../../lib/cache.js';
+import Tagify from '@yaireo/tagify';
+
 export default async function fillKeywords(keywords) {
   const tagsInput = document.getElementById('keywords');
   tagsInput.classList.remove('input-sm');
