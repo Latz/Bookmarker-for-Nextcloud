@@ -186,6 +186,3 @@ These options are used during the extension development process.
 - [Tagify](https://github.com/yairEO/tagify)
 - [idb](https://github.com/jakearchibald/idb)
 - [Parcel](https://parceljs.org)
-
-
-

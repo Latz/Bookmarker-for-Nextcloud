@@ -2,7 +2,7 @@
 
 import apiCall from '../lib/apiCall.js';
 import { store_data } from '../lib/storage.js';
-
+import { getReasonPhrase } from 'http-status-codes';
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     document.getElementById('msg').innerText = '';
@@ -34,20 +34,30 @@ async function openServerPage() {
   const endpoint = 'index.php/login/v2';
   const method = 'POST';
 
-  const response = await apiCall(endpoint, method, {
-    host,
-    loginflow: true,
-  });
-
-  response.login ? loginPoll(response) : serverError(response);
+  try {
+    const response = await apiCall(endpoint, method, {
+      host,
+      loginflow: true,
+    });
+    response.login ? loginPoll(response) : serverError(response);
+  } catch (e) {
+    console.log('!', e);
+  }
 }
 
 async function loginPoll(request) {
   let authorized = false;
   let authCheck;
 
-  chrome.tabs.create({ url: request.login });
-  while (!authorized) {
+  // add maximum number of attempts to avoid infinite loop if the user leaves the tab
+  // without logging in
+  const maxAttempts = 300;
+  let attempts = 0;
+
+  // remember login page id so that we can close it If there was an time.
+  const loginPage = await chrome.tabs.create({ url: request.login });
+
+  while (!authorized && attempts < maxAttempts) {
     try {
       authCheck = await fetch(request.poll.endpoint, {
         credentials: 'omit',
@@ -60,41 +70,44 @@ async function loginPoll(request) {
       });
       authorized = authCheck.ok;
     } catch (e) {
-      // suppress console.log
+      console.log('!!!', e);
     }
     // put a little pause between requests
     await new Promise((resolve) => {
       setTimeout(() => resolve(), 1000);
     });
+    attempts++;
   }
-  let response = await authCheck.json();
-  store_data('credentials', {
-    appPassword: response.appPassword,
-    loginname: response.loginName,
-    server: response.server,
-  });
+
+  // User did not interact after maxAttempts iterations
+  if (maxAttempts === attempts) {
+    chrome.runtime.sendMessage({ msg: 'maxAttempts', loginPage });
+    document.getElementById('testServer').innerHTML = 'Open login page';
+    document.getElementById('serverName').focus();
+  } else {
+    // Otherwise, save login credentials.
+    let response = await authCheck.json();
+    store_data('credentials', {
+      appPassword: response.appPassword,
+      loginname: response.loginName,
+      server: response.server,
+    });
+  }
 }
 
 function serverError(response) {
   // display error message
   const msg = document.getElementById('msg');
   const errorDiv = document.getElementById('error');
-  const description = document.getElementById('description');
   const testServer = document.getElementById('testServer');
 
-  fetch(chrome.runtime.getURL('/lib/status-codes.json'))
-    .then((data) => data.json())
-    .then((codes) => {
-      errorDiv.innerText = 'Error!';
-      if (response.status > 0) {
-        msg.innerText = `${response.status} - ${
-          codes[response.status].message
-        }`;
-        description.innerText = `(${codes[response.status].description})`;
-      } else if (response.statusText) {
-        msg.innerText = ` ${response.statusText}`;
-      }
-      testServer.innerHTML = 'Open login page';
-      document.getElementById('serverName').focus();
-    });
+  errorDiv.innerText = 'Error!';
+
+  if (response.status > 0) {
+    msg.innerText = `${response.status}  - ${getReasonPhrase(response.status)}`;
+  } else if (response.statusText) {
+    msg.innerText = ` ${response.statusText}`;
+  }
+  testServer.innerHTML = 'Open login page';
+  document.getElementById('serverName').focus();
 }
