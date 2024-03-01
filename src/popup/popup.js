@@ -1,5 +1,3 @@
-import Tagify from '@yaireo/tagify';
-
 import { createForm, hydrateForm } from './modules/hydrateForm.js';
 import { load_data } from '../lib/storage.js';
 import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
