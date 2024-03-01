@@ -4,11 +4,10 @@
 
 /* HTML: <div class="loader"></div> */
 .loader {
-
   /* center background */
-  margin:auto;
-  left:0;
-  right:0;
+  margin: auto;
+  left: 0;
+  right: 0;
 
   height: 30px;
   aspect-ratio: 2;
@@ -50,13 +49,24 @@
   grid-template-rows: repeat(3, 1fr);
   grid-column-gap: 0px;
   grid-row-gap: 0px;
-  }
-  
-  .div1 { grid-area: 1 / 1 / 2 / 3; }
-  .div2 { grid-area: 2 / 1 / 4 / 2;  display: flex; flex: 1; align-items: center;}
-  .div3 { grid-area: 2 / 2 / 3 / 3; }
-  .div4 { grid-area: 3 / 2 / 4 / 3; }
+}
 
-  #submessage {
-    text-align: center;
-  }
+.div1 {
+  grid-area: 1 / 1 / 2 / 3;
+}
+.div2 {
+  grid-area: 2 / 1 / 4 / 2;
+  display: flex;
+  flex: 1;
+  align-items: center;
+}
+.div3 {
+  grid-area: 2 / 2 / 3 / 3;
+}
+.div4 {
+  grid-area: 3 / 2 / 4 / 3;
+}
+
+#submessage {
+  text-align: center;
+}

@@ -37,11 +37,11 @@
   padding: 0;
   line-height: 0;
   cursor: text;
-  outline: 0;
+
   position: relative;
   box-sizing: border-box;
-  transition: 0.1s;
 }
+
 @keyframes tags--bump {
   30% {
     transform: scale(1.2);
@@ -451,10 +451,12 @@
 .tagify--mix .tagify--empty .tagify__input::before {
   display: inline-block;
 }
+
 .tagify--focus {
-  --tags-border-color: var(--tags-focus-border-color);
-  transition: 0s;
+  outline: 2px solid rgb(53, 149, 246);
+  outline-offset: 2px;
 }
+
 .tagify--invalid {
   --tags-border-color: #d39494;
 }
