@@ -24,13 +24,11 @@ document.onreadystatechange = async () => {
 // --------------------------------------------------------------------------------------------------
 function createErrorBox(data) {
   document.body.innerHTML = `
-<div class="parent w-full  bg-red-100 justify-items-center">
-
-  <div class="div1 text-center w-full text-xl bg-slate-700">Bookmarker for Nextcloud</div>
-  <div class="div2"><img src="../images/icon-128x128-light.png" height="128px" width="128px"></div>
-  <div class="div3 text-center text-3xl font-bold text-red-500 underline">Error</div>
-  <div class="div4 text-center text-black text-lg">${data.error}</div>
-</div>`;
+    <div class="parent w-full justify-items-center items-center border border-sky-500">
+      <div class="div1"><img src="../images/icon-64x64-light.png" height="64px" width="64px"></div>
+      <div class="div2 text-center text-3xl font-bold text-sky-500 underline">Error</div>
+      <div class="div3 text-center text-lg">${data.error}</div>
+    </div>`;
 }
 // --------------------------------------------------------------------------------------------------
 function createAuthorizeButton() {
