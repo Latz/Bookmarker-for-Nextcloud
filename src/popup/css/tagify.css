@@ -115,11 +115,9 @@
   content: none;
 }
 .tagify--loading .tagify__input::after {
-  content: '';
   vertical-align: middle;
   opacity: 1;
   width: 0.7em;
-  height: 0.7em;
   width: var(--loader-size);
   height: var(--loader-size);
   min-width: 0;
@@ -209,7 +207,6 @@
   opacity: 1;
   width: 0.7em;
   height: 0.7em;
-  width: var(--loader-size);
   height: var(--loader-size);
   min-width: 0;
   border: 3px solid;
@@ -291,7 +288,8 @@
   justify-content: center;
   border-radius: 50px;
   cursor: pointer;
-  font: 14px/1 Arial;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px/1;
   background: var(--tag-remove-btn-bg);
   color: var(--tag-remove-btn-color);
   width: 14px;
