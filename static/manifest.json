@@ -4,6 +4,7 @@
   "description": "Bookmarker for Nextcloud",
   "author": "plushbyte",
   "homepage_url": "https://plushbyte.com/chrome/bookmarker-for-nextcloud",
+  "default_locale": "en",
   "version": "0.2",
   "action": {
     "default_title": "Bookmarker for Nextcloud",

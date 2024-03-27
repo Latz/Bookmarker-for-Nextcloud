@@ -3,13 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-  table {
-    background-color: red;
-  }
-}
-
-.scale {
-  border: 1px solid red;
 }
 
 .heading_selector {

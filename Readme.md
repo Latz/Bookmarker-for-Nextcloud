@@ -1,6 +1,10 @@
 # Bookmarker for Nextcloud
 
+<p>
 ### Chrome Extension for bookmarking web pages on your Nextcloud server.
+<img src="Readme%20images/icon.png" align="right"
+     width="128" height="128">
+</p>
 
 ## Table of contents
 
