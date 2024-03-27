@@ -34,8 +34,11 @@ async function reduceKeywords(keywords, force = false) {
   keywords = [...new Set(keywords)];
 
   let allKeywords = await cacheGet('keywords');
+  if (allKeywords === undefined) {
+    return [];
+  }
 
-  // no keywords on server, api return an aerror
+  // no keywords on server, api returns an error
   if (allKeywords?.ok === false) {
     return [];
   }

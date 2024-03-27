@@ -6,6 +6,8 @@ import { getReasonPhrase } from 'http-status-codes';
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     document.getElementById('msg').innerText = '';
+    document.getElementById('testServer').innerHTML =
+      chrome.i18n.getMessage('OpenLoginPage');
 
     document.getElementById('testServer').addEventListener('click', () => {
       openServerPage();
@@ -28,7 +30,7 @@ async function openServerPage() {
   document.getElementById('msg').innerHTML = '';
 
   const testServer = document.getElementById('testServer');
-  testServer.innerHTML = 'Loading...';
+  testServer.innerHTML = `${chrome.i18n.getMessage('Loading')}...`;
   const host = document.getElementById('serverName').value;
 
   const endpoint = 'index.php/login/v2';
@@ -82,7 +84,8 @@ async function loginPoll(request) {
   // User did not interact after maxAttempts iterations
   if (maxAttempts === attempts) {
     chrome.runtime.sendMessage({ msg: 'maxAttempts', loginPage });
-    document.getElementById('testServer').innerHTML = 'Open login page';
+    document.getElementById('testServer').innerHTML =
+      chrome.i18n.getMessage('OpenLoginPage');
     document.getElementById('serverName').focus();
   } else {
     // Otherwise, save login credentials.
@@ -101,13 +104,13 @@ function serverError(response) {
   const errorDiv = document.getElementById('error');
   const testServer = document.getElementById('testServer');
 
-  errorDiv.innerText = 'Error!';
+  errorDiv.innerText = `${chrome.i18n.getMessage('OpenLoginPage')}!`;
 
   if (response.status > 0) {
     msg.innerText = `${response.status}  - ${getReasonPhrase(response.status)}`;
   } else if (response.statusText) {
     msg.innerText = ` ${response.statusText}`;
   }
-  testServer.innerHTML = 'Open login page';
+  testServer.innerHTML = chrome.i18n.getMessage('OpenLoginPage');
   document.getElementById('serverName').focus();
 }
