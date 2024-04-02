@@ -75,6 +75,7 @@ function init() {
     });
   });
 
+  chrome.contextMenus.removeAll();
   chrome.contextMenus.create({
     id: 'menuRefreshCache',
     title: 'Refresh Cache',

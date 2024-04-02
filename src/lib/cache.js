@@ -4,11 +4,10 @@ import { preRenderFolders } from '../background/modules/getFolders.js';
 import { cacheRefreshNotification } from '../background/modules/notification.js';
 
 const dbName = 'BookmarkerCache';
+const dbVersion = 2;
 
 // ---------------------------------------------------------------------
 export async function cacheGet(type, forceServer = false) {
-  const dbVersion = 1;
-
   const db = await openDB(dbName, dbVersion, {
     upgrade(db) {
       // there's no way to add a store to an existing database
@@ -25,6 +24,7 @@ export async function cacheGet(type, forceServer = false) {
   // data was not found in cache -> load from server
   if (
     typeof element === 'undefined' ||
+    Object.keys(element).length === 0 ||
     elementExpired(db, type, created, forceServer)
   ) {
     // We call it "keywords" Nextcloud calls it "tags" -> convert
@@ -41,14 +41,13 @@ export async function cacheGet(type, forceServer = false) {
     return data;
   } else {
     // data was found in cache -> return cache elements
+    console.log('load from cache');
     return element.value;
   }
 }
 
 // ---------------------------------------------------------------------
 export async function cacheAdd(type, data) {
-  const dbVersion = 1;
-
   const db = await openDB(dbName, dbVersion, {
     upgrade(db) {
       db.createObjectStore(type, { keyPath: 'item' });
@@ -63,8 +62,6 @@ export async function cacheAdd(type, data) {
 // If the user enters a tag that's not already in the tags collection,
 // add it to the local cache
 export async function cacheTempAdd(type, newTags) {
-  const dbVersion = 1;
-
   const db = await openDB(dbName, dbVersion, {
     upgrade(db) {
       db.createObjectStore(type, { keyPath: 'item' });
