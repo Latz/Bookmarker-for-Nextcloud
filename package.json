@@ -35,7 +35,7 @@
     "build-js": "npx parcel build --no-optimize",
     "buildoptionscss": "npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css",
     "buildpopupcss": "npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css",
-    "build": "del-cli /src/options/options.css & del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build ",
+    "build": "del-cli /src/options/options.css & del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css --minify & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify & npx parcel build ",
     "deploy": "del-cli /src/options/options.css & del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build --no-source-maps"
   },
   "keywords": [],

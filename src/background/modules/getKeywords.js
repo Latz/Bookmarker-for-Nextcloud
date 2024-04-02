@@ -34,7 +34,7 @@ async function reduceKeywords(keywords, force = false) {
   keywords = [...new Set(keywords)];
 
   let allKeywords = await cacheGet('keywords');
-  if (allKeywords === undefined) {
+  if (allKeywords === undefined || Object.keys(allKeywords).length === 0) {
     return [];
   }
 

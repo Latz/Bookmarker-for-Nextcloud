@@ -136,15 +136,31 @@ async function setOptions() {
       const { id, checked } = event.target;
       store_data(OPTION_STORE, { [id]: checked });
     }
-    if (event.target.id === 'btn_clear_all_data') {
-      clearData().then(() => {
-        const btn = document.getElementById('btn_clear_all_data');
-        clearData('all_data', btn);
-        btn.textContent = 'Data cleared';
-        setTimeout(function () {
-          btn.textContent = 'Clear all data';
-        }, 2000);
-      });
+    if (event.target.type === 'submit') {
+      switch (event.target.id) {
+        case 'btn_clear_all_data':
+          clearData('all');
+          break;
+        case 'btn_reset_options':
+          clearData('options');
+          break;
+        case 'btn_clear_cache':
+          clearData('cache');
+          break;
+      }
     }
+    // clearData(btn);
+    // if (event.target.id === 'btn_clear_all_data') {
+    //   clearData().then(() => {
+    //     const btn = document.getElementById('btn_clear_all_data');
+    //     console.log('🚀 ~ clearData ~ btn:', btn);
+    //     clearData('all_data', btn);
+    //     btn.textContent = 'Data cleared';
+    //     setTimeout(function () {
+    //       btn.textContent = 'Clear all data';
+    //     }, 2000);
+    //   });
+    // }
+    // });
   });
 }
