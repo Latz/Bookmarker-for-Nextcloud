@@ -33,10 +33,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "npx parcel watch",
     "build-js": "npx parcel build --no-optimize",
-    "buildoptionscss": "npx tailwindcss build -i ./src/options/input.css -o ./dist/options/options.css",
-    "buildpopupcss": "npx tailwindcss build -i ./src/popup/css/input.css -o ./dist/popup/css/popup.css",
-    "build": "npx tailwindcss build -i ./src/options/input.css -o ./dist/options/options.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build ",
-    "deploy": "npx tailwindcss build -i ./src/options/input.css -o ./dist/options/options.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build --no-source-maps"
+    "buildoptionscss": "npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css",
+    "buildpopupcss": "npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css",
+    "build": "del-cli /src/options/options.css & del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css --minify & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify & npx parcel build ",
+    "deploy": "del-cli /src/options/options.css & del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build --no-source-maps"
   },
   "keywords": [],
   "author": "",
@@ -44,12 +44,14 @@
   "devDependencies": {
     "autoprefixer": "^10.4.15",
     "daisyui": "^4.6.2",
+    "del-cli": "^5.1.0",
     "parcel": "^2.9.3",
     "parcel-reporter-static-files-copy": "^1.5.2",
     "postcss": "^8.4.29",
     "tailwindcss": "^3.3.3"
   },
   "dependencies": {
+    "@linthtml/linthtml": "^0.10.0-beta.5",
     "@yaireo/tagify": "^4.21.1",
     "http-status-codes": "^2.3.0",
     "idb": "^8.0.0",

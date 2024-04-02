@@ -1,15 +1,12 @@
 import { getOption } from '../../lib/storage.js';
 import getBrowserTheme from './getBrowserTheme.js';
 
-
-
 async function getIconUrl() {
   const browserTheme = await getBrowserTheme();
   return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}.png`);
 }
 
 export async function notifyUser(response) {
-
   // load the browser theme to display a visible icon
   const iconUrl = await getIconUrl();
 
@@ -21,7 +18,7 @@ export async function notifyUser(response) {
   if (response.status === 'success') {
     chrome.notifications.create('', {
       title,
-      message: `Your bookmark was saved successfully!`,
+      message: `${chrome.i18n.getMessage('BookmarkSuccessfullySaved')}!`,
       iconUrl,
       type: 'basic',
     });

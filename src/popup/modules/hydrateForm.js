@@ -68,11 +68,16 @@ export async function createForm() {
   addTextArea(form, 'description', await getOption('cbx_showDescription'));
 
   if (await getOption('cbx_alreadyStored')) {
-    document.getElementById('sub_message').innerHTML =
-      '<div class="text-center">Checking Nextcloud...<span class="loader"></span></div>';
+    document.getElementById(
+      'sub_message'
+    ).innerHTML = `<div class="text-center">${chrome.i18n.getMessage(
+      'Checking'
+    )} Nextcloud...<span class="loader"></span></div>`;
   }
 
   addHiddenInput(form, 'bookmarkID');
+  document.getElementById('saveBookmark').innerHTML =
+    chrome.i18n.getMessage('saveBookmark');
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -94,20 +99,23 @@ export async function hydrateForm(data) {
   if (data.found) {
     const dateAdded = new Date(0);
     dateAdded.setUTCSeconds(data.added);
-    message.innerHTML = `Already bookmarked! < br /> Created: ${dateAdded.toLocaleString(
+    message.innerHTML = `${chrome.i18n.getMessage(
+      'alreadyBookmarked'
+    )}!<br />${chrome.i18n.getMessage('Created')}: ${dateAdded.toLocaleString(
       navigator.language
-    )} `;
+    )}`;
     if (data.added !== data.lastmodified) {
       const dateModified = new Date(0);
       dateModified.setUTCSeconds(data.lastmodified);
-      message.innerHTML += `< br /> Modified: ${dateModified.toLocaleString(
-        navigator.language
-      )} `;
+      message.innerHTML += `<br /> ${chrome.i18n.getMessage(
+        'Modified'
+      )}: ${dateModified.toLocaleString(navigator.language)} `;
     }
   } else if (!data.checkBookmark.ok) {
     // display error
-    message.innerHTML =
-      '<div class="text-red-500 text-center font-bold">Error</div><div class="text-center">Connection error</div>';
+    message.innerHTML = `<div class="text-red-500 text-center font-bold">Error</div><div class="text-center">${chrome.i18n.getMessage(
+      'ConnectionError'
+    )}</div>`;
   } else {
     message.innerHTML = '';
   }

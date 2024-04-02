@@ -9,29 +9,38 @@ import {
 const OPTION_STORE = 'options';
 
 document.onreadystatechange = async () => {
-  // set stored tab to active
-  let activeTab = document.getElementById('tab_basic');
-  const activeTabId = await load_data(OPTION_STORE, 'activeTab');
-  if (activeTabId !== undefined) {
-    // deselect basic tab select the stored tab
-    activeTab = document.getElementById(activeTabId);
-    document.getElementById('tab_basic').classList.remove('tab-active');
-    document.getElementById(activeTabId).classList.add('tab-active');
-  }
   if (document.readyState === 'complete') {
-    setOptions();
-    const tabs = document.getElementById('tabs');
-    activeTab.classList.add('tab-active');
-    const activeContent = document.getElementById(`content_${activeTab.id}`);
-    activeContent.classList.remove('hidden');
-    tabs.addEventListener('click', (event) => {
-      if (activeTab === event.target) return;
-      event.target.classList.add('tab-active');
-      activeTab.classList.remove('tab-active');
-      changeContent(activeTab, event.target);
-      activeTab = event.target;
-      store_data(OPTION_STORE, { activeTab: activeTab.id });
+    document.querySelectorAll('[i18n-data]').forEach((element) => {
+      console.dir(element);
+      element.innerText = chrome.i18n.getMessage(
+        element.getAttribute('i18n-data')
+      );
     });
+
+    // set stored tab to active
+    let activeTab = document.getElementById('tab_basic');
+    const activeTabId = await load_data(OPTION_STORE, 'activeTab');
+    if (activeTabId !== undefined) {
+      // deselect basic tab select the stored tab
+      activeTab = document.getElementById(activeTabId);
+      document.getElementById('tab_basic').classList.remove('tab-active');
+      document.getElementById(activeTabId).classList.add('tab-active');
+    }
+    if (document.readyState === 'complete') {
+      setOptions();
+      const tabs = document.getElementById('tabs');
+      activeTab.classList.add('tab-active');
+      const activeContent = document.getElementById(`content_${activeTab.id}`);
+      activeContent.classList.remove('hidden');
+      tabs.addEventListener('click', (event) => {
+        if (activeTab === event.target) return;
+        event.target.classList.add('tab-active');
+        activeTab.classList.remove('tab-active');
+        changeContent(activeTab, event.target);
+        activeTab = event.target;
+        store_data(OPTION_STORE, { activeTab: activeTab.id });
+      });
+    }
   }
 };
 
@@ -127,15 +136,31 @@ async function setOptions() {
       const { id, checked } = event.target;
       store_data(OPTION_STORE, { [id]: checked });
     }
-    if (event.target.id === 'btn_clear_all_data') {
-      clearData().then(() => {
-        const btn = document.getElementById('btn_clear_all_data');
-        clearData('all_data', btn);
-        btn.textContent = 'Data cleared';
-        setTimeout(function () {
-          btn.textContent = 'Clear all data';
-        }, 2000);
-      });
+    if (event.target.type === 'submit') {
+      switch (event.target.id) {
+        case 'btn_clear_all_data':
+          clearData('all');
+          break;
+        case 'btn_reset_options':
+          clearData('options');
+          break;
+        case 'btn_clear_cache':
+          clearData('cache');
+          break;
+      }
     }
+    // clearData(btn);
+    // if (event.target.id === 'btn_clear_all_data') {
+    //   clearData().then(() => {
+    //     const btn = document.getElementById('btn_clear_all_data');
+    //     console.log('🚀 ~ clearData ~ btn:', btn);
+    //     clearData('all_data', btn);
+    //     btn.textContent = 'Data cleared';
+    //     setTimeout(function () {
+    //       btn.textContent = 'Clear all data';
+    //     }, 2000);
+    //   });
+    // }
+    // });
   });
 }
