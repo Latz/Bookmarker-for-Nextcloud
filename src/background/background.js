@@ -60,6 +60,10 @@ async function saveBookmark(data, folderIDs, bookmarkID) {
 // ------------------------------------------------------------------------------------------------
 
 function init() {
+  console.log('This is i18n branch');
+  const message = chrome.i18n.getMessage('options');
+  console.log('message', message, '!');
+
   getBrowserTheme().then((browserTheme) => {
     chrome.action.setIcon({
       path: {
@@ -71,6 +75,7 @@ function init() {
     });
   });
 
+  chrome.contextMenus.removeAll();
   chrome.contextMenus.create({
     id: 'menuRefreshCache',
     title: 'Refresh Cache',

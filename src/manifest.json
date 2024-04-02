@@ -27,7 +27,5 @@
     "scripting",
     "offscreen"
   ],
-  "host_permissions": [
-    "*://*/*"
-  ]
+  "host_permissions": ["*://*/*"]
 }

@@ -152,26 +152,36 @@ export async function clearData(subject) {
     },
   });
 
-  if (subject === 'all_data') {
+  console.log('Clearing', subject);
+
+  if (subject === 'all') {
     options_db.clear('credentials');
     options_db.clear('options');
     options_db.clear('misc');
     options_db.clear('hashes');
     initDefaults();
   }
-  // let stores = ['credentials', 'options', 'misc', 'hashes'];
-  // stores.forEach(async (store) => {
-  //   await options_db.clear(store);
-  // });
-  // const cache_db = await openDB('BookmarkerCache', dbVersion, {
-  //   upgrade(cache_db) {
-  //     InitializeStores(cache_db);
-  //   },
-  // });
-  // stores = ['keywords', 'folders'];
-  // stores.forEach(async (store) => {
-  //   await cache_db.clear(store);
-  // });
+
+  if (subject === 'options') {
+    options_db.clear('options');
+    options_db.createObjectStore('options', { keyPath: 'item' });
+  }
+
+  if (subject === 'credentials') {
+    options_db.clear('credentials');
+    db.createObjectStore('credentials', { keyPath: 'item' });
+  }
+
+  if (subject === 'cache') {
+    console.log('Clear cache');
+    const cache_db = await openDB('BookmarkerCache', dbVersion, {
+      upgrade(cache_db) {
+        InitializeStores(cache_db);
+      },
+    });
+    cache_db.clear('folders');
+    cache_db.clear('keywords');
+  }
 }
 // -----------------------------------------------------------------------
 /**
