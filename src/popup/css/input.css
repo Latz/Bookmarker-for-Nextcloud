@@ -12,7 +12,8 @@
   height: 30px;
   aspect-ratio: 2;
   display: grid;
-  background: radial-gradient(farthest-side, #000 15%, #0000 18%) 0 0/50% 100%,
+  background:
+    radial-gradient(farthest-side, #000 15%, #0000 18%) 0 0/50% 100%,
     radial-gradient(50% 100% at 50% 160%, #fff 95%, #0000) 0 0 /50% 50%,
     radial-gradient(50% 100% at 50% -60%, #fff 95%, #0000) 0 100%/50% 50%;
   background-repeat: repeat-x;
@@ -21,23 +22,38 @@
 @keyframes l2 {
   0%,
   15% {
-    background-position: 0 0, 0 0, 0 100%;
+    background-position:
+      0 0,
+      0 0,
+      0 100%;
   }
   20%,
   40% {
-    background-position: 5px 0, 0 0, 0 100%;
+    background-position:
+      5px 0,
+      0 0,
+      0 100%;
   }
   45%,
   55% {
-    background-position: 0 0, 0 0, 0 100%;
+    background-position:
+      0 0,
+      0 0,
+      0 100%;
   }
   60%,
   80% {
-    background-position: -5px 0, 0 0, 0 100%;
+    background-position:
+      -5px 0,
+      0 0,
+      0 100%;
   }
   85%,
   100% {
-    background-position: 0 0, 0 0, 0 100%;
+    background-position:
+      0 0,
+      0 0,
+      0 100%;
   }
 }
 
