@@ -43,6 +43,7 @@
   "networkTimeoutNote": {
     "message": "(Standard: 10 Sekunden, wenn nicht angegeben)"
   },
+  "optionstitle": { "message": "Optionen - Bookmarker for Nextcloud" },
   "clearall": { "message": "Alle Daten löschen" },
   "resetoptions": { "message": "Optionen zurücksetzen" },
   "clearcache": { "message": "Cache löschen" },
