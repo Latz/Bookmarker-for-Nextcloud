@@ -46,5 +46,7 @@
   "clearall": { "message": "Alle Daten löschen" },
   "resetoptions": { "message": "Optionen zurücksetzen" },
   "clearcache": { "message": "Cache löschen" },
-  "reduceKeywords": { "message": "Schlüsselwörter eingrenzen" }
+  "reduceKeywords": { "message": "Schlüsselwörter eingrenzen" },
+  "showcache": { "message": "Cache anzeigen" },
+  "showoptions": { "message": "Optionen anzeigen" }
 }
