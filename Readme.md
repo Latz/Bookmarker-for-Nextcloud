@@ -14,17 +14,17 @@
 <!-- Start Document Outline -->
 
 - [Table of contents](#table-of-contents)
-- [❔ Why?](#-why)
-- [💡 Highlights](#-highlights)
-- [🔧 Installation](#-installation)
+- ❔ [Why?](#-why)
+- 💡 [Highlights](#-highlights)
+- 🔧 [Installation](#-installation)
 - [Usage](#usage)
-- [🔩 Options](#-options)
+- 🔩 [Options](#-options)
   - [Basic Options](#basic-options)
   - [Zen](#zen)
   - [Advanced](#advanced)
   - [Development](#development)
-- [🎉 Things to come](#-things-to-come)
-- [🐱‍💻 Open software that I used](#-open-software-that-i-used)
+- 🎉 [Things to come](#-things-to-come)
+- 🐱‍💻 [Open software that I used](#-open-software-that-i-used)
 
 <!-- End Document Outline -->
 
