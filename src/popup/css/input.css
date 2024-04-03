@@ -41,36 +41,6 @@
   }
 }
 
-/* --------------------------------------------------------- */
-
-/* .parent {
-  display: grid;
-  grid-template-columns: 60px 1fr;
-  grid-template-rows: repeat(3, 1fr);
-  grid-column-gap: 0px;
-  grid-row-gap: 0px;
-}
-
-.div1 {
-  grid-area: 1 / 1 / 2 / 3;
-}
-.div2 {
-  grid-area: 2 / 1 / 4 / 2;
-  display: flex;
-  flex: 1;
-  align-items: center;
-}
-.div3 {
-  grid-area: 2 / 2 / 3 / 3;
-}
-.div4 {
-  grid-area: 3 / 2 / 4 / 3;
-}
-
-#submessage {
-  text-align: center;
-} */
-
 .parent {
   display: grid;
   grid-template-rows: repeat(2, 1fr);
