@@ -46,6 +46,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
+          distribution: 'oracle'
       - name: Analyze with SonarCloud
 
         # You can pin the exact commit or the version.
