@@ -39,7 +39,7 @@ export default async function apiCall(endpoint, method, data = '') {
   }
 
   // Add trailing slash to the server URL if not provided
-  if (server && server.slice(-1) !== '/') {
+  if (server && !server.endsWith('/')) {
     server += '/';
   }
 
