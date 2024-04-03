@@ -43,8 +43,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: ['8', '11', '17', '21']
-    name: Java ${{ matrix.Java }} sample
+        java: [21]
+    name: Java ${{ matrix.java }} compile
     steps:
       - name: Analyze with SonarCloud
 
