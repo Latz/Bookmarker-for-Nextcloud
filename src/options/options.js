@@ -132,6 +132,7 @@ async function setOptions() {
   });
 
   options.addEventListener('click', (event) => {
+    console.log('event.target', event.target.id);
     if (event.target.type === 'checkbox') {
       const { id, checked } = event.target;
       store_data(OPTION_STORE, { [id]: checked });
@@ -149,18 +150,12 @@ async function setOptions() {
           break;
       }
     }
-    // clearData(btn);
-    // if (event.target.id === 'btn_clear_all_data') {
-    //   clearData().then(() => {
-    //     const btn = document.getElementById('btn_clear_all_data');
-    //     console.log('🚀 ~ clearData ~ btn:', btn);
-    //     clearData('all_data', btn);
-    //     btn.textContent = 'Data cleared';
-    //     setTimeout(function () {
-    //       btn.textContent = 'Clear all data';
-    //     }, 2000);
-    //   });
-    // }
-    // });
+
+    if (event.target.id === 'btn_show_options') {
+      window.open('displayJson.html?type=options', 'Options', 'popup');
+    }
+    if (event.target.id === 'btn_show_cache') {
+      window.open('displayJson.html?type=cache', 'Options', 'popup');
+    }
   });
 }
