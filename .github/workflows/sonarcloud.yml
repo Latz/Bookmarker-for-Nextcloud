@@ -41,11 +41,12 @@ permissions:
 jobs:
   Analysis:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        java: [21]
-    name: Java ${{ matrix.java }} compile
+
     steps:
+      - uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'zulu'
       - name: Analyze with SonarCloud
 
         # You can pin the exact commit or the version.
