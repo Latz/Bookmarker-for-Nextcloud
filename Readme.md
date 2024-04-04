@@ -66,7 +66,7 @@ The extension is built into the directory `dist`. Finally you can install the [u
 ## 🔑 Authorization
 
 <div>
-After the installation you have to click the Extensions icon and pin *Bookmarker for Nextcloud* to the toolbar to have it available permanently.
+After the installation you have to click the Extensions icon and pin *Bookmarker for Nextcloud* to the toolbar to have it available permanently. There'S currently a problem, that you might have to click the button multiple times to open the login window.
 
 ![](Readme%20images/pin2.png)
 
