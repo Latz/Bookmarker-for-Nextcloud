@@ -152,8 +152,6 @@ export async function clearData(subject) {
     },
   });
 
-  console.log('Clearing', subject);
-
   if (subject === 'all') {
     options_db.clear('credentials');
     options_db.clear('options');
@@ -173,7 +171,6 @@ export async function clearData(subject) {
   }
 
   if (subject === 'cache') {
-    console.log('Clear cache');
     const cache_db = await openDB('BookmarkerCache', dbVersion, {
       upgrade(cache_db) {
         InitializeStores(cache_db);

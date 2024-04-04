@@ -31,7 +31,7 @@ export async function cacheGet(type, forceServer = false) {
     const datatype = type === 'keywords' ? 'tag' : 'folder';
     let data = await apiCall(
       `index.php/apps/bookmarks/public/rest/v2/${datatype}`,
-      'GET'
+      'GET',
     );
     if (type === 'folders') {
       data = preRenderFolders(data.data);
@@ -41,7 +41,6 @@ export async function cacheGet(type, forceServer = false) {
     return data;
   } else {
     // data was found in cache -> return cache elements
-    console.log('load from cache');
     return element.value;
   }
 }
