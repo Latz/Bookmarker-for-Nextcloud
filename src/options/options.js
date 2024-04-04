@@ -133,7 +133,6 @@ async function setOptions() {
   });
 
   options.addEventListener('click', async (event) => {
-    console.log('event.target', event.target.id);
     if (event.target.type === 'checkbox') {
       const { id, checked } = event.target;
       store_data(OPTION_STORE, { [id]: checked });

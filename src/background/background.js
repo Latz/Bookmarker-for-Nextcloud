@@ -60,9 +60,7 @@ async function saveBookmark(data, folderIDs, bookmarkID) {
 // ------------------------------------------------------------------------------------------------
 
 function init() {
-  console.log('This is i18n branch');
   const message = chrome.i18n.getMessage('options');
-  console.log('message', message, '!');
 
   getBrowserTheme().then((browserTheme) => {
     chrome.action.setIcon({
@@ -107,7 +105,7 @@ function insertTimeOutMessage() {
   const msg = document.createElement('div');
   msg.setAttribute(
     'style',
-    'text-size: 1.2em; font-weight: 600; margin-bottom: 30px;'
+    'text-size: 1.2em; font-weight: 600; margin-bottom: 30px;',
   );
   msg.innerText =
     'Timeout. Please close this tab and authorize the  extension again.';
@@ -127,7 +125,6 @@ function insertTimeOutMessage() {
 }
 
 function maxAttemptsError(loginPage) {
-  console.log('maxAttemptsError', loginPage);
   const tabId = loginPage.id;
 
   chrome.scripting
@@ -135,9 +132,7 @@ function maxAttemptsError(loginPage) {
       target: { tabId },
       func: insertTimeOutMessage,
     })
-    .then(() => {
-      console.log('injected');
-    })
+    .then(() => {})
     .catch((e) => {
       console.log('!!!', e);
     });
