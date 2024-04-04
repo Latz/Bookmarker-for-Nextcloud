@@ -13,8 +13,12 @@ export async function cacheGet(type, forceServer = false) {
       // there's no way to add a store to an existing database
       // without upgrading it, so the creation needs to done
       // with explicit names.
-      db.createObjectStore('keywords', { keyPath: 'item' });
-      db.createObjectStore('folders', { keyPath: 'item' });
+      try {
+        db.createObjectStore('keywords', { keyPath: 'item' });
+        db.createObjectStore('folders', { keyPath: 'item' });
+      } catch (e) {
+        console.log(e);
+      }
     },
   });
 
