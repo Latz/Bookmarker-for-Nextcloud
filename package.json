@@ -47,6 +47,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@parcel/packager-raw-url": "^2.11.0",
+    "@parcel/transformer-webmanifest": "^2.11.0",
     "autoprefixer": "^10.4.15",
     "daisyui": "^4.6.2",
     "del-cli": "^5.1.0",
