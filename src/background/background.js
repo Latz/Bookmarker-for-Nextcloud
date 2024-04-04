@@ -61,6 +61,7 @@ async function saveBookmark(data, folderIDs, bookmarkID) {
 
 function init() {
   const message = chrome.i18n.getMessage('options');
+  console.log('OK');
 
   getBrowserTheme().then((browserTheme) => {
     chrome.action.setIcon({
@@ -74,11 +75,15 @@ function init() {
   });
 
   chrome.contextMenus.removeAll();
-  chrome.contextMenus.create({
-    id: 'menuRefreshCache',
-    title: 'Refresh Cache',
-    contexts: ['action'],
-  });
+  try {
+    chrome.contextMenus.create({
+      id: 'menuRefreshCache',
+      title: 'Refresh Cache',
+      contexts: ['action'],
+    });
+  } catch (error) {
+    console.log(error);
+  }
 
   // only for development purposes
   // chrome.contextMenus.create({

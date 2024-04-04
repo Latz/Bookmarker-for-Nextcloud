@@ -14,8 +14,8 @@ import { openDB, deleteDB } from 'idb';
  */
 export async function load_data(storeName, ...items) {
   const db = await openDB(database, dbVersion, {
-    upgrade(db, oldVersion) {
-      initDatabase(db, oldVersion);
+    upgrade(db) {
+      initDatabase(db);
     },
   });
 
@@ -47,8 +47,8 @@ export async function load_data(storeName, ...items) {
 export async function load_data_all(storeName) {
   // Open the database connection
   const db = await openDB(database, dbVersion, {
-    upgrade(db, oldVersion) {
-      initDatabase(db, oldVersion);
+    upgrade(db) {
+      initDatabase(db);
     },
   });
 
@@ -71,8 +71,8 @@ export async function load_data_all(storeName) {
  */
 export async function store_data(storeName, ...items) {
   const db = await openDB(database, dbVersion, {
-    upgrade(db, oldVersion) {
-      initDatabase(db, oldVersion);
+    upgrade(db) {
+      initDatabase(db);
     },
   });
   for (let item of items) {
@@ -93,8 +93,8 @@ export async function store_data(storeName, ...items) {
  */
 export async function delete_data(storeName, ...items) {
   const db = await openDB(database, dbVersion, {
-    upgrade(db, oldVersion) {
-      initDatabase(db, oldVersion);
+    upgrade(db) {
+      initDatabase(db);
     },
   });
 
@@ -114,8 +114,8 @@ export async function delete_data(storeName, ...items) {
  */
 export async function store_hash(hash) {
   const db = await openDB(database, dbVersion, {
-    upgrade(db, oldVersion) {
-      initDatabase(db, oldVersion);
+    upgrade(db) {
+      initDatabase(db);
     },
   });
 
@@ -139,10 +139,14 @@ export async function getOption(optionName) {
  * @param {IDBDatabase} db - The database to initialize the object stores in.
  */
 async function InitializeStores(db) {
-  db.createObjectStore('credentials', { keyPath: 'item' });
-  db.createObjectStore('options', { keyPath: 'item' });
-  db.createObjectStore('misc', { keyPath: 'item' });
-  db.createObjectStore('hashes', { keyPath: 'item' });
+  try {
+    db.createObjectStore('credentials', { keyPath: 'item' });
+    db.createObjectStore('options', { keyPath: 'item' });
+    db.createObjectStore('misc', { keyPath: 'item' });
+    db.createObjectStore('hashes', { keyPath: 'item' });
+  } catch (e) {
+    console.log(e);
+  }
 }
 // ---------------------------------------------------------------------
 export async function clearData(subject) {
@@ -185,7 +189,7 @@ export async function clearData(subject) {
  * Initializes default options and opens the 'Bookmarker' database.
  * @returns {Promise<void>}
  */
-export async function initDatabase(db, oldVersion) {
+export async function initDatabase(db) {
   //--- Clean installation
   if (oldVersion == 0) {
     await InitializeStores(db);
