@@ -222,6 +222,7 @@ function initDefaults() {
   store_data('options', { cbx_autoTags: true });
   store_data('options', { input_headlinesDepth: 3 });
   store_data('options', { input_networkTimeout: 10 });
+  store_data('options', { cbx_reduceKeywords: true });
   store_data('options', { folderIDs: ['-1'] }); // Default to root folder
 }
 

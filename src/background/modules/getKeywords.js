@@ -46,7 +46,7 @@ async function reduceKeywords(keywords, force = false) {
   allKeywords = allKeywords.map((keyword) => keyword.toLowerCase());
 
   let reducedKeywords = keywords.filter((keyword) =>
-    allKeywords.includes(keyword.toLowerCase())
+    allKeywords.includes(keyword.toLowerCase()),
   );
 
   // make keywords unique
@@ -76,7 +76,7 @@ export default async function getKeywords(document) {
         { type: 'itemprop', id: 'keywords' },
         { type: 'name', id: 'sailthru.tags' },
         { type: 'name', id: 'parsely-tags' },
-        { type: 'http-equiv', id: 'keywords' }
+        { type: 'http-equiv', id: 'keywords' },
       );
 
       if (metaKeywords.length === 0) {
@@ -132,7 +132,7 @@ export default async function getKeywords(document) {
     () => {
       let keywords = [];
       const jsonlds = document.querySelectorAll(
-        'script[type="application/ld+json"]'
+        'script[type="application/ld+json"]',
       );
       jsonlds.every((jsonld) => {
         if (jsonld || jsonld !== null) {
@@ -222,7 +222,7 @@ export default async function getKeywords(document) {
       log(DEBUG, 'github');
       let keywords = [];
       let gas = document.querySelectorAll(
-        'a[data-ga-click="Topic, repository page"]'
+        'a[data-ga-click="Topic, repository page"]',
       );
       gas.forEach((ga) => {
         keywords.push(ga.textContent.trim());

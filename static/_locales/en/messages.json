@@ -29,7 +29,7 @@
   },
   "optionstitle": {
     "message": "Options - Bookmarker for Nextcloud"
-  }
+  },
   "autotags": { "message": "Auto tags" },
   "autodescription": { "message": "Auto description" },
   "successnotification": { "message": "Display success notification" },

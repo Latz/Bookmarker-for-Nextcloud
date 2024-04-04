@@ -13,7 +13,7 @@ document.onreadystatechange = async () => {
     document.querySelectorAll('[i18n-data]').forEach((element) => {
       console.dir(element);
       element.innerText = chrome.i18n.getMessage(
-        element.getAttribute('i18n-data')
+        element.getAttribute('i18n-data'),
       );
     });
 
@@ -52,7 +52,7 @@ document
     // if target.id is "headings_selector" the user clicked no number
     if (event.target.id === 'heading_selectors') return;
     const previousValue = document.getElementById(
-      'input_headings_slider'
+      'input_headings_slider',
     ).value;
     document
       .getElementById(`${previousValue}`)
