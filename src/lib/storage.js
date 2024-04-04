@@ -212,7 +212,7 @@ export async function initDatabase(db, oldVersion) {
 }
 
 // -----------------------------------------------------------------------
-function initDefaults() {
+export function initDefaults() {
   store_data('options', { cbx_showURL: true });
   store_data('options', { cbx_showDescription: true });
   store_data('options', { cbx_autoDescription: true });

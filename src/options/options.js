@@ -3,6 +3,7 @@ import {
   load_data_all,
   load_data,
   store_data,
+  initDefaults,
   clearData,
 } from '../lib/storage.js';
 
@@ -131,7 +132,7 @@ async function setOptions() {
     });
   });
 
-  options.addEventListener('click', (event) => {
+  options.addEventListener('click', async (event) => {
     console.log('event.target', event.target.id);
     if (event.target.type === 'checkbox') {
       const { id, checked } = event.target;
@@ -143,7 +144,7 @@ async function setOptions() {
           clearData('all');
           break;
         case 'btn_reset_options':
-          clearData('options');
+          initDefaults();
           break;
         case 'btn_clear_cache':
           clearData('cache');
