@@ -1,0 +1,10 @@
+
+src/.scannerwork/
+src/sonarqube.bat
+sonar-project.properties
+node_modules/
+.parcel-cache/
+dist/
+package-lock.json
+/.idea
+.vscode/settings.json
