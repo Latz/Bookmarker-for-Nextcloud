@@ -14,8 +14,8 @@ import { openDB, deleteDB } from 'idb';
  */
 export async function load_data(storeName, ...items) {
   const db = await openDB(database, dbVersion, {
-    upgrade(db) {
-      initDatabase(db);
+    upgrade(db, dbVersion) {
+      initDatabase(db, dbVersion);
     },
   });
 
@@ -47,8 +47,8 @@ export async function load_data(storeName, ...items) {
 export async function load_data_all(storeName) {
   // Open the database connection
   const db = await openDB(database, dbVersion, {
-    upgrade(db) {
-      initDatabase(db);
+    upgrade(db, dbVersion) {
+      initDatabase(db, dbVersion);
     },
   });
 
@@ -71,8 +71,8 @@ export async function load_data_all(storeName) {
  */
 export async function store_data(storeName, ...items) {
   const db = await openDB(database, dbVersion, {
-    upgrade(db) {
-      initDatabase(db);
+    upgrade(db, dbVersion) {
+      initDatabase(db, dbVersion);
     },
   });
   for (let item of items) {
@@ -93,8 +93,8 @@ export async function store_data(storeName, ...items) {
  */
 export async function delete_data(storeName, ...items) {
   const db = await openDB(database, dbVersion, {
-    upgrade(db) {
-      initDatabase(db);
+    upgrade(db, dbVersion) {
+      initDatabase(db, dbVersion);
     },
   });
 
@@ -114,8 +114,8 @@ export async function delete_data(storeName, ...items) {
  */
 export async function store_hash(hash) {
   const db = await openDB(database, dbVersion, {
-    upgrade(db) {
-      initDatabase(db);
+    upgrade(db, dbVersion) {
+      initDatabase(db, dbVersion);
     },
   });
 
@@ -176,8 +176,8 @@ export async function clearData(subject) {
 
   if (subject === 'cache') {
     const cache_db = await openDB('BookmarkerCache', dbVersion, {
-      upgrade(cache_db) {
-        InitializeStores(cache_db);
+      upgrade(cache_db, dbVersion) {
+        InitializeStores(cache_db, dbVersion);
       },
     });
     cache_db.clear('folders');

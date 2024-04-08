@@ -58,6 +58,7 @@ async function loginPoll(request) {
 
   // remember login page id so that we can close it If there was an time.
   const loginPage = await chrome.tabs.create({ url: request.login });
+  console.log('🚀 ~ loginPoll ~ loginPage:', loginPage);
 
   while (!authorized && attempts < maxAttempts) {
     try {
