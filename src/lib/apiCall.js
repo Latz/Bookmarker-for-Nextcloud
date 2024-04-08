@@ -6,7 +6,7 @@ async function timeoutFetch(resource, options = {}) {
   let networkTimeout = (await getOption('input_networkTimeout')) * 1000;
 
   // default networkTimeout to 10 seconds if not set
-  if (isNaN(networkTimeout || networkTimeout < 10)) {
+  if (isNaN(networkTimeout) || networkTimeout === 0) {
     networkTimeout = 10000;
   }
 
@@ -104,6 +104,6 @@ async function authentication() {
 
   // Generate the authentication token using the loginname and appPassword
   return Promise.resolve(
-    'Basic ' + btoa(data.loginname + ':' + data.appPassword)
+    'Basic ' + btoa(data.loginname + ':' + data.appPassword),
   );
 }
