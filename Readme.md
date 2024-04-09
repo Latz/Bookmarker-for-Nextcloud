@@ -17,6 +17,7 @@
 - ❔ [Why?](#-why)
 - 💡 [Highlights](#-highlights)
 - 🔧 [Installation](#-installation)
+- &#x1F195; [Updating](#-updating)
 - [Usage](#usage)
 - 🔩 [Options](#-options)
   - [Basic Options](#basic-options)
@@ -62,6 +63,10 @@ If you want to have the bleeding edge version, you can clone the [GitHub reposit
 The extension is built into the directory `dist`. Finally you can install the [unpacked extension](https://webkul.com/blog/how-to-install-the-unpacked-extension-in-chrome/).
 
 </div>
+
+## &#x1F195; Updating
+
+This is an early version of the extension. After updating you might have to re-authenticate with Nextcloud and to setup your options again.
 
 ## 🔑 Authorization
 

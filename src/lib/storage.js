@@ -189,14 +189,17 @@ export async function clearData(subject) {
  * Initializes default options and opens the 'Bookmarker' database.
  * @returns {Promise<void>}
  */
-export async function initDatabase(db) {
+export async function initDatabase(db, oldVersion) {
+  console.log('oldversion', oldVersion);
+
   //--- Clean installation
-  if (oldVersion == 0) {
+  if (oldVersion === 0) {
+    console.log('freshstart');
     await InitializeStores(db);
     initDefaults();
   }
-  //---  v0.2
-  if (oldVersion == 1) {
+  //---  v0.16
+  if (oldVersion === 1) {
     // copy data from old version
     const cbx_autoDesc = await load_data('options', 'cbx_autoDesc');
     const cbx_autoTags = await load_data('options', 'cbx_autoTags');

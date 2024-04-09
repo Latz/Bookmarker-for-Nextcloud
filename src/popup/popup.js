@@ -5,6 +5,9 @@ import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
 // Check if the user credentials are
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
+    const apppwd = await load_data('credentials', 'appPassword');
+    console.log('🚀 ~ document.onreadystatechange= ~ apppwd:', apppwd);
+
     if ((await load_data('credentials', 'appPassword')) === undefined) {
       createAuthorizeButton();
     } else {
@@ -25,7 +28,7 @@ function createErrorBox(data) {
     <div class="parent w-full justify-items-center items-center border border-sky-500">
       <div class="div1"><img src="../images/icon-64x64-light.png" height="64px" width="64px"></div>
       <div class="div2 text-center text-3xl font-bold text-sky-500 underline">${chrome.i18n.getMessage(
-        'error'
+        'error',
       )}:</div>
       <div class="div3 text-center text-lg">${data.error}</div>
     </div>`;
