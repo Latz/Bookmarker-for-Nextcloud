@@ -105,7 +105,7 @@ function serverError(response) {
   const errorDiv = document.getElementById('error');
   const testServer = document.getElementById('testServer');
 
-  errorDiv.innerText = `${chrome.i18n.getMessage('OpenLoginPage')}!`;
+  errorDiv.innerText = `${chrome.i18n.getMessage('LoginServerError')}!`;
 
   if (response.status > 0) {
     msg.innerText = `${response.status}  - ${getReasonPhrase(response.status)}`;
