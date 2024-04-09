@@ -13,8 +13,10 @@ import { openDB, deleteDB } from 'idb';
  * @return {Promise<any>|any} - A promise that resolves to an object containing the loaded data for each item, or a single value if only one item is provided.
  */
 export async function load_data(storeName, ...items) {
+  console.log('load_data', storeName, items);
   const db = await openDB(database, dbVersion, {
     upgrade(db, dbVersion) {
+      console.log('upgrade', dbVersion);
       initDatabase(db, dbVersion);
     },
   });
@@ -191,6 +193,7 @@ export async function clearData(subject) {
  */
 export async function initDatabase(db, oldVersion) {
   console.log('oldversion', oldVersion);
+  return;
 
   //--- Clean installation
   if (oldVersion === 0) {
@@ -232,26 +235,31 @@ export function initDefaults() {
 
 // -----------------------------------------------------------------------
 
-export async function createOldDatabase() {
+export async function createOldDatabase(version) {
   await deleteDB('Bookmarker');
   await deleteDB('Cache');
 
-  let db = await openDB('Bookmarker', 1, {
-    upgrade(db) {
-      InitializeStores(db);
-    },
-  });
-  db.put('credentials', { item: 'appPassword', value: 'ThisistheApppassword' });
-  db.put('credentials', { item: 'loginname', value: 'admin' });
-  db.put('credentials', { item: 'server', value: 'https://pascal:9025' });
-  db.put('options', { item: 'cbx_autoDesc', value: true });
-  db.put('options', { item: 'cbx_autoTags', value: true });
-  db.put('options', { item: 'cbx_displayFolders', value: true });
+  if (version === 1) {
+    let db = await openDB('Bookmarker', 1, {
+      upgrade(db) {
+        InitializeStores(db);
+      },
+    });
+    db.put('credentials', {
+      item: 'appPassword',
+      value: 'ThisistheApppassword',
+    });
+    db.put('credentials', { item: 'loginname', value: 'admin' });
+    db.put('credentials', { item: 'server', value: 'https://pascal:9025' });
+    db.put('options', { item: 'cbx_autoDesc', value: true });
+    db.put('options', { item: 'cbx_autoTags', value: true });
+    db.put('options', { item: 'cbx_displayFolders', value: true });
 
-  openDB('Cache', dbVersion, {
-    upgrade(db) {
-      db.createObjectStore('folders', { keyPath: 'item' });
-      db.createObjectStore('tags', { keyPath: 'item' });
-    },
-  });
+    openDB('Cache', dbVersion, {
+      upgrade(db) {
+        db.createObjectStore('folders', { keyPath: 'item' });
+        db.createObjectStore('tags', { keyPath: 'item' });
+      },
+    });
+  }
 }

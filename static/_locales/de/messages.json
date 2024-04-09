@@ -7,6 +7,7 @@
   },
   "authorizeExtension": { "message": "Erweiterung authorisieren" },
   "OpenLoginPage": { "message": "Login-Seite öffnen" },
+  "LoginServerError": { "message": "Server-Fehler" },
   "Loading": { "message": "Wird geladen" },
   "BookmarkSuccessfullySaved": {
     "message": "Lesezeichen erfolgreich gespeichert"

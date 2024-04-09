@@ -5,6 +5,7 @@ import {
   store_data,
   initDefaults,
   clearData,
+  createOldDatabase,
 } from '../lib/storage.js';
 
 const OPTION_STORE = 'options';
@@ -138,6 +139,7 @@ async function setOptions() {
       store_data(OPTION_STORE, { [id]: checked });
     }
     if (event.target.type === 'submit') {
+      console.log('submit', event.target.id);
       switch (event.target.id) {
         case 'btn_clear_all_data':
           clearData('all');
@@ -148,6 +150,8 @@ async function setOptions() {
         case 'btn_clear_cache':
           clearData('cache');
           break;
+        case 'btn_create_db':
+          createDB();
       }
     }
 
@@ -158,4 +162,10 @@ async function setOptions() {
       window.open('displayJson.html?type=cache', 'Options', 'popup');
     }
   });
+}
+
+function createDB() {
+  const dbVersion = document.getElementById('input_dbVersion').value;
+  console.log('createDB', dbVersion);
+  createOldDatabase(dbVersion);
 }

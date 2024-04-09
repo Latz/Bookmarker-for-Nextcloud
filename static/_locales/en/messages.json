@@ -4,6 +4,7 @@
   },
   "authorizeExtension": { "message": "Authorize extension!" },
   "OpenLoginPage": { "message": "Open Login Page" },
+  "LoginServerError": { "message": "Server Error" },
   "Loading": { "message": "Loading" },
   "BookmarkSuccessfullySaved": {
     "message": "Your bookmark was saved successfully"
