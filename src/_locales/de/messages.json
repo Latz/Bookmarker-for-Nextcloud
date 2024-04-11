@@ -1,0 +1,54 @@
+{
+  "optionsheader": {
+    "message": "Optionen - Bookmarker for Nextcloud"
+  },
+  "error": {
+    "message": "Fehler"
+  },
+  "authorizeExtension": { "message": "Erweiterung authorisieren" },
+  "OpenLoginPage": { "message": "Login-Seite öffnen" },
+  "LoginServerError": { "message": "Server-Fehler" },
+  "Loading": { "message": "Wird geladen" },
+  "BookmarkSuccessfullySaved": {
+    "message": "Lesezeichen erfolgreich gespeichert"
+  },
+  "SaveBookmark": { "message": "Speichern" },
+  "AlreadyBookmarked": { "message": "Bereits gespeichert" },
+  "Created": { "message": "Datum" },
+  "Modified": { "message": "Geändert" },
+  "Checking": { "message": "Überprüfe" },
+  "ConnectionError": { "message": "Verbindungsfehler" },
+  "Timeout": {
+    "message": "Zeitüberschreitung. Bitte diesen Tab schliessen und die Erweiterung erneut autorisieren."
+  },
+  "basic": { "message": "Basic" },
+  "zen": { "message": "Zen" },
+  "advanced": { "message": "Erweitert" },
+  "development": { "message": "Entwicklung" },
+  "displayFolders": {
+    "message": "Ordner anzeigen"
+  },
+  "autotags": { "message": "Automatische Tags" },
+  "autodescription": { "message": "Automatische Beschreibung" },
+  "successnotification": { "message": "Erfolgsmeldung anzeigen" },
+  "zenmode": { "message": "Zen Modus aktivieren" },
+  "alreadyStored": { "message": "Überprüfe gespeicherte Bookmarks" },
+  "showUrl": { "message": "URL anzeigen" },
+  "showDescription": { "message": "Beschreibung anzeigen" },
+  "showKeywords": { "message": "Schlüsselwörter anzeigen" },
+  "extendedKeywords": {
+    "message": "Erweiterte Schlüsselwörter-Erkennung"
+  },
+  "searchDepth": { "message": "Suchtiefe" },
+  "networkTimeout": { "message": "Netzwerk-Timeout Sekunden" },
+  "networkTimeoutNote": {
+    "message": "(Standard: 10 Sekunden, wenn nicht angegeben)"
+  },
+  "optionstitle": { "message": "Optionen - Bookmarker for Nextcloud" },
+  "clearall": { "message": "Alle Daten löschen" },
+  "resetoptions": { "message": "Optionen zurücksetzen" },
+  "clearcache": { "message": "Cache löschen" },
+  "reduceKeywords": { "message": "Schlüsselwörter eingrenzen" },
+  "showcache": { "message": "Cache anzeigen" },
+  "showoptions": { "message": "Optionen anzeigen" }
+}

@@ -72,6 +72,7 @@ export async function load_data_all(storeName) {
  * @return {Promise<void>} - A promise that resolves when the data is successfully stored.
  */
 export async function store_data(storeName, ...items) {
+  console.log('store_data', storeName, items);
   const db = await openDB(database, dbVersion, {
     upgrade(db, dbVersion) {
       initDatabase(db, dbVersion);
@@ -193,7 +194,6 @@ export async function clearData(subject) {
  */
 export async function initDatabase(db, oldVersion) {
   console.log('oldversion', oldVersion);
-  return;
 
   //--- Clean installation
   if (oldVersion === 0) {

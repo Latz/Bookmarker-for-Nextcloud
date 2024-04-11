@@ -2,7 +2,6 @@
   "name": "ganzneu",
   "version": "1.0.0",
   "description": ":warning: This is an alpha version. Although it is fully functional, it may stop working without notice. :warning:",
-  "main": ".eslintrc.js",
   "directories": {
     "lib": "lib"
   },
@@ -37,13 +36,20 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "watch": "npx parcel watch",
+    "copy-imgs": "npx cpy ./src/images/* ./dist/images/",
+    "copy-locales": "npx cpy ./src/_locales/** ./dist/_locales/",
+    "copy-manifest": "npx cpy ./manifest.json ./dist/",
+    "copy": "npm run copy-imgs & npm run copy-locales & npm run copy-manifest",
     "build-js": "npx parcel build --no-optimize",
-    "buildoptionscss": "npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css",
-    "buildpopupcss": "npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css",
-    "build": "del-cli /src/options/options.css & del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css --minify & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify & npx parcel build ",
-    "deploy": "del-cli /src/options/options.css & del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build --no-source-maps"
+    "buildoptionscss": "del-cli /src/options/options.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css --minify",
+    "buildpopupcss": "del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify",
+    "build": "npx parcel build & npm run buildoptionscss & npm run buildpopupcss & npm run copy",
+    "deploy": "npm run buildoptionscss & npm run buildpopupcss & npx parcel build --no-source-maps & npm run copy"
   },
-  "keywords": [],
+  "keywords": [
+    "nextcloud",
+    "bookmarks"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -53,7 +59,7 @@
     "daisyui": "^4.6.2",
     "del-cli": "^5.1.0",
     "parcel": "^2.9.3",
-    "parcel-reporter-static-files-copy": "^1.5.2",
+    "parcel-reporter-static-files-copy": "^1.5.3",
     "postcss": "^8.4.29",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.13",
@@ -61,7 +67,9 @@
   },
   "dependencies": {
     "@linthtml/linthtml": "^0.10.0-beta.5",
+    "@parcel/config-webextension": "^2.12.0",
     "@yaireo/tagify": "^4.21.1",
+    "cpy-cli": "^5.0.0",
     "http-status-codes": "^2.3.0",
     "idb": "^8.0.0",
     "json-markup": "^1.1.4",
