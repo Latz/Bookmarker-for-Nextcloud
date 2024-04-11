@@ -9,6 +9,7 @@
     "default_title": "Bookmarker for Nextcloud Neu!",
     "default_popup": "./popup/popup.html"
   },
+  "default_locale": "en",
   "icons": {
     "64": "/images/icon-64x64-light.png",
     "128": "/images/icon-128x128-light.png",
