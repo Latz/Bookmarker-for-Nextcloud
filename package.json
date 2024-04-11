@@ -43,8 +43,8 @@
     "build-js": "npx parcel build --no-optimize",
     "buildoptionscss": "del-cli /src/options/options.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css --minify",
     "buildpopupcss": "del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify",
-    "build": "npx parcel build & npm run buildoptionscss & npm run buildpopupcss & npm run copy",
-    "deploy": "npm run buildoptionscss & npm run buildpopupcss & npx parcel build --no-source-maps & npm run copy"
+    "build": "npm run copy & npm run buildoptionscss & npm run buildpopupcss & npx parcel build",
+    "deploy": "npm run copy & npm run buildoptionscss & npm run buildpopupcss & npx parcel build --no-source-maps"
   },
   "keywords": [
     "nextcloud",
