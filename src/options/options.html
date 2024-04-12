@@ -4,8 +4,6 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="../images/favicon.ico" sizes="32x32" />
-    <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./options.css" />
     <script type="module" src="./options.js"></script>
     <title i18n="optionstitle">Options - Bookmarker for Nextcloud</title>
@@ -14,12 +12,12 @@
   <body>
     <div id="header">
       <h1
-        class="mb-10 mt-0 pt-[40px] text-center text-5xl font-medium leading-tight text-sky-400"
+        class="z-0 mb-10 mt-0 pt-[40px] text-center text-5xl font-medium leading-tight text-sky-400"
         i18n-data="optionsheader"
       ></h1>
     </div>
 
-    <div id="container" class="pl-[80px] pr-[80px]">
+    <div id="container" class="z-10 pl-[80px] pr-[80px]">
       <div id="clickarea">
         <div
           id="tabs"
@@ -29,7 +27,8 @@
             id="tab_basic"
             class="tab-bordered tab-lg tab hover:bg-sky-400"
             i18n-data="basic"
-          ></a>
+          ></a
+          >s
           <a id="tab_zen" class="tab-bordered tab-lg tab" i18n-data="zen"></a>
           <a
             id="tab_advanced"
@@ -244,5 +243,6 @@
         </div>
       </div>
     </div>
+    <div class="absolute left-5 top-5 z-0"></div>
   </body>
 </html>
