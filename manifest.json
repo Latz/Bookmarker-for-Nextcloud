@@ -4,7 +4,7 @@
   "description": "Bookmarker for Nextcloud Neu",
   "author": "plushbyte",
   "homepage_url": "https://plushbyte.com/chrome/bookmarker-for-nextcloud",
-  "version": "0.3",
+  "version": "0.30",
   "action": {
     "default_title": "Bookmarker for Nextcloud Neu!",
     "default_popup": "popup/popup.html"
