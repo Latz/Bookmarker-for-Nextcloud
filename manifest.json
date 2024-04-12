@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Bookmarker for Nextcloud neu",
-  "description": "Bookmarker for Nextcloud Neu",
+  "name": "Bookmarker for Nextcloud",
+  "description": "Bookmarker for Nextcloud",
   "author": "plushbyte",
   "homepage_url": "https://plushbyte.com/chrome/bookmarker-for-nextcloud",
   "version": "0.30",
   "action": {
-    "default_title": "Bookmarker for Nextcloud Neu!",
+    "default_title": "Bookmarker for Nextcloud",
     "default_popup": "popup/popup.html"
   },
   "default_locale": "en",
