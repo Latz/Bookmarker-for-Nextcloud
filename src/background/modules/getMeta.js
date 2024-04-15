@@ -8,7 +8,7 @@ import log from '../../lib/log.js';
 + * @return {Array} An array containing the values of specified meta tags.
 + */
 
-const DEBUG  = false;
+const DEBUG = false;
 
 export default function getMeta(document, ...metaNames) {
   log(DEBUG, 'GetMeta');
@@ -17,15 +17,17 @@ export default function getMeta(document, ...metaNames) {
     log(DEBUG, type, id);
     const metaNodelist = document.querySelectorAll(`[${type}="${id}" i]`);
 
-    for (const meta of metaNodelist) {
-      const { content } = meta;
-      if (content !== '' && content !== undefined) {
-        metas.push(content);
+    if (metaNodelist.length > 0) {
+      for (const meta of metaNodelist) {
+        const { content } = meta;
+        if (content !== '' && content !== undefined) {
+          metas.push(content);
+        }
       }
-    }
-    log(DEBUG, 'metas', metas);
-    if (metas.length > 0) {
-      return metas;
+      log(DEBUG, 'metas', metas);
+      if (metas.length > 0) {
+        return metas;
+      }
     }
   }
   return [];
