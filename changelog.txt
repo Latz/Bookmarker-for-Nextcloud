@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Notification requires interaction if bookmark could not be stored
 ## Fixed
 - Changed notification icon if bookmark could not be saved
+- i18n strings
 
 ## [0.30] - 2024-04-15
 ...
