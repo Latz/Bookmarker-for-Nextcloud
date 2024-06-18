@@ -1,6 +1,8 @@
 # Bookmarker for Nextcloud
 
 <p>
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Latz_Bookmarker-for-Nextcloud&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Latz_Bookmarker-for-Nextcloud)
+<p>
 
 ### Chrome Extension for bookmarking web pages on your Nextcloud server.
 
