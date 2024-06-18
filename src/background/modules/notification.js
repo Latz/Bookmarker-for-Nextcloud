@@ -5,10 +5,17 @@ async function getIconUrl() {
   const browserTheme = await getBrowserTheme();
   return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}.png`);
 }
+async function getIconErrorUrl() {
+  const browserTheme = await getBrowserTheme();
+  return chrome.runtime.getURL(
+    `/images/icon-128x128-${browserTheme}-error.png`,
+  );
+}
 
 export async function notifyUser(response) {
   // load the browser theme to display a visible icon
   const iconUrl = await getIconUrl();
+  const iconErrorUrl = await getIconErrorUrl();
 
   // user does not want to be notified
   if (!(await getOption('cbx_successMessage'))) return;
@@ -26,13 +33,13 @@ export async function notifyUser(response) {
     // There was an error
     chrome.notifications.create('', {
       title,
-      message: `Error: ${response.statusText}`,
-      iconUrl: iconUrl,
+      message: `${chrome.i18n.getMessage('error')}: ${response.statusText}`,
+      iconUrl: iconErrorUrl,
       type: 'basic',
       requireInteraction: true,
       buttons: [
         {
-          title: 'Dismiss.',
+          title: `${chrome.i18n.getMessage('dismiss')}.`,
         },
       ],
     });
