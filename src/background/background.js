@@ -4,6 +4,7 @@ import { store_data, createOldDatabase } from '../lib/storage.js';
 import { notifyUser } from './modules/notification.js';
 import getBrowserTheme from './modules/getBrowserTheme.js';
 import { cacheGet } from '../lib/cache.js';
+import { zenMode, enableZenMode } from './modules/zenMode.js';
 
 const DEBUG = false;
 // -----------------------------------------------------------------------------------------------
@@ -27,6 +28,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'maxAttempts':
       maxAttemptsError(request.loginPage);
+      break;
+    case 'zenMode':
+      zenMode();
       break;
   }
   return true;
@@ -74,7 +78,17 @@ function init() {
     });
   });
 
-  chrome.contextMenus.removeAll();
+  try {
+    chrome.contextMenus.create({
+      id: 'menuEnableZen',
+      title: 'Enable Zen Mode',
+      contexts: ['action'],
+      type: 'checkbox',
+      checked: true,
+    });
+  } catch (error) {
+    console.log(error);
+  }
   try {
     chrome.contextMenus.create({
       id: 'menuRefreshCache',
@@ -99,6 +113,13 @@ function init() {
     }
     if (info.menuItemId === 'menuOldDatabase') {
       createOldDatabase();
+    }
+    if (info.menuItemId === 'menuEnableZen') {
+      chrome.contextMenus.update(info.menuItemId, {
+        type: 'checkbox',
+        checked: true,
+      });
+      // enableZenMode(info.menuItemId);
     }
   });
 }

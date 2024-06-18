@@ -1,5 +1,5 @@
 import { createForm, hydrateForm } from './modules/hydrateForm.js';
-import { load_data } from '../lib/storage.js';
+import { load_data, getOption } from '../lib/storage.js';
 import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
 
 // Check if the user credentials are
@@ -11,13 +11,17 @@ document.onreadystatechange = async () => {
     if ((await load_data('credentials', 'appPassword')) === undefined) {
       createAuthorizeButton();
     } else {
-      createForm();
-      const data = await chrome.runtime.sendMessage({ msg: 'getData' });
-      if (!data.ok) {
-        createErrorBox(data);
+      if (await getOption('cbx_enableZen')) {
+        zenMode();
       } else {
-        hydrateForm(data);
-        addSaveBookmarkButtonListener(data.bookmarked);
+        createForm();
+        const data = await chrome.runtime.sendMessage({ msg: 'getData' });
+        if (!data.ok) {
+          createErrorBox(data);
+        } else {
+          hydrateForm(data);
+          addSaveBookmarkButtonListener(data.bookmarked);
+        }
       }
     }
   }
@@ -48,4 +52,9 @@ function createAuthorizeButton() {
     chrome.runtime.sendMessage({ msg: 'authorize' });
     window.close();
   });
+}
+
+function zenMode() {
+  window.close();
+  chrome.runtime.sendMessage({ msg: 'zenMode' });
 }

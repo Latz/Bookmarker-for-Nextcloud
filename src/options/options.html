@@ -5,6 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="./options.css" />
+    <link rel="stylesheet" href="./tagify.css" />
     <script type="module" src="./options.js"></script>
     <title i18n="optionstitle">Options - Bookmarker for Nextcloud</title>
   </head>
@@ -86,14 +87,47 @@
           </div>
           <!--- --------------------------------------------------------------- -->
           <div id="content_tab_zen" class="hidden delay-100">
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_enableZen"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label i18n-data="zenmode" for="cbx_enableZen"></label>
-            </div>
+            <table class="">
+              <tbody>
+                <tr>
+                  <td class="p-1 align-middle">
+                    <span i18n-data="zenmode"></span>
+                  </td>
+                  <td class="p-1">
+                    <input
+                      type="checkbox"
+                      id="cbx_enableZen"
+                      class="toggle-s toggle toggle-info align-middle"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mt-2 p-1 align-middle">
+                    <span i18n-data="zenkeywords"></span>
+                  </td>
+                  <td class="p-1 align-middle">
+                    <input
+                      type="text"
+                      class="input input-sm input-bordered input-info w-[350px]"
+                      id="input_zenKeywords"
+                    />
+                  </td>
+                </tr>
+                <tr>
+                  <td class="mt-2 p-1 align-top">Zen Folders</td>
+                  <td class="p-1 align-top">
+                    <select
+                      size="5"
+                      multiple="true"
+                      class="select select-bordered select-info w-full"
+                      id="zen_folders"
+                    >
+                      <option>Root</option>
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
           <!--- ---------------------------------------------------------------- -->
           <div id="content_tab_advanced" class="content hidden">
