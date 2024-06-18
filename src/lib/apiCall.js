@@ -11,6 +11,7 @@ async function timeoutFetch(resource, options = {}) {
   }
 
   const { timeout = networkTimeout } = options;
+  console.log('timeout', timeout);
 
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -66,6 +67,7 @@ export default async function apiCall(endpoint, method, data = '') {
   // Construct the API call URL
   const url = `${server}${endpoint}?${data}`;
 
+  console.log('🚀 ~ apiCall ~ url:', url);
   let result = {};
   try {
     let result = {};

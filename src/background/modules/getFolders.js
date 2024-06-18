@@ -5,15 +5,15 @@ import log from '../../lib/log.js';
 
 const DEBUG = false;
 
-export async function getFolders() {
+export async function getFolders(force = false) {
   // User does not use folders, so we returns
-  if (!(await getOption('cbx_displayFolders'))) return '';
+  if (!(await getOption('cbx_displayFolders')) && !force) return '';
 
   let folders = await cacheGet('folders');
   if (typeof folders === 'undefined' || folders.length === 0) {
     const serverFolders = await apiCall(
       'index.php/apps/bookmarks/public/rest/v2/folder',
-      'GET'
+      'GET',
     );
     folders = preRenderFolders(serverFolders.data);
     cacheAdd('folders', folders);

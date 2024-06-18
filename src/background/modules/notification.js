@@ -29,6 +29,12 @@ export async function notifyUser(response) {
       message: `Error: ${response.statusText}`,
       iconUrl: iconUrl,
       type: 'basic',
+      requireInteraction: true,
+      buttons: [
+        {
+          title: 'Dismiss.',
+        },
+      ],
     });
   }
 }

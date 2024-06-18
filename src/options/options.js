@@ -3,17 +3,20 @@ import {
   load_data_all,
   load_data,
   store_data,
+  getOption,
   initDefaults,
   clearData,
   createOldDatabase,
 } from '../lib/storage.js';
+import Tagify from '@yaireo/tagify';
+import { getFolders } from '../background/modules/getFolders.js';
+import fillFolders from '../popup/modules/fillFolders.js';
 
 const OPTION_STORE = 'options';
 
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     document.querySelectorAll('[i18n-data]').forEach((element) => {
-      console.dir(element);
       element.innerText = chrome.i18n.getMessage(
         element.getAttribute('i18n-data'),
       );
@@ -42,6 +45,51 @@ document.onreadystatechange = async () => {
         activeTab = event.target;
         store_data(OPTION_STORE, { activeTab: activeTab.id });
       });
+      // --- zen keywords ----------------------------------------------------------------
+      const tagsInput = document.getElementById('input_zenKeywords');
+      // TODO: add whitelist
+      const tagify = new Tagify(tagsInput, {
+        backspace: 'edit',
+        dropdown: {
+          maxItems: 5,
+          highlightFirst: true,
+        },
+      });
+      const tags = await load_data(OPTION_STORE, 'input_zenKeywords');
+      tagify.addTags(tags);
+
+      // --- zen folders ---------------------------------------------------------------------
+      const folders = await getFolders(true);
+      const zen_folders = document.getElementById('zen_folders');
+      zen_folders.innerHTML = folders;
+      const zenFolderOptions = Array.from(zen_folders.options);
+      const zenFolders = await load_data(OPTION_STORE, 'zenFolders');
+      zenFolderOptions.forEach((option) => {
+        option.selected = zenFolders.includes(option.value);
+      });
+      // store selected folder to database if selection changes
+      zen_folders.addEventListener('change', (event) => {
+        const folders = [];
+        for (let folder of zen_folders.options) {
+          if (folder.selected) {
+            folders.push(folder.value);
+          }
+        }
+        store_data(OPTION_STORE, { zenFolders: folders });
+      });
+
+      // --- zen keywords --------------------------------------------------------------------------
+      const saveZenTags = () => {
+        let tags = [];
+        tagify.value.forEach((tag) => {
+          tags.push(tag.value);
+        });
+        store_data(OPTION_STORE, { input_zenKeywords: tags });
+      };
+
+      // TODO: add whitelist
+      tagify.on('add', (e) => saveZenTags());
+      tagify.on('remove', (e) => saveZenTags());
     }
   }
 };

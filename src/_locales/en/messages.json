@@ -48,5 +48,6 @@
   "clearcache": { "message": "Clear cache" },
   "reduceKeywords": { "message": "Reduce Keywords" },
   "showCache": { "message": "Show cache" },
-  "showoptions": { "message": "Show options" }
+  "showoptions": { "message": "Show options" },
+  "zenkeywords": { "message": "Zen Keywords" }
 }

@@ -50,5 +50,6 @@
   "clearcache": { "message": "Cache löschen" },
   "reduceKeywords": { "message": "Schlüsselwörter eingrenzen" },
   "showcache": { "message": "Cache anzeigen" },
-  "showoptions": { "message": "Optionen anzeigen" }
+  "showoptions": { "message": "Optionen anzeigen" },
+  "zenkeywords": { "message": "Zen Schlüsselwörter" }
 }
