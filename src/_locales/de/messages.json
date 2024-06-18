@@ -51,5 +51,6 @@
   "reduceKeywords": { "message": "Schlüsselwörter eingrenzen" },
   "showcache": { "message": "Cache anzeigen" },
   "showoptions": { "message": "Optionen anzeigen" },
-  "zenkeywords": { "message": "Zen Schlüsselwörter" }
+  "zenkeywords": { "message": "Zen Schlüsselwörter" },
+  "Dismiss": { "message": "Schließen" }
 }

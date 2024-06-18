@@ -49,5 +49,6 @@
   "reduceKeywords": { "message": "Reduce Keywords" },
   "showCache": { "message": "Show cache" },
   "showoptions": { "message": "Show options" },
-  "zenkeywords": { "message": "Zen Keywords" }
+  "zenkeywords": { "message": "Zen Keywords" },
+  "dismiss": { "message": "Dismiss" }
 }
