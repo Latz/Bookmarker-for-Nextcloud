@@ -27,12 +27,6 @@ export async function notifyUser(response) {
     const zenDisplayNotification = await getOption(
       'cbx_zenDisplayNotification',
     );
-    console.log(
-      'zenMode',
-      zenMode,
-      'zenDisplayNotification',
-      zenDisplayNotification,
-    );
     if (zenMode && zenDisplayNotification) {
       chrome.notifications.create('', {
         title,
