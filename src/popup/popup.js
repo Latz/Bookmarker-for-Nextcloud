@@ -7,7 +7,6 @@ import textFit from 'textfit';
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     const apppwd = await load_data('credentials', 'appPassword');
-    console.log('🚀 ~ document.onreadystatechange= ~ apppwd:', apppwd);
 
     if ((await load_data('credentials', 'appPassword')) === undefined) {
       createAuthorizeButton();
