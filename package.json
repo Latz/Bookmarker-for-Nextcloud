@@ -74,6 +74,7 @@
     "idb": "^8.0.0",
     "json-markup": "^1.1.4",
     "linkedom": "^0.16.8",
-    "readable-http-codes": "^1.1.1"
+    "readable-http-codes": "^1.1.1",
+    "textfit": "^2.4.0"
   }
 }

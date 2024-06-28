@@ -13,7 +13,6 @@ import { openDB, deleteDB } from 'idb';
  * @return {Promise<any>|any} - A promise that resolves to an object containing the loaded data for each item, or a single value if only one item is provided.
  */
 export async function load_data(storeName, ...items) {
-  console.log('load_data', storeName, items);
   const db = await openDB(database, dbVersion, {
     upgrade(db, dbVersion) {
       console.log('upgrade', dbVersion);
@@ -36,6 +35,8 @@ export async function load_data(storeName, ...items) {
   if (Object.keys(result).length === 1) {
     return result[Object.keys(result)[0]];
   }
+
+  console.log('load_data', storeName, items, result);
 
   return Promise.resolve(result);
 }
@@ -231,6 +232,7 @@ export function initDefaults() {
   store_data('options', { input_networkTimeout: 10 });
   store_data('options', { cbx_reduceKeywords: true });
   store_data('options', { folderIDs: ['-1'] }); // Default to root folder
+  store_data('options', { zenFolderIDs: ['-1'] }); // Default to root folder
 }
 
 // -----------------------------------------------------------------------

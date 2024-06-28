@@ -29,10 +29,12 @@ export function preRenderFolders(folders) {
 
   // recursively create folder structure
   function json2tree(folders, x = '') {
-    folders.sort((a, b) => a.title.localeCompare(b.title, userLang) > 0);
-    for (let f of folders) {
-      folderStructure.push({ name: `${x}${f.title}`, value: f.id });
-      if (f.children) json2tree(f.children, `${x}\u2007\u2007`);
+    if (folders !== undefined) {
+      folders.sort((a, b) => a.title.localeCompare(b.title, userLang) > 0);
+      for (let f of folders) {
+        folderStructure.push({ name: `${x}${f.title}`, value: f.id });
+        if (f.children) json2tree(f.children, `${x}\u2007\u2007`);
+      }
     }
   }
   json2tree(folders);

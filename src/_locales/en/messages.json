@@ -34,7 +34,7 @@
   "autotags": { "message": "Auto tags" },
   "autodescription": { "message": "Auto description" },
   "successnotification": { "message": "Display success notification" },
-  "zenmode": { "message": "Enable Zen Mode" },
+  "zenmode": { "message": "Zen Mode:" },
   "alreadyStored": { "message": "Check for stored bookmarks" },
   "showUrl": { "message": "Show URL" },
   "showDescription": { "message": "Show Description" },
@@ -50,5 +50,7 @@
   "showCache": { "message": "Show cache" },
   "showoptions": { "message": "Show options" },
   "zenkeywords": { "message": "Zen Keywords" },
-  "dismiss": { "message": "Dismiss" }
+  "dismiss": { "message": "Dismiss" },
+  "active": { "message": "active" },
+  "inactive": { "message": "inactive" }
 }

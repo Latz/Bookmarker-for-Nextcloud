@@ -1,6 +1,11 @@
 import apiCall from '../lib/apiCall.js';
 import getData from './modules/getData.js';
-import { store_data, createOldDatabase } from '../lib/storage.js';
+import {
+  store_data,
+  createOldDatabase,
+  getOption,
+  load_data,
+} from '../lib/storage.js';
 import { notifyUser } from './modules/notification.js';
 import getBrowserTheme from './modules/getBrowserTheme.js';
 import { cacheGet } from '../lib/cache.js';
@@ -63,10 +68,7 @@ async function saveBookmark(data, folderIDs, bookmarkID) {
 // initialize extension
 // ------------------------------------------------------------------------------------------------
 
-function init() {
-  const message = chrome.i18n.getMessage('options');
-  console.log('OK');
-
+async function init() {
   getBrowserTheme().then((browserTheme) => {
     chrome.action.setIcon({
       path: {
@@ -78,17 +80,21 @@ function init() {
     });
   });
 
+  chrome.contextMenus.removeAll();
+  const zenModeEnabled = await getOption('cbx_enableZen');
   try {
     chrome.contextMenus.create({
       id: 'menuEnableZen',
-      title: 'Enable Zen Mode',
+      title: 'Zen Mode',
       contexts: ['action'],
       type: 'checkbox',
-      checked: true,
+      checked: zenModeEnabled,
     });
   } catch (error) {
     console.log(error);
   }
+  setZenModeMenu(zenModeEnabled);
+
   try {
     chrome.contextMenus.create({
       id: 'menuRefreshCache',
@@ -106,6 +112,22 @@ function init() {
   //   contexts: ['action'],
   // });
 
+  // This function is only necessary because Vivaldi does not display the check mark in context menus
+  function setZenModeMenu(zenModeEnabled) {
+    console.log('zenModeEnabled', zenModeEnabled);
+    if (zenModeEnabled) {
+      chrome.contextMenus.update('menuEnableZen', {
+        title: '⭢Zen Mode',
+        checked: true,
+      });
+    } else {
+      chrome.contextMenus.update('menuEnableZen', {
+        title: 'Zen Mode',
+        checked: false,
+      });
+    }
+  }
+
   chrome.contextMenus.onClicked.addListener((info) => {
     if (info.menuItemId === 'menuRefreshCache') {
       cacheGet('keywords', true);
@@ -115,11 +137,12 @@ function init() {
       createOldDatabase();
     }
     if (info.menuItemId === 'menuEnableZen') {
-      chrome.contextMenus.update(info.menuItemId, {
-        type: 'checkbox',
-        checked: true,
-      });
-      // enableZenMode(info.menuItemId);
+      if (info.checked) {
+        store_data('options', { cbx_enableZen: true });
+      } else {
+        store_data('options', { cbx_enableZen: false });
+      }
+      setZenModeMenu(info.checked);
     }
   });
 }

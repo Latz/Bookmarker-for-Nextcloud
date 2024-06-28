@@ -13,6 +13,7 @@ import { getFolders } from '../background/modules/getFolders.js';
 import fillFolders from '../popup/modules/fillFolders.js';
 
 const OPTION_STORE = 'options';
+let tagify;
 
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
@@ -31,68 +32,83 @@ document.onreadystatechange = async () => {
       document.getElementById('tab_basic').classList.remove('tab-active');
       document.getElementById(activeTabId).classList.add('tab-active');
     }
-    if (document.readyState === 'complete') {
-      setOptions();
-      const tabs = document.getElementById('tabs');
-      activeTab.classList.add('tab-active');
-      const activeContent = document.getElementById(`content_${activeTab.id}`);
-      activeContent.classList.remove('hidden');
-      tabs.addEventListener('click', (event) => {
-        if (activeTab === event.target) return;
-        event.target.classList.add('tab-active');
-        activeTab.classList.remove('tab-active');
-        changeContent(activeTab, event.target);
-        activeTab = event.target;
-        store_data(OPTION_STORE, { activeTab: activeTab.id });
-      });
-      // --- zen keywords ----------------------------------------------------------------
-      const tagsInput = document.getElementById('input_zenKeywords');
-      // TODO: add whitelist
-      const tagify = new Tagify(tagsInput, {
-        backspace: 'edit',
-        dropdown: {
-          maxItems: 5,
-          highlightFirst: true,
-        },
-      });
-      const tags = await load_data(OPTION_STORE, 'input_zenKeywords');
-      tagify.addTags(tags);
 
-      // --- zen folders ---------------------------------------------------------------------
-      const folders = await getFolders(true);
-      const zen_folders = document.getElementById('zen_folders');
-      zen_folders.innerHTML = folders;
-      const zenFolderOptions = Array.from(zen_folders.options);
-      const zenFolders = await load_data(OPTION_STORE, 'zenFolders');
-      zenFolderOptions.forEach((option) => {
-        option.selected = zenFolders.includes(option.value);
-      });
-      // store selected folder to database if selection changes
-      zen_folders.addEventListener('change', (event) => {
-        const folders = [];
-        for (let folder of zen_folders.options) {
-          if (folder.selected) {
-            folders.push(folder.value);
-          }
-        }
-        store_data(OPTION_STORE, { zenFolders: folders });
-      });
+    setOptions();
 
-      // --- zen keywords --------------------------------------------------------------------------
-      const saveZenTags = () => {
-        let tags = [];
-        tagify.value.forEach((tag) => {
-          tags.push(tag.value);
-        });
-        store_data(OPTION_STORE, { input_zenKeywords: tags });
-      };
+    const tabs = document.getElementById('tabs');
+    activeTab.classList.add('tab-active');
+    const activeContent = document.getElementById(`content_${activeTab.id}`);
+    activeContent.classList.remove('hidden');
+    tabs.addEventListener('click', (event) => {
+      if (activeTab === event.target) return;
+      event.target.classList.add('tab-active');
+      activeTab.classList.remove('tab-active');
+      changeContent(activeTab, event.target);
+      activeTab = event.target;
+      store_data(OPTION_STORE, { activeTab: activeTab.id });
+    });
 
-      // TODO: add whitelist
-      tagify.on('add', (e) => saveZenTags());
-      tagify.on('remove', (e) => saveZenTags());
+    // --- zen keywords ----------------------------------------------------------------
+    const tagsInput = document.getElementById('input_zenKeywords');
+    // TODO: add whitelist
+    tagify = new Tagify(tagsInput, {
+      backspace: 'edit',
+      dropdown: {
+        maxItems: 5,
+        highlightFirst: true,
+      },
+    });
+    const tags = await load_data(OPTION_STORE, 'input_zenKeywords');
+    tagify.addTags(tags);
+
+    // --- zen folders ---------------------------------------------------------------------
+
+    // fill zen folders selection box
+    const folders = await getFolders(true);
+    const input_zenFolders = document.getElementById('zen_folders');
+    input_zenFolders.innerHTML = folders;
+
+    // load previously selected folders from database
+    let zenFolderIDs = await load_data(OPTION_STORE, 'zenFolderIDs');
+
+    // select previously selected folders
+    if (zenFolderIDs === undefined) zenFolderIDs = ['-1'];
+    for (const option of input_zenFolders.options) {
+      if (zenFolderIDs.includes(option.value)) {
+        option.selected = true;
+      }
     }
+
+    // store selected folder to database if selection changes
+    zen_folders.addEventListener('change', (event) => {
+      const folders = [];
+      for (let folder of input_zenFolders.options) {
+        if (folder.selected) {
+          folders.push(folder.value);
+        }
+      }
+      store_data(OPTION_STORE, { zenFolderIDs: folders });
+    });
+
+    // --- zen keywords --------------------------------------------------------------------------
+    const XsaveZenTags = () => {
+      let tags = [];
+      tagify.value.forEach((tag) => {
+        tags.push(tag.value);
+      });
+      store_data(OPTION_STORE, { input_zenKeywords: tags });
+    };
+
+    // TODO: add whitelist
+    console.log('add listeners');
+    tagify.on('add', saveZenTags);
+    tagify.on('remove', saveZenTags);
   }
 };
+
+function saveZenTags(e) {
+  console.log('saveZenTags');
+}
 
 //
 // set slider if the user clicks on a heading number
@@ -148,6 +164,13 @@ function changeContent(activeTab, target) {
 async function setOptions() {
   const options = document.getElementById('content');
   const optionsData = await load_data_all(OPTION_STORE);
+  console.log('🚀 ~ setOptions ~ optionsData:', optionsData);
+
+  const zenModeEnabled = await getOption('cbx_enableZen');
+  console.log('🚀 ~ setOptions ~ zenModeEnabled:', zenModeEnabled);
+  document.getElementById('activeInactive').innerHTML = zenModeEnabled
+    ? chrome.i18n.getMessage('active')
+    : chrome.i18n.getMessage('inactive');
 
   // set all defaults
   optionsData.forEach((option) => {
@@ -184,6 +207,8 @@ async function setOptions() {
   options.addEventListener('click', async (event) => {
     if (event.target.type === 'checkbox') {
       const { id, checked } = event.target;
+
+      console.log('checkbox', id, checked);
       store_data(OPTION_STORE, { [id]: checked });
     }
     if (event.target.type === 'submit') {
