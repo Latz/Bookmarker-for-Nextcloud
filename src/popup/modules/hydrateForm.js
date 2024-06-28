@@ -8,7 +8,7 @@ function addTextInput(node, id, show) {
   textInput.setAttribute('id', id);
   textInput.setAttribute(
     'class',
-    'input input-bordered input-info input-sm w-full mb-2 p-1'
+    'input input-bordered input-info input-sm w-full mb-2 p-1',
   );
   if (!show) {
     textInput.setAttribute('class', 'hidden');
@@ -21,7 +21,7 @@ function addTextArea(node, id, show = true) {
   textArea.setAttribute('id', id);
   textArea.setAttribute(
     'class',
-    'textarea textarea-bordered textarea-info textarea-sm w-full mb-2 p-1 leading-4 h-20 p-1'
+    'textarea textarea-bordered textarea-info textarea-sm w-full mb-2 p-1 leading-4 h-20 p-1',
   );
   if (!show) {
     textArea.setAttribute('class', 'hidden');
@@ -33,6 +33,8 @@ function addTextArea(node, id, show = true) {
 
 async function addDropdown(node, id) {
   // The user does not want to use folders, so we return
+  const displayFolders = await getOption('cbx_displayFolders');
+  console.log('🚀 ~ addDropdown ~ displayFolders:', displayFolders);
   if (!(await getOption('cbx_displayFolders'))) return;
 
   const container = document.createElement('div');
@@ -44,7 +46,7 @@ async function addDropdown(node, id) {
   dropdown.setAttribute('multiple', 'true');
   dropdown.setAttribute(
     'class',
-    'select select-bordered select-info w-full border-solid border-2 border-sky-500 mb-2 p-1'
+    'select select-bordered select-info w-full border-solid border-2 border-sky-500 mb-2 p-1',
   );
   container.appendChild(dropdown);
   node.appendChild(container);
@@ -68,11 +70,10 @@ export async function createForm() {
   addTextArea(form, 'description', await getOption('cbx_showDescription'));
 
   if (await getOption('cbx_alreadyStored')) {
-    document.getElementById(
-      'sub_message'
-    ).innerHTML = `<div class="text-center">${chrome.i18n.getMessage(
-      'Checking'
-    )} Nextcloud...<span class="loader"></span></div>`;
+    document.getElementById('sub_message').innerHTML =
+      `<div class="text-center">${chrome.i18n.getMessage(
+        'Checking',
+      )} Nextcloud...<span class="loader"></span></div>`;
   }
 
   addHiddenInput(form, 'bookmarkID');
@@ -100,21 +101,21 @@ export async function hydrateForm(data) {
     const dateAdded = new Date(0);
     dateAdded.setUTCSeconds(data.added);
     message.innerHTML = `${chrome.i18n.getMessage(
-      'alreadyBookmarked'
+      'alreadyBookmarked',
     )}!<br />${chrome.i18n.getMessage('Created')}: ${dateAdded.toLocaleString(
-      navigator.language
+      navigator.language,
     )}`;
     if (data.added !== data.lastmodified) {
       const dateModified = new Date(0);
       dateModified.setUTCSeconds(data.lastmodified);
       message.innerHTML += `<br /> ${chrome.i18n.getMessage(
-        'Modified'
+        'Modified',
       )}: ${dateModified.toLocaleString(navigator.language)} `;
     }
   } else if (!data.checkBookmark.ok) {
     // display error
     message.innerHTML = `<div class="text-red-500 text-center font-bold">Error</div><div class="text-center">${chrome.i18n.getMessage(
-      'ConnectionError'
+      'ConnectionError',
     )}</div>`;
   } else {
     message.innerHTML = '';

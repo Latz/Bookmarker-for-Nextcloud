@@ -31,7 +31,7 @@
   "autotags": { "message": "Automatische Tags" },
   "autodescription": { "message": "Automatische Beschreibung" },
   "successnotification": { "message": "Erfolgsmeldung anzeigen" },
-  "zenmode": { "message": "Zen Modus aktivieren" },
+  "zenmode": { "message": "Zen Modus:" },
   "alreadyStored": { "message": "Überprüfe gespeicherte Bookmarks" },
   "showUrl": { "message": "URL anzeigen" },
   "showDescription": { "message": "Beschreibung anzeigen" },
@@ -52,5 +52,7 @@
   "showcache": { "message": "Cache anzeigen" },
   "showoptions": { "message": "Optionen anzeigen" },
   "zenkeywords": { "message": "Zen Schlüsselwörter" },
-  "Dismiss": { "message": "Schließen" }
+  "Dismiss": { "message": "Schließen" },
+  "active": { "message": "Aktiv" },
+  "inactive": { "message": "Nicht aktiv" }
 }
