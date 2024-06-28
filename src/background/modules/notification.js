@@ -23,12 +23,24 @@ export async function notifyUser(response) {
 
   // Bookmark was saved successfully
   if (response.status === 'success') {
-    chrome.notifications.create('', {
-      title,
-      message: `${chrome.i18n.getMessage('BookmarkSuccessfullySaved')}!`,
-      iconUrl,
-      type: 'basic',
-    });
+    const zenMode = await getOption('cbx_enableZen');
+    const zenDisplayNotification = await getOption(
+      'cbx_zenDisplayNotification',
+    );
+    console.log(
+      'zenMode',
+      zenMode,
+      'zenDisplayNotification',
+      zenDisplayNotification,
+    );
+    if (zenMode && zenDisplayNotification) {
+      chrome.notifications.create('', {
+        title,
+        message: `${chrome.i18n.getMessage('BookmarkSuccessfullySaved')}!`,
+        iconUrl,
+        type: 'basic',
+      });
+    }
   } else {
     // There was an error
     chrome.notifications.create('', {

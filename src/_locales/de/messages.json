@@ -54,5 +54,8 @@
   "zenkeywords": { "message": "Zen Schlüsselwörter" },
   "Dismiss": { "message": "Schließen" },
   "active": { "message": "Aktiv" },
-  "inactive": { "message": "Nicht aktiv" }
+  "inactive": { "message": "Nicht aktiv" },
+  "zenDisplayNotification": {
+    "message": "Zeige Erfolgs-Benachrichtigung (Fehler werden immer angezeigt)"
+  }
 }

@@ -52,5 +52,8 @@
   "zenkeywords": { "message": "Zen Keywords" },
   "dismiss": { "message": "Dismiss" },
   "active": { "message": "active" },
-  "inactive": { "message": "inactive" }
+  "inactive": { "message": "inactive" },
+  "zenDisplayNotification": {
+    "message": "Show success message (Erros are always displayd.)"
+  }
 }
