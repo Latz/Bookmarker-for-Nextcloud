@@ -58,9 +58,6 @@ document.onreadystatechange = async () => {
         highlightFirst: true,
       },
     });
-    const tags = await load_data(OPTION_STORE, 'input_zenKeywords');
-    tagify.addTags(tags);
-
     // --- zen folders ---------------------------------------------------------------------
 
     // fill zen folders selection box
@@ -70,13 +67,18 @@ document.onreadystatechange = async () => {
 
     // load previously selected folders from database
     let zenFolderIDs = await load_data(OPTION_STORE, 'zenFolderIDs');
-
     // select previously selected folders
     if (zenFolderIDs === undefined) zenFolderIDs = ['-1'];
     for (const option of input_zenFolders.options) {
       if (zenFolderIDs.includes(option.value)) {
         option.selected = true;
       }
+    }
+
+    //--- fill zen tags
+    const zenKeywords = await load_data(OPTION_STORE, 'input_zenKeywords');
+    if (zenKeywords !== undefined) {
+      tagify.addTags(zenKeywords);
     }
 
     // store selected folder to database if selection changes
@@ -91,23 +93,19 @@ document.onreadystatechange = async () => {
     });
 
     // --- zen keywords --------------------------------------------------------------------------
-    const XsaveZenTags = () => {
-      let tags = [];
-      tagify.value.forEach((tag) => {
-        tags.push(tag.value);
-      });
-      store_data(OPTION_STORE, { input_zenKeywords: tags });
-    };
-
     // TODO: add whitelist
-    console.log('add listeners');
     tagify.on('add', saveZenTags);
     tagify.on('remove', saveZenTags);
   }
 };
 
-function saveZenTags(e) {
+function saveZenTags() {
   console.log('saveZenTags');
+  let tags = [];
+  tagify.value.forEach((tag) => {
+    tags.push(tag.value);
+  });
+  store_data(OPTION_STORE, { input_zenKeywords: tags });
 }
 
 //
