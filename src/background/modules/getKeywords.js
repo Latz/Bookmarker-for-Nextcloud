@@ -253,25 +253,27 @@ export default async function getKeywords(content, document) {
 
       return keywords;
     },
-  ];
 
-  // -----------------------------------------------------------------------------------------------
-  // xplGlobal.document.metadata -> https://ieeexplore.ieee.org/document/10243497
-  const regex = /xplGlobal.document.metadata=(.*);/g;
-  const match = regex.exec(content);
-  const xplJson = JSON.parse(match[1]);
-  keywords = [];
-  try {
-    xplJson.keywords.forEach((tags) => {
-      let tagskwd = tags.kwd;
-      tagskwd.forEach((tag) => {
-        keywords.push(tag);
-      });
-    });
-    return [keywords];
-  } catch (e) {
-    return [];
-  }
+    // -----------------------------------------------------------------------------------------------
+    () => {
+      // xplGlobal.document.metadata -> https://ieeexplore.ieee.org/document/10243497
+      const regex = /xplGlobal.document.metadata=(.*);/g;
+      const match = regex.exec(content);
+      const xplJson = JSON.parse(match[1]);
+      keywords = [];
+      try {
+        xplJson.keywords.forEach((tags) => {
+          let tagskwd = tags.kwd;
+          tagskwd.forEach((tag) => {
+            keywords.push(tag);
+          });
+        });
+        return keywords;
+      } catch (e) {
+        return [];
+      }
+    },
+  ];
 
   // Loop through the various functions
   // --------------------------------------------------------------------------------------------
