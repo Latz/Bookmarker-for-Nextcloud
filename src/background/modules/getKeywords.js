@@ -261,13 +261,17 @@ export default async function getKeywords(content, document) {
   const match = regex.exec(content);
   const xplJson = JSON.parse(match[1]);
   keywords = [];
-  xplJson.keywords.forEach((tags) => {
-    let tagskwd = tags.kwd;
-    tagskwd.forEach((tag) => {
-      keywords.push(tag);
+  try {
+    xplJson.keywords.forEach((tags) => {
+      let tagskwd = tags.kwd;
+      tagskwd.forEach((tag) => {
+        keywords.push(tag);
+      });
     });
-  });
-  return [keywords];
+    return [keywords];
+  } catch (e) {
+    return [];
+  }
 
   // Loop through the various functions
   // --------------------------------------------------------------------------------------------
