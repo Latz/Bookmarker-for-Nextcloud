@@ -8,7 +8,7 @@ import log from '../../lib/log.js';
 + * @return {Array} An array containing the values of specified meta tags.
 + */
 
-const DEBUG = true;
+const DEBUG = false;
 
 export default function getMeta(document, ...metaNames) {
   log(DEBUG, 'GetMeta');
