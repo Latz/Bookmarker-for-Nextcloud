@@ -57,7 +57,7 @@ async function reduceKeywords(keywords, force = false) {
 
 // ----------------------------------------------------------------------------------------
 
-export default async function getKeywords(document) {
+export default async function getKeywords(content, document) {
   // define an array of function whcih can be looped through later and
   // break if a function found keywords
 
@@ -254,6 +254,20 @@ export default async function getKeywords(document) {
       return keywords;
     },
   ];
+
+  // -----------------------------------------------------------------------------------------------
+  // xplGlobal.document.metadata -> https://ieeexplore.ieee.org/document/10243497
+  const regex = /xplGlobal.document.metadata=(.*);/g;
+  const match = regex.exec(content);
+  const xplJson = JSON.parse(match[1]);
+  keywords = [];
+  xplJson.keywords.forEach((tags) => {
+    let tagskwd = tags.kwd;
+    tagskwd.forEach((tag) => {
+      keywords.push(tag);
+    });
+  });
+  return [keywords];
 
   // Loop through the various functions
   // --------------------------------------------------------------------------------------------

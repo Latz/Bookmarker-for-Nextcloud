@@ -34,7 +34,7 @@ export default async function getData() {
 
   data.title = activeTab.title;
   data.description = getDescription(document);
-  data.keywords = await getKeywords(document);
+  data.keywords = await getKeywords(content, document);
   log(DEBUG, ':: ~ getData ~ data.keywords:', data.keywords);
   data.checkBookmark = await checkBookmark(data.url);
   data.folders = await getFolders();
