@@ -5,7 +5,11 @@ export default async function fillKeywords(keywords) {
   const tagsInput = document.getElementById('keywords');
   tagsInput.classList.remove('input-sm');
   tagsInput.classList.remove('input');
-  const tags = await cacheGet('keywords');
+  let tags = await cacheGet('keywords');
+
+  if (tags.constructor !== Array) {
+    tags = [];
+  }
 
   const tagify = new Tagify(tagsInput, {
     whitelist: tags,

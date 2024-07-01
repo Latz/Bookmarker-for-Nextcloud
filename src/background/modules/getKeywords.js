@@ -87,8 +87,10 @@ export default async function getKeywords(document) {
       // Try these possibilities otherwise return given keyword string
       // TODO: Vielleicht erst Wörter zwischen Anführungszeichen raus suchen
       if (metaKeywords.length === 1) {
-        // split the string at commas
-        if (metaKeywords[0].includes(',', ';', '&amp;', ' ')) {
+        console.log('###');
+        const dividers = [',', ';', '&amp;', ' '];
+        if (dividers.some((v) => metaKeywords[0].includes(v))) {
+          console.log('***');
           // https://www.heise.de
           if (metaKeywords[0].includes(','))
             keywords = metaKeywords[0].split(',');
