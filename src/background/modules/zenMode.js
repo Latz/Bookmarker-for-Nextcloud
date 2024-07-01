@@ -23,6 +23,7 @@ export async function zenMode() {
   const response = await apiCall(endpoint, method, parameters);
   chrome.action.setBadgeText({ text: '' });
   notifyUser(response);
+  console.log('🚀 ~ zenMode ~ response:', response);
 }
 
 export function enableZenMode(menuItemId) {

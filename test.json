@@ -1,0 +1,31 @@
+{
+  "system": {
+    "htaccess.RewriteBase": "/",
+    "memcache.local": "\\OC\\Memcache\\APCu",
+    "apps_paths": [
+      { "path": "/var/www/html/apps", "url": "/apps", "writable": false },
+      {
+        "path": "/var/www/html/custom_apps",
+        "url": "/custom_apps",
+        "writable": true
+      }
+    ],
+    "upgrade.disable-web": true,
+    "instanceid": "***REMOVED SENSITIVE VALUE***",
+    "passwordsalt": "***REMOVED SENSITIVE VALUE***",
+    "secret": "***REMOVED SENSITIVE VALUE***",
+    "trusted_domains": ["pascal:9025"],
+    "datadirectory": "***REMOVED SENSITIVE VALUE***",
+    "dbtype": "pgsql",
+    "version": "29.0.3.4",
+    "overwrite.cli.url": "http://pascal:9025",
+    "dbname": "***REMOVED SENSITIVE VALUE***",
+    "dbhost": "***REMOVED SENSITIVE VALUE***",
+    "dbport": "",
+    "dbtableprefix": "oc_",
+    "dbuser": "***REMOVED SENSITIVE VALUE***",
+    "dbpassword": "***REMOVED SENSITIVE VALUE***",
+    "installed": true,
+    "app_install_overwrite": ["occweb"]
+  }
+}
