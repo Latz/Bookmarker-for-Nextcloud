@@ -138,6 +138,18 @@ export default async function getKeywords(content, document) {
         if (jsonld || jsonld !== null) {
           jsonld = JSON.parse(jsonld.innerText);
 
+          // https://harpers.org/archive/2024/07/art-and-artifice-donna-tartt/
+          jsonld['@graph'].forEach((element) => {
+            if (element['@type'] === 'Article') {
+              keywords = element['keywords'];
+              return true;
+            }
+          });
+          if (jsonld['@graph']['@type'] === 'Article') {
+            keywords = jsonld['@graph']['keywords'];
+            return true;
+          }
+
           // https://allthatsinteresting.com/
           if (jsonld.keywords) {
             if (jsonld.keywords.length > 0) {
@@ -259,10 +271,11 @@ export default async function getKeywords(content, document) {
       // xplGlobal.document.metadata -> https://ieeexplore.ieee.org/document/10243497
       const regex = /xplGlobal.document.metadata=(.*);/g;
       const match = regex.exec(content);
-      const xplJson = JSON.parse(match[1]);
-      if (!xplJson) return [];
-      keywords = [];
+      console.log('🚀 ~ match:', match);
+      if (!match) return [];
       try {
+        const xplJson = JSON.parse(match[1]);
+        keywords = [];
         xplJson.keywords.forEach((tags) => {
           let tagskwd = tags.kwd;
           tagskwd.forEach((tag) => {
