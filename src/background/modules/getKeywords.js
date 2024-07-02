@@ -287,6 +287,17 @@ export default async function getKeywords(content, document) {
         return [];
       }
     },
+    () => {
+      // -----------------------------------------------------------------------
+      // Brute force search for pattern /keywords: "keyword1, keyword2, keyword3"/
+      keywords = [];
+      const regex = /keywords:\s*"(.*)"/g;
+      const match = regex.exec(content);
+      if (match) {
+        keywords = match[1].split(',');
+      }
+      return keywords;
+    },
   ];
 
   // Loop through the various functions
