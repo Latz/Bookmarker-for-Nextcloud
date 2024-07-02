@@ -8,3 +8,5 @@ dist/
 package-lock.json
 /.idea
 .vscode/settings.json
+/test.html
+/test.json
