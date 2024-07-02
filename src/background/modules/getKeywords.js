@@ -260,6 +260,7 @@ export default async function getKeywords(content, document) {
       const regex = /xplGlobal.document.metadata=(.*);/g;
       const match = regex.exec(content);
       const xplJson = JSON.parse(match[1]);
+      if (!xplJson) return [];
       keywords = [];
       try {
         xplJson.keywords.forEach((tags) => {
