@@ -19,7 +19,8 @@ export async function zenMode() {
   if (zenKeywords !== undefined) {
     zenKeywords.forEach((keyword) => (tags += `&tags[]=${keyword}`));
   }
-  data.keywords.forEach((keyword) => (tags += `&tags[]=${keyword}`));
+  if (data.keywords.length > 0)
+    data.keywords.forEach((keyword) => (tags += `&tags[]=${keyword}`));
 
   const parameters = `title=${encodeURIComponent(data.title)}&url=${data.url}&description=${data.description}${tags}${folders}&page=-1`;
 
