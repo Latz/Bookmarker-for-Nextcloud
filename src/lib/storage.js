@@ -7,8 +7,8 @@ import { openDB, deleteDB } from 'idb';
 // Options caching for performance (reduce IndexedDB access)
 // -----------------------------------------------------------------------
 
+// Cache stores { value, timestamp } objects for per-option expiration
 const optionsCache = new Map();
-let optionsCacheTimestamp = 0;
 const CACHE_TTL = 30000; // 30 seconds TTL for options cache
 
 /**
@@ -17,7 +17,6 @@ const CACHE_TTL = 30000; // 30 seconds TTL for options cache
  */
 export function clearOptionsCache() {
   optionsCache.clear();
-  optionsCacheTimestamp = 0;
 }
 
 // -----------------------------------------------------------------------
@@ -151,28 +150,30 @@ export async function store_hash(hash) {
 // -----------------------------------------------------------------------
 /**
  * Retrieves the value of the specified option.
- * Cached for performance (30s TTL)
+ * Cached for performance (30s TTL per option)
  * @param {string} optionName - The name of the option.
  * @returns {any} - The value of the option.
  */
 export async function getOption(optionName) {
   // Check cache first
   const now = Date.now();
-  const isCacheValid = now - optionsCacheTimestamp < CACHE_TTL;
 
-  if (isCacheValid && optionsCache.has(optionName)) {
-    return optionsCache.get(optionName);
+  if (optionsCache.has(optionName)) {
+    const cached = optionsCache.get(optionName);
+    // Check if this specific option's cache is still valid
+    if (now - cached.timestamp < CACHE_TTL) {
+      return cached.value;
+    }
+    // Cache expired for this option, remove it
+    optionsCache.delete(optionName);
   }
 
-  // Cache miss - fetch from IndexedDB
+  // Cache miss or expired - fetch from IndexedDB
   let data = await load_data('options', optionName);
   if (data === undefined) data = false;
 
-  // Update cache
-  optionsCache.set(optionName, data);
-  if (!isCacheValid) {
-    optionsCacheTimestamp = now;
-  }
+  // Update cache with value and timestamp
+  optionsCache.set(optionName, { value: data, timestamp: now });
 
   return data;
 }
@@ -187,18 +188,23 @@ export async function getOptions(optionNames) {
   const now = Date.now();
   const result = {};
   const namesToFetch = [];
-  const isCacheValid = now - optionsCacheTimestamp < CACHE_TTL;
 
-  // Check cache first
+  // Check cache first (per-option expiration)
   for (const name of optionNames) {
-    if (isCacheValid && optionsCache.has(name)) {
-      result[name] = optionsCache.get(name);
-    } else {
-      namesToFetch.push(name);
+    if (optionsCache.has(name)) {
+      const cached = optionsCache.get(name);
+      // Check if this specific option's cache is still valid
+      if (now - cached.timestamp < CACHE_TTL) {
+        result[name] = cached.value;
+        continue;
+      }
+      // Cache expired for this option, will refetch
+      optionsCache.delete(name);
     }
+    namesToFetch.push(name);
   }
 
-  // Fetch missing options from IndexedDB (truly batched with parallel gets)
+  // Fetch missing/expired options from IndexedDB (truly batched with parallel gets)
   if (namesToFetch.length > 0) {
     const db = await openDB(database, dbVersion, {
       upgrade(db, dbVersion) {
@@ -212,18 +218,15 @@ export async function getOptions(optionNames) {
     );
     const results = await Promise.all(promises);
 
-    // Process results and update cache
+    // Process results and update cache with per-option timestamps
     namesToFetch.forEach((name, index) => {
       const data = results[index];
       const value = data !== undefined ? data.value : false;
       result[name] = value;
-      optionsCache.set(name, value);
+      optionsCache.set(name, { value, timestamp: now });
     });
 
     db.close();
-
-    // Update cache timestamp
-    optionsCacheTimestamp = now;
   }
 
   return result;
