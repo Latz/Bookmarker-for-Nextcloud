@@ -10,11 +10,16 @@ async function timeoutFetch(resource, options = {}) {
     networkTimeout = 10000;
   }
 
-  const { timeout = networkTimeout } = options;
+  const { timeout = networkTimeout, signal: externalSignal } = options;
   console.log('timeout', timeout);
 
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
+
+  // If external signal provided, abort internal controller when external aborts
+  if (externalSignal) {
+    externalSignal.addEventListener('abort', () => controller.abort());
+  }
 
   const response = await fetch(resource, {
     ...options,
@@ -28,9 +33,10 @@ async function timeoutFetch(resource, options = {}) {
  * @param {string} endpoint - The API endpoint to call.
  * @param {string} method - The HTTP method to use for the API call.
  * @param {object|string} data - The data to send with the API call.
+ * @param {AbortSignal} signal - Optional abort signal for request cancellation.
  * @returns {Promise<object>} - A promise that resolves to the API response.
  */
-export default async function apiCall(endpoint, method, data = '') {
+export default async function apiCall(endpoint, method, data = '', signal = null) {
   // Determine the server to send the API call to
   let server = '';
   if (typeof data === 'object' && 'host' in data) {
@@ -63,6 +69,11 @@ export default async function apiCall(endpoint, method, data = '') {
     credentials: 'omit',
     Accept: 'application/json',
   };
+
+  // Add abort signal if provided
+  if (signal) {
+    fetchInfo.signal = signal;
+  }
 
   // Construct the API call URL
   const url = `${server}${endpoint}?${data}`;

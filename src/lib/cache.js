@@ -2,9 +2,14 @@ import { openDB } from 'idb';
 import apiCall from './apiCall.js';
 import { preRenderFolders } from '../background/modules/getFolders.js';
 import { cacheRefreshNotification } from '../background/modules/notification.js';
+import { getOption } from './storage.js';
 
 const dbName = 'BookmarkerCache';
-const dbVersion = 2;
+const dbVersion = 3; // Incremented for bookmarkChecks store
+
+// Connection pool for IndexedDB to avoid repeated open/close
+let dbConnectionPool = null;
+let dbConnectionPromise = null;
 
 // ---------------------------------------------------------------------
 export async function cacheGet(type, forceServer = false) {
@@ -16,6 +21,7 @@ export async function cacheGet(type, forceServer = false) {
       try {
         db.createObjectStore('keywords', { keyPath: 'item' });
         db.createObjectStore('folders', { keyPath: 'item' });
+        db.createObjectStore('bookmarkChecks', { keyPath: 'item' });
       } catch (e) {
         console.log(e);
       }
@@ -91,4 +97,171 @@ function elementExpired(db, type, created, forceServer) {
     return true;
   }
   return false;
+}
+
+// ---------------------------------------------------------------------
+// IndexedDB Connection Pool
+// ---------------------------------------------------------------------
+
+/**
+ * Get or create a database connection (connection pooling)
+ * @returns {Promise<IDBDatabase>} Database connection
+ */
+async function getDBConnection() {
+  // If we already have a connection, return it
+  if (dbConnectionPool && !dbConnectionPool.objectStoreNames.contains) {
+    return dbConnectionPool;
+  }
+
+  // If a connection is being established, wait for it
+  if (dbConnectionPromise) {
+    return dbConnectionPromise;
+  }
+
+  // Create new connection
+  dbConnectionPromise = openDB(dbName, dbVersion, {
+    upgrade(db) {
+      try {
+        db.createObjectStore('keywords', { keyPath: 'item' });
+        db.createObjectStore('folders', { keyPath: 'item' });
+        db.createObjectStore('bookmarkChecks', { keyPath: 'item' });
+      } catch (e) {
+        console.log(e);
+      }
+    },
+  }).then((db) => {
+    dbConnectionPool = db;
+    dbConnectionPromise = null;
+    return db;
+  });
+
+  return dbConnectionPromise;
+}
+
+// ---------------------------------------------------------------------
+// Bookmark Check Caching Functions
+// ---------------------------------------------------------------------
+
+/**
+ * Convert URL to a safe cache key
+ * Uses fast hash for better performance
+ * @param {string} url - The URL (should be normalized already)
+ * @returns {string} Safe cache key
+ */
+function hashUrl(url) {
+  // Fast hash using simple string hash algorithm
+  let hash = 0;
+  for (let i = 0; i < url.length; i++) {
+    const char = url.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+
+  // Convert to base36 for compact string representation
+  return `url_${Math.abs(hash).toString(36)}_${url.length}`;
+}
+
+/**
+ * Cache a bookmark check result
+ * Uses connection pooling for better performance
+ * @param {string} url - The URL that was checked (should be normalized)
+ * @param {Object} result - The check result to cache
+ */
+export async function cacheBookmarkCheck(url, result) {
+  const cacheEnabled = await getOption('cbx_cacheBookmarkChecks');
+  if (!cacheEnabled) return;
+
+  try {
+    const db = await getDBConnection();
+    const cacheKey = hashUrl(url);
+
+    await db.put('bookmarkChecks', {
+      item: cacheKey,
+      url: url,
+      value: result,
+      timestamp: new Date().getTime(),
+    });
+
+    // Don't close - keep connection pooled
+  } catch (error) {
+    console.error('Failed to cache bookmark check:', error);
+  }
+}
+
+/**
+ * Get cached bookmark check result
+ * Uses connection pooling for better performance
+ * @param {string} url - The URL to look up (should be normalized)
+ * @returns {Object|null} Cached result or null if not found/expired
+ */
+export async function getCachedBookmarkCheck(url) {
+  const cacheEnabled = await getOption('cbx_cacheBookmarkChecks');
+  if (!cacheEnabled) return null;
+
+  try {
+    const db = await getDBConnection();
+    const cacheKey = hashUrl(url);
+    const cached = await db.get('bookmarkChecks', cacheKey);
+
+    // Don't close - keep connection pooled
+
+    if (!cached) return null;
+
+    // Check TTL (in minutes)
+    const ttl = (await getOption('input_bookmarkCacheTTL')) || 10;
+    const age = (new Date().getTime() - cached.timestamp) / 60000; // Convert to minutes
+
+    if (age > ttl) {
+      // Expired - delete and return null (async, don't wait)
+      invalidateBookmarkCache(url).catch(console.error);
+      return null;
+    }
+
+    return cached.value;
+  } catch (error) {
+    console.error('Failed to get cached bookmark check:', error);
+    return null;
+  }
+}
+
+/**
+ * Invalidate (delete) cached bookmark check for a URL
+ * Uses connection pooling for better performance
+ * @param {string} url - The URL to invalidate (should be normalized)
+ */
+export async function invalidateBookmarkCache(url) {
+  try {
+    const db = await getDBConnection();
+    const cacheKey = hashUrl(url);
+    await db.delete('bookmarkChecks', cacheKey);
+    // Don't close - keep connection pooled
+  } catch (error) {
+    console.error('Failed to invalidate bookmark cache:', error);
+  }
+}
+
+/**
+ * Clear all bookmark check cache
+ * Uses connection pooling for better performance
+ */
+export async function clearBookmarkCheckCache() {
+  try {
+    const db = await getDBConnection();
+    await db.clear('bookmarkChecks');
+    // Don't close - keep connection pooled
+  } catch (error) {
+    console.error('Failed to clear bookmark check cache:', error);
+  }
+}
+
+/**
+ * Close the database connection pool
+ * Call this when the extension is being unloaded
+ */
+export function closeDBConnection() {
+  if (dbConnectionPool) {
+    dbConnectionPool.close();
+    dbConnectionPool = null;
+  }
+  dbConnectionPromise = null;
 }
