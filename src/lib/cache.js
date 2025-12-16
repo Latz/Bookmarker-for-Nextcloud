@@ -108,9 +108,21 @@ function elementExpired(db, type, created, forceServer) {
  * @returns {Promise<IDBDatabase>} Database connection
  */
 async function getDBConnection() {
-  // If we already have a connection, return it
-  if (dbConnectionPool && !dbConnectionPool.objectStoreNames.contains) {
-    return dbConnectionPool;
+  // If we already have a connection, validate and return it
+  if (dbConnectionPool) {
+    try {
+      // Validate connection is still valid by checking for expected object stores
+      if (
+        dbConnectionPool.objectStoreNames &&
+        dbConnectionPool.objectStoreNames.contains('bookmarkChecks')
+      ) {
+        return dbConnectionPool;
+      }
+    } catch (e) {
+      // Connection is stale or invalid, reset it
+      console.warn('Stale IndexedDB connection detected, recreating:', e);
+      dbConnectionPool = null;
+    }
   }
 
   // If a connection is being established, wait for it

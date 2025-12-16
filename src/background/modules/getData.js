@@ -20,8 +20,11 @@ const DEBUG = false;
 // Request deduplication: prevent duplicate in-flight requests for the same URL
 const inflightChecks = new Map();
 
-// AbortController for canceling obsolete requests
-let currentAbortController = null;
+// AbortControllers per tab: prevent concurrent requests for the same tab
+const abortControllers = new Map();
+
+// Cleanup old abort controllers after timeout
+const ABORT_CONTROLLER_CLEANUP_MS = 60000; // 1 minute
 
 /**
  * Pre-flight URL validation
@@ -53,15 +56,6 @@ export default async function getData() {
   let content = '';
   let data = { ok: true };
 
-  // Cancel any previous in-flight request (user navigated to new page)
-  if (currentAbortController) {
-    currentAbortController.abort();
-    log(DEBUG, 'Cancelled previous request');
-  }
-
-  // Create new abort controller for this request
-  currentAbortController = new AbortController();
-
   // --- get active tab info first (fast operation)
   const activeTab = await chrome.tabs
     .query({ active: true, currentWindow: true })
@@ -69,6 +63,25 @@ export default async function getData() {
 
   data.url = activeTab.url;
   data.title = activeTab.title;
+
+  // Cancel any previous request for this specific tab
+  const tabId = activeTab.id;
+  if (abortControllers.has(tabId)) {
+    const previousController = abortControllers.get(tabId);
+    previousController.abort();
+    log(DEBUG, `Cancelled previous request for tab ${tabId}`);
+  }
+
+  // Create new abort controller for this tab's request
+  const abortController = new AbortController();
+  abortControllers.set(tabId, abortController);
+
+  // Schedule cleanup of this abort controller
+  setTimeout(() => {
+    if (abortControllers.get(tabId) === abortController) {
+      abortControllers.delete(tabId);
+    }
+  }, ABORT_CONTROLLER_CLEANUP_MS);
 
   // Pre-flight validation: check if URL is bookmarkable
   if (!isValidBookmarkableUrl(data.url)) {
@@ -97,7 +110,7 @@ export default async function getData() {
   const [description, keywords, checkBookmark, folders] = await Promise.all([
     Promise.resolve(getDescription(document)), // Synchronous, but wrapped for consistency
     getKeywords(content, document),
-    checkBookmark(data.url, data.title, currentAbortController.signal),
+    checkBookmark(data.url, data.title, abortController.signal),
     getFolders(),
   ]);
 
