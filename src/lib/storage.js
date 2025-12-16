@@ -198,7 +198,7 @@ export async function getOptions(optionNames) {
     }
   }
 
-  // Fetch missing options from IndexedDB (batched)
+  // Fetch missing options from IndexedDB (truly batched with parallel gets)
   if (namesToFetch.length > 0) {
     const db = await openDB(database, dbVersion, {
       upgrade(db, dbVersion) {
@@ -206,12 +206,19 @@ export async function getOptions(optionNames) {
       },
     });
 
-    for (const name of namesToFetch) {
-      const data = await db.get('options', name).catch(() => undefined);
+    // Fetch all options in parallel using Promise.all
+    const promises = namesToFetch.map((name) =>
+      db.get('options', name).catch(() => undefined),
+    );
+    const results = await Promise.all(promises);
+
+    // Process results and update cache
+    namesToFetch.forEach((name, index) => {
+      const data = results[index];
       const value = data !== undefined ? data.value : false;
       result[name] = value;
       optionsCache.set(name, value);
-    }
+    });
 
     db.close();
 
