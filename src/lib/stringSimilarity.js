@@ -145,8 +145,16 @@ function jaroWinklerSimilarity(s1, s2, prefixScale = 0.1) {
  * @param {boolean} options.trim - Trim whitespace (default: true)
  * @param {number} options.threshold - Optional threshold for early rejection (0-1)
  * @returns {number} Similarity score between 0 and 1
+ * @throws {TypeError} If str1 or str2 is not a string
  */
 export function calculateSimilarity(str1, str2, options = {}) {
+  // Input validation
+  if (typeof str1 !== 'string' || typeof str2 !== 'string') {
+    throw new TypeError(
+      `Both arguments must be strings. Received: str1=${typeof str1}, str2=${typeof str2}`,
+    );
+  }
+
   const { caseSensitive = false, trim = true, threshold = 0 } = options;
 
   let s1 = str1;
@@ -205,8 +213,10 @@ export function calculateSimilarity(str1, str2, options = {}) {
  * @param {number} threshold - Minimum similarity score (0-1)
  * @param {Object} options - Comparison options
  * @returns {boolean} True if strings are similar enough
+ * @throws {TypeError} If str1 or str2 is not a string
  */
 export function isSimilar(str1, str2, threshold = 0.75, options = {}) {
+  // Input validation delegated to calculateSimilarity
   return (
     calculateSimilarity(str1, str2, { ...options, threshold }) >= threshold
   );
@@ -220,12 +230,31 @@ export function isSimilar(str1, str2, threshold = 0.75, options = {}) {
  * @param {number} threshold - Minimum similarity score (0-1)
  * @param {Object} options - Comparison options
  * @returns {Object|null} Object with {value: string, score: number} or null if no match above threshold
+ * @throws {TypeError} If target is not a string or candidates is not an array
  */
-export function findMostSimilar(target, candidates, threshold = 0.75, options = {}) {
+export function findMostSimilar(
+  target,
+  candidates,
+  threshold = 0.75,
+  options = {},
+) {
+  // Input validation
+  if (typeof target !== 'string') {
+    throw new TypeError(`Target must be a string. Received: ${typeof target}`);
+  }
+  if (!Array.isArray(candidates)) {
+    throw new TypeError(
+      `Candidates must be an array. Received: ${typeof candidates}`,
+    );
+  }
+
   let bestMatch = null;
   let bestScore = threshold;
 
   for (const candidate of candidates) {
+    // Skip non-string candidates
+    if (typeof candidate !== 'string') continue;
+
     const score = calculateSimilarity(target, candidate, {
       ...options,
       threshold: bestScore, // Use current best as threshold for pre-filtering
@@ -251,6 +280,7 @@ export function findMostSimilar(target, candidates, threshold = 0.75, options = 
  * @param {number} threshold - Minimum similarity score (0-1)
  * @param {Object} options - Comparison options
  * @returns {Array<Object>} Array of matches above threshold with similarity scores
+ * @throws {TypeError} If target is not a string or candidates is not an array
  */
 export function batchSimilarityCheck(
   target,
@@ -258,12 +288,22 @@ export function batchSimilarityCheck(
   threshold = 0.75,
   options = {},
 ) {
+  // Input validation
+  if (typeof target !== 'string') {
+    throw new TypeError(`Target must be a string. Received: ${typeof target}`);
+  }
+  if (!Array.isArray(candidates)) {
+    throw new TypeError(
+      `Candidates must be an array. Received: ${typeof candidates}`,
+    );
+  }
+
   const matches = [];
   let bestScore = 0;
 
   for (const candidate of candidates) {
-    // Skip if candidate doesn't have a title
-    if (!candidate.title) continue;
+    // Skip if candidate doesn't have a title or title is not a string
+    if (!candidate.title || typeof candidate.title !== 'string') continue;
 
     // Use current best score for pre-filtering optimization
     const effectiveThreshold = Math.max(threshold, bestScore * 0.9);
