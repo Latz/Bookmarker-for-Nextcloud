@@ -18,7 +18,7 @@
       ></h1>
     </div>
 
-    <div id="container" class="z-10 pl-[80px] pr-[80px]">
+    <div id="container" class="container mx-auto z-10 px-4 md:px-8 lg:px-20 max-w-6xl">
       <div id="clickarea">
         <div
           id="tabs"
@@ -28,8 +28,7 @@
             id="tab_basic"
             class="tab-bordered tab-lg tab hover:bg-sky-400"
             i18n-data="basic"
-          ></a
-          >s
+          ></a>
           <a id="tab_zen" class="tab-bordered tab-lg tab" i18n-data="zen"></a>
           <a
             id="tab_advanced"
@@ -45,243 +44,555 @@
         <div id="content" class="p-2 text-lg">
           <!--- ---------------------------------------------------------------- -->
           <div id="content_tab_basic" class="hidden delay-100">
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_displayFolders"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label
-                for="cbx_displayFolders"
-                i18n-data="displayFolders"
-              ></label>
+            <!-- Loading Skeleton -->
+            <div class="skeleton-loader hidden space-y-3 mb-6">
+              <div class="skeleton h-4 w-full"></div>
+              <div class="skeleton h-4 w-3/4"></div>
+              <div class="skeleton h-4 w-1/2"></div>
             </div>
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_autoTags"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label i18n-data="autotags" for="cbx_autoTags"></label>
-            </div>
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_autoDescription"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label
-                i18n-data="autodescription"
-                for="cbx_autoDescription"
-              ></label>
-            </div>
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_successMessage"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label i18n-data="successnotification" for="cbx_successMessage">
-              </label>
+
+            <!-- Settings Card -->
+            <div class="card bg-base-200 shadow-md">
+              <div class="card-body space-y-4">
+                <h2 class="card-title text-xl">Basic Settings</h2>
+
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-4">
+                    <input
+                      type="checkbox"
+                      id="cbx_displayFolders"
+                      class="toggle toggle-info"
+                    />
+                    <div class="flex-1">
+                      <span class="label-text font-medium" i18n-data="displayFolders">Display Folders</span>
+                      <p class="text-xs text-base-content/60 mt-1">Show folder selection when saving bookmarks</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div class="divider my-2"></div>
+
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-4">
+                    <input
+                      type="checkbox"
+                      id="cbx_autoTags"
+                      class="toggle toggle-info"
+                    />
+                    <div class="flex-1">
+                      <span class="label-text font-medium" i18n-data="autotags">Auto-tags</span>
+                      <p class="text-xs text-base-content/60 mt-1">Automatically extract tags from page content</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div class="divider my-2"></div>
+
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-4">
+                    <input
+                      type="checkbox"
+                      id="cbx_autoDescription"
+                      class="toggle toggle-info"
+                    />
+                    <div class="flex-1">
+                      <span class="label-text font-medium" i18n-data="autodescription">Auto-description</span>
+                      <p class="text-xs text-base-content/60 mt-1">Automatically extract description from page meta tags</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div class="divider my-2"></div>
+
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-4">
+                    <input
+                      type="checkbox"
+                      id="cbx_successMessage"
+                      class="toggle toggle-info"
+                    />
+                    <div class="flex-1">
+                      <span class="label-text font-medium" i18n-data="successnotification">Success Notification</span>
+                      <p class="text-xs text-base-content/60 mt-1">Show notification when bookmark is saved successfully</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
           <!--- --------------------------------------------------------------- -->
           <div id="content_tab_zen" class="hidden delay-100">
-            <table class="">
-              <tbody>
-                <tr>
-                  <td class="p-1 align-middle">
-                    <span i18n-data="zenmode"></span>
-                  </td>
-                  <td><span id="activeInactive"></span></td>
-                </tr>
-                <tr>
-                  <td>
+            <!-- Loading Skeleton -->
+            <div class="skeleton-loader hidden space-y-3 mb-6">
+              <div class="skeleton h-4 w-full"></div>
+              <div class="skeleton h-4 w-3/4"></div>
+              <div class="skeleton h-4 w-1/2"></div>
+            </div>
+
+            <!-- Zen Mode Card -->
+            <div class="card bg-base-200 shadow-md">
+              <div class="card-body space-y-6">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 class="card-title text-xl" i18n-data="zenmode">Zen Mode</h2>
+                    <p class="text-xs text-base-content/60 mt-1">Quick-save bookmarks with predefined settings</p>
+                  </div>
+                  <span class="badge badge-lg badge-info font-semibold" id="activeInactive"></span>
+                </div>
+
+                <div class="divider my-0"></div>
+
+                <!-- Zen Notification -->
+                <div class="form-control">
+                  <label class="label cursor-pointer justify-start gap-4">
                     <input
                       type="checkbox"
                       id="cbx_zenDisplayNotification"
-                      class="toggle toggle-info toggle-xs"
+                      class="toggle toggle-info"
                     />
-                  </td>
-                  <td>
-                    <label
-                      for="cbx_zenDisplayNotification"
-                      i18n-data="zenDisplayNotification"
-                    ></label>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="mt-2 p-1 align-middle">
-                    <span i18n-data="zenkeywords"></span>
-                  </td>
-                  <td class="p-1 align-middle">
-                    <input
-                      type="text"
-                      class="input input-sm input-bordered input-info w-[350px]"
-                      id="input_zenKeywords"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td class="mt-2 p-1 align-top">Zen Folders</td>
-                  <td class="p-1 align-top">
-                    <select
-                      size="5"
-                      multiple="true"
-                      class="select select-bordered select-info w-full"
-                      id="zen_folders"
-                    >
-                      <option>Root</option>
-                    </select>
-                  </td>
-                </tr>
-                <tr></tr>
-              </tbody>
-            </table>
+                    <div class="flex-1">
+                      <span class="label-text font-medium" i18n-data="zenDisplayNotification">Show Notification</span>
+                      <p class="text-xs text-base-content/60 mt-1">Display notification when using zen mode</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div class="divider my-0"></div>
+
+                <!-- Zen Keywords -->
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium" i18n-data="zenkeywords">Zen Keywords</span>
+                  </label>
+                  <input
+                    type="text"
+                    class="input input-bordered input-info w-full"
+                    id="input_zenKeywords"
+                    placeholder="Add keywords..."
+                  />
+                  <label class="label">
+                    <span class="label-text-alt text-base-content/60">Keywords automatically applied when saving in zen mode</span>
+                  </label>
+                </div>
+
+                <!-- Zen Folders -->
+                <div class="form-control">
+                  <label class="label">
+                    <span class="label-text font-medium">Zen Folders</span>
+                  </label>
+                  <select
+                    size="5"
+                    multiple="true"
+                    class="select select-bordered select-info w-full h-32"
+                    id="zen_folders"
+                  >
+                    <option>Root</option>
+                  </select>
+                  <label class="label">
+                    <span class="label-text-alt text-base-content/60">Select folders where zen mode bookmarks will be saved</span>
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
           <!--- ---------------------------------------------------------------- -->
           <div id="content_tab_advanced" class="content hidden">
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_alreadyStored"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label i18n-data="alreadyStored" for="cbx_alreadyStored"></label>
+            <!-- Loading Skeleton -->
+            <div class="skeleton-loader hidden space-y-3 mb-6">
+              <div class="skeleton h-4 w-full"></div>
+              <div class="skeleton h-4 w-3/4"></div>
+              <div class="skeleton h-4 w-1/2"></div>
             </div>
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_showUrl"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label i18n-data="showUrl" for="cbx_showUrl">Show Url</label>
-            </div>
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_showDescription"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label
-                i18n-data="showDescription"
-                for="cbx_showDescription"
-              ></label>
-            </div>
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_showKeywords"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label i18n-data="showKeywords" for="cbx_showKeywords"></label>
-            </div>
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_extendedKeywords"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label
-                i18n-data="extendedKeywords"
-                for="cbx_extendedKeywords"
-              ></label
-              ><br />
-              <div class="flex flex-row">
-                <div i18n-data="searchDepth" class="pl-8"></div>
-                <div class="pl-2">
-                  <input
-                    type="range"
-                    min="1"
-                    max="6"
-                    value="3"
-                    class="range range-info range-xs"
-                    step="1"
-                    id="input_headings_slider"
-                  />
-                  <div
-                    id="heading_selectors"
-                    class="flex w-full justify-between px-2 text-xs"
-                  >
-                    <span class="heading_selector" id="1">1</span>
-                    <span class="heading_selector" id="2">2</span>
-                    <span class="heading_selector" id="3">3</span>
-                    <span class="heading_selector" id="4">4</span>
-                    <span class="heading_selector" id="5">5</span>
-                    <span class="heading_selector" id="6">6</span>
+
+            <div class="space-y-4">
+              <!-- Display Options Collapse -->
+              <div class="collapse collapse-arrow bg-base-200 shadow-md">
+                <input type="checkbox" checked />
+                <div class="collapse-title text-lg font-medium">
+                  📊 Display Options
+                </div>
+                <div class="collapse-content space-y-3">
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <input
+                        type="checkbox"
+                        id="cbx_alreadyStored"
+                        class="toggle toggle-info"
+                      />
+                      <div class="flex-1">
+                        <span class="label-text font-medium" i18n-data="alreadyStored">Already Stored Notification</span>
+                        <p class="text-xs text-base-content/60 mt-1">Show warning when bookmark already exists</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="divider my-1"></div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <input
+                        type="checkbox"
+                        id="cbx_showUrl"
+                        class="toggle toggle-info"
+                      />
+                      <div class="flex-1">
+                        <span class="label-text font-medium" i18n-data="showUrl">Show URL</span>
+                        <p class="text-xs text-base-content/60 mt-1">Display URL field in bookmark form</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="divider my-1"></div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <input
+                        type="checkbox"
+                        id="cbx_showDescription"
+                        class="toggle toggle-info"
+                      />
+                      <div class="flex-1">
+                        <span class="label-text font-medium" i18n-data="showDescription">Show Description</span>
+                        <p class="text-xs text-base-content/60 mt-1">Display description field in bookmark form</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="divider my-1"></div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <input
+                        type="checkbox"
+                        id="cbx_showKeywords"
+                        class="toggle toggle-info"
+                      />
+                      <div class="flex-1">
+                        <span class="label-text font-medium" i18n-data="showKeywords">Show Keywords</span>
+                        <p class="text-xs text-base-content/60 mt-1">Display keywords field in bookmark form</p>
+                      </div>
+                    </label>
                   </div>
                 </div>
               </div>
-              <div>
-                <table>
-                  <tr>
-                    <td i18n-data="networkTimeout"></td>
-                    <td class="pl-2">
-                      <input type="number" id="input_networkTimeout" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td></td>
-                    <td i18n-data="networkTimeoutNote" class="pl-2 text-xs">
-                      (defaults to 10 seconds if not set)
-                    </td>
-                  </tr>
-                </table>
+
+              <!-- Keywords & Content Extraction Collapse -->
+              <div class="collapse collapse-arrow bg-base-200 shadow-md">
+                <input type="checkbox" />
+                <div class="collapse-title text-lg font-medium">
+                  🔍 Keywords & Content Extraction
+                </div>
+                <div class="collapse-content space-y-4">
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <input
+                        type="checkbox"
+                        id="cbx_extendedKeywords"
+                        class="toggle toggle-info"
+                      />
+                      <div class="flex-1">
+                        <span class="label-text font-medium" i18n-data="extendedKeywords">Extended Keywords</span>
+                        <p class="text-xs text-base-content/60 mt-1">Extract keywords from page headings</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="form-control mt-4 ml-8">
+                    <label class="label">
+                      <span class="label-text text-sm" i18n-data="searchDepth">Search Depth (Heading Levels)</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="6"
+                      value="3"
+                      class="range range-info range-sm"
+                      step="1"
+                      id="input_headings_slider"
+                    />
+                    <div
+                      id="heading_selectors"
+                      class="flex w-full justify-between px-2 text-xs mt-2"
+                    >
+                      <span class="heading_selector cursor-pointer" id="1">H1</span>
+                      <span class="heading_selector cursor-pointer" id="2">H2</span>
+                      <span class="heading_selector cursor-pointer" id="3">H3</span>
+                      <span class="heading_selector cursor-pointer" id="4">H4</span>
+                      <span class="heading_selector cursor-pointer" id="5">H5</span>
+                      <span class="heading_selector cursor-pointer" id="6">H6</span>
+                    </div>
+                  </div>
+
+                  <div class="form-control mt-4">
+                    <label class="label">
+                      <span class="label-text font-medium" i18n-data="networkTimeout">Network Timeout (seconds)</span>
+                    </label>
+                    <input
+                      type="number"
+                      id="input_networkTimeout"
+                      class="input input-bordered input-info w-32"
+                      min="1"
+                      max="60"
+                    />
+                    <label class="label">
+                      <span class="label-text-alt text-base-content/60" i18n-data="networkTimeoutNote">Defaults to 10 seconds if not set</span>
+                    </label>
+                  </div>
+                </div>
               </div>
-              <br />
+
+              <!--- Duplicate Handling Section ------------------------------------- -->
+              <div class="collapse collapse-arrow bg-base-200 shadow-md">
+                <input type="checkbox" checked />
+                <div class="collapse-title text-lg font-medium">
+                  🔄 <span i18n-data="duplicateHandling">Duplicate Handling</span>
+                </div>
+                <div class="collapse-content space-y-4">
+                  <div class="form-control">
+                    <label class="label">
+                      <span class="label-text font-medium" i18n-data="duplicateStrategy">When duplicate found:</span>
+                    </label>
+                    <select
+                      id="select_duplicateStrategy"
+                      class="select select-bordered select-info w-full max-w-xs"
+                    >
+                      <option value="update_existing" i18n-data="updateExisting">
+                        Update existing bookmark
+                      </option>
+                      <option value="create_new" i18n-data="createNew">
+                        Always create new
+                      </option>
+                      <option value="skip_duplicate" i18n-data="skipDuplicate">
+                        Don't save (warning only)
+                      </option>
+                      <option value="merge_tags" i18n-data="mergeTags">
+                        Update and merge tags
+                      </option>
+                    </select>
+                    <label class="label">
+                      <span class="label-text-alt text-base-content/60">Choose what happens when saving an existing bookmark</span>
+                    </label>
+                  </div>
+
+                  <div class="divider my-2"></div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <input
+                        type="checkbox"
+                        id="cbx_fuzzyUrlMatch"
+                        class="toggle toggle-info"
+                      />
+                      <div class="flex-1">
+                        <span class="label-text font-medium" i18n-data="fuzzyUrlMatch">Fuzzy URL Match</span>
+                        <p class="text-xs text-base-content/60 mt-1">Normalize URLs to detect duplicates (ignores trailing slashes, www, etc.)</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="divider my-2"></div>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <input
+                        type="checkbox"
+                        id="cbx_cacheBookmarkChecks"
+                        class="toggle toggle-info"
+                      />
+                      <div class="flex-1">
+                        <span class="label-text font-medium" i18n-data="cacheBookmarkChecks">Cache Bookmark Checks</span>
+                        <p class="text-xs text-base-content/60 mt-1">Speed up duplicate detection by caching results</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="form-control mt-4">
+                    <label class="label">
+                      <span class="label-text font-medium" i18n-data="bookmarkCacheTTL">Bookmark Cache Lifetime (minutes)</span>
+                    </label>
+                    <input
+                      type="number"
+                      id="input_bookmarkCacheTTL"
+                      min="1"
+                      max="60"
+                      value="10"
+                      class="input input-bordered input-info w-32"
+                    />
+                    <label class="label">
+                      <span class="label-text-alt text-base-content/60">How long to cache bookmark duplicate checks</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!--- Title Similarity Section ---------------------------------------- -->
+              <div class="collapse collapse-arrow bg-base-200 shadow-md">
+                <input type="checkbox" />
+                <div class="collapse-title text-lg font-medium">
+                  📝 Title Similarity Detection
+                </div>
+                <div class="collapse-content space-y-4">
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <input
+                        type="checkbox"
+                        id="cbx_titleSimilarityCheck"
+                        class="toggle toggle-info"
+                      />
+                      <div class="flex-1">
+                        <span class="label-text font-medium" i18n-data="titleSimilarityCheck">Enable Title Similarity Check</span>
+                        <p class="text-xs text-base-content/60 mt-1">Detect duplicates based on similar titles, not just URLs</p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div class="form-control mt-4">
+                    <label class="label">
+                      <span class="label-text font-medium" i18n-data="titleSimilarityThreshold">Similarity Threshold</span>
+                    </label>
+                    <div class="flex items-center gap-4">
+                      <input
+                        type="range"
+                        id="input_titleSimilarityThreshold"
+                        min="50"
+                        max="100"
+                        value="75"
+                        step="5"
+                        class="range range-info flex-1"
+                      />
+                      <span id="titleSimilarityValue" class="badge badge-lg badge-info">75%</span>
+                    </div>
+                    <label class="label">
+                      <span class="label-text-alt text-base-content/60">Higher values require closer title matches</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <!--- ---------------------------------------------------------------- -->
             </div>
           </div>
           <!--- Development tab ------------------------------------------------ -->
           <!--- ---------------------------------------------------------------- -->
           <div id="content_tab_dev" class="hidden delay-100">
-            <button
-              id="btn_clear_all_data"
-              class="btn btn-info"
-              i18n-data="clearall"
-            ></button>
-
-            <button
-              id="btn_reset_options"
-              class="btn btn-info"
-              i18n-data="resetoptions"
-            ></button>
-
-            <button
-              id="btn_clear_cache"
-              class="btn btn-info"
-              i18n-data="clearcache"
-            ></button>
-
-            <button
-              id="btn_show_options"
-              class="btn btn-warning"
-              i18n-data="showoptions"
-            ></button>
-
-            <button
-              id="btn_show_cache"
-              class="btn btn-warning"
-              i18n-data="showcache"
-            ></button>
-
-            <div class="mt-[20px]">
-              Create old database:
-              <input type="number" id="input_dbVersion" class="ml-1 w-24" />
-              <button id="btn_create_db" class="btn btn-info btn-xs ml-1">
-                Create
-              </button>
+            <!-- Loading Skeleton -->
+            <div class="skeleton-loader hidden space-y-3 mb-6">
+              <div class="skeleton h-4 w-full"></div>
+              <div class="skeleton h-4 w-3/4"></div>
+              <div class="skeleton h-4 w-1/2"></div>
             </div>
 
-            <div class="mt-[20px]">
-              <input
-                type="checkbox"
-                id="cbx_reduceKeywords"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label
-                for="cbx_reduceKeywords"
-                i18n-data="reduceKeywords"
-              ></label>
+            <div class="space-y-6">
+              <!-- Danger Actions Card -->
+              <div class="card bg-error/10 border border-error/20 shadow-md">
+                <div class="card-body">
+                  <h2 class="card-title text-error">⚠️ Danger Zone</h2>
+                  <p class="text-sm text-base-content/70 mb-4">These actions cannot be undone. Use with caution.</p>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <button
+                      id="btn_clear_all_data"
+                      class="btn btn-error btn-outline"
+                      i18n-data="clearall"
+                    >
+                      🗑️ Clear All Data
+                    </button>
+
+                    <button
+                      id="btn_reset_options"
+                      class="btn btn-error btn-outline"
+                      i18n-data="resetoptions"
+                    >
+                      🔄 Reset Options
+                    </button>
+
+                    <button
+                      id="btn_clear_cache"
+                      class="btn btn-warning btn-outline"
+                      i18n-data="clearcache"
+                    >
+                      🧹 Clear Cache
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Debug Tools Card -->
+              <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                  <h2 class="card-title">🔧 Debug Tools</h2>
+                  <p class="text-sm text-base-content/70 mb-4">View internal data and statistics</p>
+
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <button
+                      id="btn_show_options"
+                      class="btn btn-info"
+                      i18n-data="showoptions"
+                    >
+                      📄 Show Options JSON
+                    </button>
+
+                    <button
+                      id="btn_show_cache"
+                      class="btn btn-info"
+                      i18n-data="showcache"
+                    >
+                      💾 Show Cache JSON
+                    </button>
+
+                    <button id="btn_cache_stats" class="btn btn-success">
+                      📊 Cache Statistics
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Database Tools Card -->
+              <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                  <h2 class="card-title">🗄️ Database Tools</h2>
+
+                  <div class="form-control">
+                    <label class="label">
+                      <span class="label-text font-medium">Create Old Database (Testing)</span>
+                    </label>
+                    <div class="join">
+                      <input
+                        type="number"
+                        id="input_dbVersion"
+                        class="input input-bordered join-item w-32"
+                        placeholder="Version"
+                      />
+                      <button id="btn_create_db" class="btn btn-info join-item">
+                        Create
+                      </button>
+                    </div>
+                    <label class="label">
+                      <span class="label-text-alt text-base-content/60">Create an old database version for migration testing</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Experimental Features Card -->
+              <div class="card bg-base-200 shadow-md">
+                <div class="card-body">
+                  <h2 class="card-title">🧪 Experimental Features</h2>
+
+                  <div class="form-control">
+                    <label class="label cursor-pointer justify-start gap-4">
+                      <input
+                        type="checkbox"
+                        id="cbx_reduceKeywords"
+                        class="toggle toggle-info"
+                      />
+                      <div class="flex-1">
+                        <span class="label-text font-medium" i18n-data="reduceKeywords">Reduce Keywords</span>
+                        <p class="text-xs text-base-content/60 mt-1">Experimental feature to reduce keyword list size</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
