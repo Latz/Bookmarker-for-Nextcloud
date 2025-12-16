@@ -4,6 +4,23 @@ const dbVersion = 2; // since v0.3
 import { openDB, deleteDB } from 'idb';
 
 // -----------------------------------------------------------------------
+// Options caching for performance (reduce IndexedDB access)
+// -----------------------------------------------------------------------
+
+const optionsCache = new Map();
+let optionsCacheTimestamp = 0;
+const CACHE_TTL = 30000; // 30 seconds TTL for options cache
+
+/**
+ * Clear the options cache
+ * Call this when options are updated
+ */
+export function clearOptionsCache() {
+  optionsCache.clear();
+  optionsCacheTimestamp = 0;
+}
+
+// -----------------------------------------------------------------------
 
 /**
  * Loads data from the specified store for the given items.
@@ -85,6 +102,11 @@ export async function store_data(storeName, ...items) {
     }
   }
   db.close();
+
+  // Clear cache if we're updating options
+  if (storeName === 'options') {
+    clearOptionsCache();
+  }
 }
 
 // --------------------------------------------------------------------------------
@@ -129,13 +151,75 @@ export async function store_hash(hash) {
 // -----------------------------------------------------------------------
 /**
  * Retrieves the value of the specified option.
+ * Cached for performance (30s TTL)
  * @param {string} optionName - The name of the option.
  * @returns {any} - The value of the option.
  */
 export async function getOption(optionName) {
+  // Check cache first
+  const now = Date.now();
+  const isCacheValid = now - optionsCacheTimestamp < CACHE_TTL;
+
+  if (isCacheValid && optionsCache.has(optionName)) {
+    return optionsCache.get(optionName);
+  }
+
+  // Cache miss - fetch from IndexedDB
   let data = await load_data('options', optionName);
   if (data === undefined) data = false;
+
+  // Update cache
+  optionsCache.set(optionName, data);
+  if (!isCacheValid) {
+    optionsCacheTimestamp = now;
+  }
+
   return data;
+}
+
+/**
+ * Get multiple options at once (batched)
+ * Much faster than individual getOption calls
+ * @param {Array<string>} optionNames - Array of option names to retrieve
+ * @returns {Promise<Object>} Object with key-value pairs
+ */
+export async function getOptions(optionNames) {
+  const now = Date.now();
+  const result = {};
+  const namesToFetch = [];
+  const isCacheValid = now - optionsCacheTimestamp < CACHE_TTL;
+
+  // Check cache first
+  for (const name of optionNames) {
+    if (isCacheValid && optionsCache.has(name)) {
+      result[name] = optionsCache.get(name);
+    } else {
+      namesToFetch.push(name);
+    }
+  }
+
+  // Fetch missing options from IndexedDB (batched)
+  if (namesToFetch.length > 0) {
+    const db = await openDB(database, dbVersion, {
+      upgrade(db, dbVersion) {
+        initDatabase(db, dbVersion);
+      },
+    });
+
+    for (const name of namesToFetch) {
+      const data = await db.get('options', name).catch(() => undefined);
+      const value = data !== undefined ? data.value : false;
+      result[name] = value;
+      optionsCache.set(name, value);
+    }
+
+    db.close();
+
+    // Update cache timestamp
+    optionsCacheTimestamp = now;
+  }
+
+  return result;
 }
 // ---------------------------------------------------------------------
 /**
@@ -233,6 +317,15 @@ export function initDefaults() {
   store_data('options', { cbx_reduceKeywords: true });
   store_data('options', { folderIDs: ['-1'] }); // Default to root folder
   store_data('options', { zenFolderIDs: ['-1'] }); // Default to root folder
+
+  // Enhanced duplicate checking options
+  store_data('options', { cbx_fuzzyUrlMatch: true }); // Normalize URLs to catch variants
+  store_data('options', { cbx_cacheBookmarkChecks: true }); // Cache bookmark duplicate checks
+  store_data('options', { input_bookmarkCacheTTL: 10 }); // Cache TTL in minutes
+  store_data('options', { select_duplicateStrategy: 'update_existing' }); // Default duplicate handling
+  store_data('options', { cbx_titleSimilarityCheck: false }); // Title similarity check (off by default)
+  store_data('options', { input_titleSimilarityThreshold: 75 }); // Title similarity threshold (0-100)
+  store_data('options', { input_titleCheckLimit: 20 }); // Limit bookmarks fetched for title check (performance)
 }
 
 // -----------------------------------------------------------------------
