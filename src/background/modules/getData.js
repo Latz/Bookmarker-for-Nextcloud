@@ -184,7 +184,37 @@ async function checkBookmark(url, title, signal = null) {
   // Request deduplication: if same URL is being checked, wait for that result
   if (inflightChecks.has(cacheKey)) {
     log(DEBUG, 'Request deduplication - waiting for in-flight check', url);
-    return inflightChecks.get(cacheKey);
+    const inflightPromise = inflightChecks.get(cacheKey);
+
+    // If this request's signal is already aborted, don't wait for inflight
+    if (signal && signal.aborted) {
+      throw new DOMException('Request aborted', 'AbortError');
+    }
+
+    // If this request has a signal, allow it to abort independently
+    if (signal) {
+      return new Promise((resolve, reject) => {
+        // Listen for abort on this request's signal
+        const abortHandler = () => {
+          reject(new DOMException('Request aborted', 'AbortError'));
+        };
+        signal.addEventListener('abort', abortHandler);
+
+        // Wait for the inflight promise
+        inflightPromise
+          .then((result) => {
+            signal.removeEventListener('abort', abortHandler);
+            resolve(result);
+          })
+          .catch((error) => {
+            signal.removeEventListener('abort', abortHandler);
+            reject(error);
+          });
+      });
+    }
+
+    // No signal on this request, just return the inflight promise
+    return inflightPromise;
   }
 
   // Cache miss - proceed with API calls

@@ -11,6 +11,10 @@ const dbVersion = 3; // Incremented for bookmarkChecks store
 let dbConnectionPool = null;
 let dbConnectionPromise = null;
 
+// Idle timeout for automatic connection cleanup
+let connectionIdleTimeout = null;
+const CONNECTION_IDLE_TIME = 5 * 60 * 1000; // 5 minutes
+
 // ---------------------------------------------------------------------
 export async function cacheGet(type, forceServer = false) {
   const db = await openDB(dbName, dbVersion, {
@@ -105,9 +109,16 @@ function elementExpired(db, type, created, forceServer) {
 
 /**
  * Get or create a database connection (connection pooling)
+ * Automatically closes connection after 5 minutes of inactivity
  * @returns {Promise<IDBDatabase>} Database connection
  */
 async function getDBConnection() {
+  // Reset idle timeout - connection is being used
+  clearTimeout(connectionIdleTimeout);
+  connectionIdleTimeout = setTimeout(() => {
+    closeDBConnection();
+  }, CONNECTION_IDLE_TIME);
+
   // If we already have a connection, validate and return it
   if (dbConnectionPool) {
     try {
@@ -271,9 +282,24 @@ export async function clearBookmarkCheckCache() {
  * Call this when the extension is being unloaded
  */
 export function closeDBConnection() {
+  // Clear any pending idle timeout
+  clearTimeout(connectionIdleTimeout);
+  connectionIdleTimeout = null;
+
   if (dbConnectionPool) {
     dbConnectionPool.close();
     dbConnectionPool = null;
   }
   dbConnectionPromise = null;
+}
+
+// ---------------------------------------------------------------------
+// Automatic cleanup on extension unload
+// ---------------------------------------------------------------------
+
+// Register cleanup handler for when extension is suspended/unloaded
+if (typeof chrome !== 'undefined' && chrome.runtime) {
+  chrome.runtime.onSuspend?.addListener(() => {
+    closeDBConnection();
+  });
 }
