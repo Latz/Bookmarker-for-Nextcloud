@@ -1,11 +1,8 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: ['./src/popup/**/*.{html,js}', './src/options/**/*.{html,js}'],
   theme: {
     extend: {},
   },
-  plugins: [require('daisyui')],
-  daisyui: {
-    themes: ['light', 'dark'],
-  },
+  // DaisyUI now configured via CSS @plugin directive
 };

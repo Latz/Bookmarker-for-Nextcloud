@@ -6,9 +6,9 @@
 }
 .tagify {
   --tags-disabled-bg: #f1f1f1;
-  --tags-border-color: #ddd;
-  --tags-hover-border-color: #ccc;
-  --tags-focus-border-color: #f63535;
+  --tags-border-color: rgb(53, 149, 246);
+  --tags-hover-border-color: rgb(53, 149, 246);
+  --tags-focus-border-color: rgb(53, 149, 246);
   --tag-border-radius: 3px;
   --tag-bg: #e5e5e5;
   --tag-hover: #d3e2e2;

@@ -1,8 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
+@config "../../tailwind.config.js";
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
 }
 
 .heading_selector {

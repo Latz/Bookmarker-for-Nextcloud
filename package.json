@@ -1,6 +1,7 @@
 {
   "name": "ganzneu",
   "version": "1.0.0",
+  "type": "module",
   "description": ":warning: This is an alpha version. Although it is fully functional, it may stop working without notice. :warning:",
   "directories": {
     "lib": "lib"
@@ -44,10 +45,10 @@
     "copy-manifest": "npx cpy ./manifest.json ./dist/",
     "copy": "npm run copy-imgs & npm run copy-locales & npm run copy-manifest",
     "build-js": "npx parcel build --no-optimize",
-    "buildoptionscss": "del-cli /src/options/options.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css --minify",
-    "buildpopupcss": "del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify",
+    "buildoptionscss": "del-cli /src/options/options.css & npx @tailwindcss/cli -i ./src/options/input.css -o ./src/options/options.css --minify",
+    "buildpopupcss": "del-cli /src/popup/css/popup.css & npx @tailwindcss/cli -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify",
     "build": "npm run copy & npm run buildoptionscss & npm run buildpopupcss & npx parcel build",
-    "build-dev": "npm run copy & del-cli /src/options/options.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css & del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build --no-optimize",
+    "build-dev": "npm run copy & del-cli /src/options/options.css & npx @tailwindcss/cli -i ./src/options/input.css -o ./src/options/options.css & del-cli /src/popup/css/popup.css & npx @tailwindcss/cli -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build --no-optimize",
     "deploy": "npm run copy & npm run buildoptionscss & npm run buildpopupcss & npx parcel build --no-source-maps"
   },
   "keywords": [
@@ -59,10 +60,11 @@
   "devDependencies": {
     "@parcel/packager-raw-url": "^2.11.0",
     "@parcel/transformer-webmanifest": "^2.11.0",
+    "@tailwindcss/cli": "^4.0.0",
     "@vitest/coverage-v8": "^1.0.4",
     "@vitest/ui": "^1.0.4",
     "autoprefixer": "^10.4.15",
-    "daisyui": "^4.6.2",
+    "daisyui": "^5.0.0",
     "del-cli": "^5.1.0",
     "fake-indexeddb": "^5.0.2",
     "jsdom": "^23.0.1",
@@ -71,7 +73,7 @@
     "postcss": "^8.4.29",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.13",
-    "tailwindcss": "^3.3.3",
+    "tailwindcss": "^4.0.0",
     "vitest": "^1.0.4"
   },
   "dependencies": {
