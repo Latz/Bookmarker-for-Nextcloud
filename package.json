@@ -47,6 +47,7 @@
     "buildoptionscss": "del-cli /src/options/options.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css --minify",
     "buildpopupcss": "del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify",
     "build": "npm run copy & npm run buildoptionscss & npm run buildpopupcss & npx parcel build",
+    "build-dev": "npm run copy & del-cli /src/options/options.css & npx tailwindcss build -i ./src/options/input.css -o ./src/options/options.css & del-cli /src/popup/css/popup.css & npx tailwindcss build -i ./src/popup/css/input.css -o ./src/popup/css/popup.css & npx parcel build --no-optimize",
     "deploy": "npm run copy & npm run buildoptionscss & npm run buildpopupcss & npx parcel build --no-source-maps"
   },
   "keywords": [
@@ -58,8 +59,8 @@
   "devDependencies": {
     "@parcel/packager-raw-url": "^2.11.0",
     "@parcel/transformer-webmanifest": "^2.11.0",
-    "@vitest/ui": "^1.0.4",
     "@vitest/coverage-v8": "^1.0.4",
+    "@vitest/ui": "^1.0.4",
     "autoprefixer": "^10.4.15",
     "daisyui": "^4.6.2",
     "del-cli": "^5.1.0",

@@ -107,7 +107,7 @@ export default async function getData() {
   const { document } = parseHTML(content);
 
   // --- Run parallel operations for speed
-  const [description, keywords, checkBookmark, folders] = await Promise.all([
+  const [description, keywords, bookmarkCheckResult, folders] = await Promise.all([
     Promise.resolve(getDescription(document)), // Synchronous, but wrapped for consistency
     getKeywords(content, document),
     checkBookmark(data.url, data.title, abortController.signal),
@@ -117,7 +117,7 @@ export default async function getData() {
   data.description = description;
   data.keywords = keywords;
   log(DEBUG, ':: ~ getData ~ data.keywords:', data.keywords);
-  data.checkBookmark = checkBookmark;
+  data.checkBookmark = bookmarkCheckResult;
   data.folders = folders;
 
   log(DEBUG, 'data', data);

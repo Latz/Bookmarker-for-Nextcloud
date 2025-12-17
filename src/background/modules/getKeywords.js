@@ -136,16 +136,23 @@ export default async function getKeywords(content, document) {
       );
       jsonlds.every((jsonld) => {
         if (jsonld || jsonld !== null) {
-          jsonld = JSON.parse(jsonld.innerText);
+          try {
+            jsonld = JSON.parse(jsonld.innerText);
+          } catch (e) {
+            // Skip invalid or empty JSON
+            return true; // Continue to next item
+          }
 
           // https://harpers.org/archive/2024/07/art-and-artifice-donna-tartt/
-          jsonld['@graph'].forEach((element) => {
-            if (element['@type'] === 'Article') {
-              keywords = element['keywords'];
-              return true;
-            }
-          });
-          if (jsonld['@graph']['@type'] === 'Article') {
+          if (jsonld['@graph'] && Array.isArray(jsonld['@graph'])) {
+            jsonld['@graph'].forEach((element) => {
+              if (element['@type'] === 'Article') {
+                keywords = element['keywords'];
+                return true;
+              }
+            });
+          }
+          if (jsonld['@graph'] && jsonld['@graph']['@type'] === 'Article') {
             keywords = jsonld['@graph']['keywords'];
             return true;
           }
