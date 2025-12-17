@@ -69,8 +69,10 @@ async function saveBookmark(data, folderIDs, bookmarkID) {
 // ------------------------------------------------------------------------------------------------
 
 async function init() {
-  getBrowserTheme().then((browserTheme) => {
-    chrome.action.setIcon({
+  // Set icon based on browser theme with proper error handling
+  try {
+    const browserTheme = await getBrowserTheme();
+    await chrome.action.setIcon({
       path: {
         64: `/images/icon-64x64-${browserTheme}.png`,
         256: `/images/icon-256x256-${browserTheme}.png`,
@@ -78,7 +80,10 @@ async function init() {
         512: `/images/icon-512x512-${browserTheme}.png`,
       },
     });
-  });
+  } catch (error) {
+    console.error('Failed to set extension icon:', error);
+    // Icon will remain as manifest default (light)
+  }
 
   chrome.contextMenus.removeAll();
   const zenModeEnabled = await getOption('cbx_enableZen');
