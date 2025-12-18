@@ -2,7 +2,34 @@
 
 import apiCall from '../lib/apiCall.js';
 import { store_data } from '../lib/storage.js';
-import { getReasonPhrase } from 'http-status-codes';
+
+// Simple HTTP status code to reason phrase mapping (replaces http-status-codes dependency)
+const httpStatusReasons = {
+  200: 'OK',
+  201: 'Created',
+  202: 'Accepted',
+  204: 'No Content',
+  301: 'Moved Permanently',
+  302: 'Found',
+  304: 'Not Modified',
+  400: 'Bad Request',
+  401: 'Unauthorized',
+  403: 'Forbidden',
+  404: 'Not Found',
+  405: 'Method Not Allowed',
+  408: 'Request Timeout',
+  409: 'Conflict',
+  422: 'Unprocessable Entity',
+  429: 'Too Many Requests',
+  500: 'Internal Server Error',
+  502: 'Bad Gateway',
+  503: 'Service Unavailable',
+  504: 'Gateway Timeout'
+};
+
+function getReasonPhrase(statusCode) {
+  return httpStatusReasons[statusCode] || 'Unknown Status';
+}
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     document.getElementById('msg').innerText = '';

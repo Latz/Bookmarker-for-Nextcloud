@@ -1,7 +1,6 @@
 import getDescription from './getDescription.js';
 import getKeywords from './getKeywords.js';
 import { getFolders } from './getFolders.js';
-import { parseHTML } from 'linkedom';
 import apiCall from '../../lib/apiCall.js';
 import { getOption, getOptions } from '../../lib/storage.js';
 import log from '../../lib/log.js';
@@ -14,6 +13,7 @@ import {
   calculateSimilarity,
   batchSimilarityCheck,
 } from '../../lib/stringSimilarity.js';
+import { parseHTMLWithOffscreen } from './getBrowserTheme.js';
 
 const DEBUG = false;
 
@@ -104,12 +104,17 @@ export default async function getData() {
     return data;
   }
 
-  const { document } = parseHTML(content);
+  // Use offscreen document to parse HTML (DOMParser not available in service worker)
+  const parsedData = await parseHTMLWithOffscreen(content);
+
+  // Create a mock document object that provides the same interface as a real DOM document
+  // This allows getKeywords and getDescription to work without modification
+  const mockDoc = createMockDocument(parsedData);
 
   // --- Run parallel operations for speed
   const [description, keywords, bookmarkCheckResult, folders] = await Promise.all([
-    Promise.resolve(getDescription(document)), // Synchronous, but wrapped for consistency
-    getKeywords(content, document),
+    Promise.resolve(getDescription(mockDoc)), // Synchronous, but wrapped for consistency
+    getKeywords(content, mockDoc),
     checkBookmark(data.url, data.title, abortController.signal),
     getFolders(),
   ]);
@@ -389,4 +394,89 @@ function mergeMatches(urlMatches, titleMatches) {
   });
 
   return merged;
+}
+
+/**
+ * Creates a mock document object that provides the same interface as a real DOM document
+ * This allows getKeywords and getDescription to work without modification
+ * @param {Object} parsedData - The parsed data from offscreen document
+ * @returns {Object} Mock document object with DOM-like methods
+ */
+function createMockDocument(parsedData) {
+  const mockDoc = {
+    // querySelectorAll implementation - handles both simple and complex selectors
+    querySelectorAll: function(selector) {
+      // Handle specific selectors used in getKeywords.js
+      if (selector === 'a[rel=tag]') {
+        return parsedData.aRelTag.map(text => ({ textContent: text }));
+      }
+      if (selector === 'a[rel=category]') {
+        return parsedData.aRelCategory.map(text => ({ text: text, textContent: text }));
+      }
+      if (selector === 'script[type="application/ld+json"]') {
+        return parsedData.jsonLdScripts.map(text => ({ innerText: text }));
+      }
+      if (selector === 'script') {
+        return parsedData.scripts.map(text => ({ text: text }));
+      }
+      if (selector === 'a[data-ga-click="Topic, repository page"]') {
+        return parsedData.githubTopics.map(text => ({ textContent: text, trim: () => text.trim() }));
+      }
+      // For headlines
+      if (selector.startsWith('h') && selector.length === 2) {
+        const headlines = parsedData.headlines[selector] || [];
+        return headlines.map(text => ({
+          textContent: text,
+          innerText: text,
+          split: (regex) => text.split(regex)
+        }));
+      }
+
+      // Handle meta tag selectors used by getMeta.js
+      // Format examples: [property="og:description" i], [name="description"], [name="description" i]
+      if (selector.includes('[') && selector.includes(']')) {
+        // Extract attribute selector - handle both quoted and unquoted values
+        // Match patterns like: [name="description"], [property="og:description" i], [name=description]
+        const attrMatch = selector.match(/\[([^\]=]+)=(?:"([^"]+)"|([^\s\]]+))(\s+i)?\]/);
+        if (attrMatch) {
+          const attrName = attrMatch[1];
+          const attrValue = attrMatch[2] || attrMatch[3]; // Either quoted or unquoted
+          const isCaseInsensitive = !!attrMatch[4]; // Has " i" suffix
+
+          const filtered = parsedData.metaTags.filter(meta => {
+            const actualValue = meta[attrName];
+            if (!actualValue || !attrValue) return false;
+
+            if (isCaseInsensitive) {
+              return actualValue.toLowerCase() === attrValue.toLowerCase();
+            }
+            return actualValue === attrValue;
+          });
+
+          return filtered.map(meta => ({
+            getAttribute: (attr) => meta[attr],
+            content: meta.content
+          }));
+        }
+      }
+
+      return [];
+    },
+
+    // getElementById implementation
+    getElementById: function(id) {
+      if (id === '__NEXT_DATA__') {
+        return parsedData.nextData ? { innerText: parsedData.nextData, textContent: parsedData.nextData } : null;
+      }
+      return null;
+    },
+
+    // querySelector implementation (for single element)
+    querySelector: function(selector) {
+      const results = this.querySelectorAll(selector);
+      return results.length > 0 ? results[0] : null;
+    }
+  };
+
+  return mockDoc;
 }

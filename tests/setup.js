@@ -30,12 +30,38 @@ global.chrome = {
     onSuspend: {
       addListener: vi.fn(),
     },
+    getContexts: vi.fn(),
+    sendMessage: vi.fn(),
+    getURL: vi.fn((path) => `chrome-extension://mock-id/${path}`),
+  },
+  offscreen: {
+    createDocument: vi.fn(),
+    closeDocument: vi.fn(),
   },
   storage: {
     local: {
       get: vi.fn().mockResolvedValue({}),
       set: vi.fn().mockResolvedValue(undefined),
     },
+  },
+  contextMenus: {
+    removeAll: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    onClicked: {
+      addListener: vi.fn(),
+    },
+  },
+  action: {
+    setBadgeText: vi.fn(),
+    setIcon: vi.fn(),
+  },
+  scripting: {
+    executeScript: vi.fn().mockResolvedValue([
+      {
+        result: '<html><body>Test content</body></html>',
+      },
+    ]),
   },
 };
 

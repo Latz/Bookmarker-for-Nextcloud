@@ -7,7 +7,7 @@
   "version": "0.30.1",
   "action": {
     "default_title": "Bookmarker for Nextcloud",
-    "default_popup": "popup/popup.html"
+    "default_popup": "src/popup/popup.html"
   },
   "default_locale": "en",
   "icons": {
@@ -17,10 +17,10 @@
     "512": "images/icon-512x512-light.png"
   },
   "background": {
-    "service_worker": "background/background.js",
+    "service_worker": "src/background/background.js",
     "type": "module"
   },
-  "options_page": "options/options.html",
+  "options_page": "src/options/options.html",
   "permissions": [
     "contextMenus",
     "tabs",

@@ -3,7 +3,7 @@ src/.scannerwork/
 src/sonarqube.bat
 sonar-project.properties
 node_modules/
-.parcel-cache/
+.vite/
 dist/
 package-lock.json
 /.idea
