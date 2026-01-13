@@ -10,3 +10,8 @@ package-lock.json
 .vscode/settings.json
 /test.html
 /test.json
+/webstore
+/.vscode
+/.claude
+/.claude-dev-helper
+/x.html
