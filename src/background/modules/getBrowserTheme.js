@@ -110,7 +110,10 @@ async function detectTheme() {
       console.warn('Unexpected theme response:', isLight);
       return 'light';
     }
-    return isLight ? 'light' : 'dark';
+    // Return the icon theme that contrasts with the browser theme:
+    // - If browser is light, use dark icon (for visibility)
+    // - If browser is dark, use light icon (for visibility)
+    return isLight ? 'dark' : 'light';
   } catch (error) {
     console.error('Failed to detect browser theme:', error);
     // Fallback to light theme on error
