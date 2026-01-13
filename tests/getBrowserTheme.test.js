@@ -185,7 +185,7 @@ describe('getBrowserTheme module', () => {
 
       await expect(parseHTMLWithOffscreen('<html></html>'))
         .rejects.toThrow('HTML parsing timeout');
-    });
+    }, 15000);
 
     it('should reuse existing offscreen document', async () => {
       chrome.runtime.getContexts.mockResolvedValue([
@@ -328,6 +328,10 @@ describe('getBrowserTheme module', () => {
 });
 
 describe('Integration tests', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('should work end-to-end for theme detection and HTML parsing', async () => {
     // Setup for theme detection
     chrome.runtime.getContexts.mockResolvedValue([]);
@@ -356,6 +360,8 @@ describe('Integration tests', () => {
     expect(parsed.aRelTag).toEqual(['tag1']);
 
     // Verify document was created and closed appropriately
+    // Note: Each function creates its own document because the mock always returns []
+    // for getContexts, so it doesn't detect the existing document
     expect(chrome.offscreen.createDocument).toHaveBeenCalledTimes(2);
     expect(chrome.offscreen.closeDocument).toHaveBeenCalledTimes(2);
   });

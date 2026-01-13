@@ -1,7 +1,7 @@
-import { load_data } from '../../lib/storage';
-import getData from './getData';
-import apiCall from '../../lib/apiCall';
-import { notifyUser } from './notification';
+import { load_data } from '../../lib/storage.js';
+import getData from './getData.js';
+import apiCall from '../../lib/apiCall.js';
+import { notifyUser } from './notification.js';
 
 export async function zenMode() {
   const data = await getData();

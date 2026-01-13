@@ -105,7 +105,15 @@ export default async function getData() {
   }
 
   // Use offscreen document to parse HTML (DOMParser not available in service worker)
-  const parsedData = await parseHTMLWithOffscreen(content);
+  let parsedData;
+  try {
+    parsedData = await parseHTMLWithOffscreen(content);
+  } catch (error) {
+    return {
+      ok: false,
+      error: `Failed to parse page content: ${error.message}`,
+    };
+  }
 
   // Create a mock document object that provides the same interface as a real DOM document
   // This allows getKeywords and getDescription to work without modification

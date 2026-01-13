@@ -328,6 +328,10 @@ export function initDefaults() {
   store_data('options', { folderIDs: ['-1'] }); // Default to root folder
   store_data('options', { zenFolderIDs: ['-1'] }); // Default to root folder
 
+  // Zen mode options
+  store_data('options', { cbx_enableZen: false }); // Zen mode disabled by default
+  store_data('options', { cbx_zenDisplayNotification: true }); // Show notifications in zen mode by default
+
   // Enhanced duplicate checking options
   store_data('options', { cbx_fuzzyUrlMatch: true }); // Normalize URLs to catch variants
   store_data('options', { cbx_cacheBookmarkChecks: true }); // Cache bookmark duplicate checks

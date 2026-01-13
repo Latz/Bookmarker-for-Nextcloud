@@ -3,6 +3,28 @@
   --tagify-dd-color-primary: rgb(53, 149, 246);
   --tagify-dd-bg-color: white;
   --tagify-dd-item-pad: 0.3em 0.5em;
+  --tagify-dd-text-color: black;
+}
+
+/* Light mode (default) */
+:root,
+[data-theme="light"] {
+  --tagify-dd-bg-color: white;
+  --tagify-dd-text-color: black;
+}
+
+/* Dark mode - system preference */
+@media (prefers-color-scheme:dark) {
+  :root:not([data-theme]) {
+    --tagify-dd-bg-color: oklch(25.33% .016 252.42);
+    --tagify-dd-text-color: oklch(97.807% .029 256.847);
+  }
+}
+
+/* Dark mode - explicit data-theme attribute */
+:root[data-theme="dark"] {
+  --tagify-dd-bg-color: oklch(25.33% .016 252.42);
+  --tagify-dd-text-color: oklch(97.807% .029 256.847);
 }
 .tagify {
   --tags-disabled-bg: #f1f1f1;
@@ -484,6 +506,7 @@
   overflow: auto;
   overflow-x: hidden;
   background: var(--tagify-dd-bg-color);
+  color: var(--tagify-dd-text-color);
   border: 1px solid;
   border-color: var(--tagify-dd-color-primary);
   border-bottom-width: 1.5px;

@@ -14,6 +14,7 @@ import { zenMode, enableZenMode } from './modules/zenMode.js';
 const DEBUG = false;
 // -----------------------------------------------------------------------------------------------
 // Initialize extension
+console.log('init background');
 init();
 
 // ------------------------------------------------------------------------------------------------
@@ -70,6 +71,7 @@ async function saveBookmark(data, folderIDs, bookmarkID) {
 
 async function init() {
   // Set icon based on browser theme with proper error handling
+  // Fallback to light theme if detection fails
   try {
     const browserTheme = await getBrowserTheme();
     await chrome.action.setIcon({
@@ -81,7 +83,7 @@ async function init() {
       },
     });
   } catch (error) {
-    console.error('Failed to set extension icon:', error);
+    console.error('Failed to detect browser theme, using default:', error);
     // Icon will remain as manifest default (light)
   }
 

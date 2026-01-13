@@ -143,7 +143,7 @@ describe('Offscreen Document HTML Parsing', () => {
 
       // Should clean up on timeout
       expect(chrome.offscreen.closeDocument).toHaveBeenCalled();
-    });
+    }, 15000);
 
     it('should handle error responses from offscreen document', async () => {
       chrome.runtime.getContexts.mockResolvedValue([]);

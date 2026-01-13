@@ -46,7 +46,12 @@ async function ensureOffscreenDocument() {
  */
 async function closeOffscreenDocument(wasCreated) {
   if (wasCreated) {
-    await chrome.offscreen.closeDocument();
+    try {
+      await chrome.offscreen.closeDocument();
+    } catch (error) {
+      // Ignore errors when closing offscreen document (it may already be closed)
+      console.debug('Error closing offscreen document:', error.message);
+    }
   }
 }
 
@@ -98,6 +103,11 @@ async function detectTheme() {
 
     await closeOffscreenDocument(wasCreated);
 
+    // Validate response - default to light on unexpected results
+    if (typeof isLight !== 'boolean') {
+      console.warn('Unexpected theme response:', isLight);
+      return 'light';
+    }
     return isLight ? 'light' : 'dark';
   } catch (error) {
     console.error('Failed to detect browser theme:', error);
@@ -142,6 +152,11 @@ export async function parseHTMLWithOffscreen(htmlContent) {
     ]);
 
     await closeOffscreenDocument(wasCreated);
+
+    // Validate result structure
+    if (!result || typeof result !== 'object') {
+      throw new Error('Invalid response from offscreen document');
+    }
 
     if (result.error) {
       throw new Error(result.error);
