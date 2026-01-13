@@ -16,20 +16,44 @@ async function ensureOffscreenDocument() {
   }
 
   offscreenDocumentPromise = (async () => {
+    // Check if offscreen document already exists using hasDocument (more reliable)
+    try {
+      const hasDocument = await chrome.offscreen.hasDocument();
+      if (hasDocument) {
+        return; // Document already exists
+      }
+    } catch (error) {
+      // hasDocument might not be available, fall through to getContexts
+    }
+
+    // Fallback to checking via getContexts
+    try {
+      const existingContexts = await chrome.runtime.getContexts({
+        contextTypes: ['OFFSCREEN_DOCUMENT'],
+      });
+
+      if (existingContexts.length > 0) {
+        return; // Document already exists
+      }
+    } catch (error) {
+      // getContexts might fail, continue to creation
+    }
+
+    // Create the offscreen document
+    // Use the correct path that Vite will bundle
     const offscreenPath = 'src/background/modules/offscreen/offscreen.html';
 
-    // Check if offscreen document already exists
-    const existingContexts = await chrome.runtime.getContexts({
-      contextTypes: ['OFFSCREEN_DOCUMENT'],
-    });
-
-    // Create only if it doesn't exist
-    if (existingContexts.length === 0) {
+    try {
       await chrome.offscreen.createDocument({
         url: chrome.runtime.getURL(offscreenPath),
         reasons: ['MATCH_MEDIA', 'DOM_PARSER'],
         justification: 'matchmedia request and HTML parsing',
       });
+    } catch (error) {
+      // If creation fails because document already exists, ignore
+      if (!error.message.includes('already exists')) {
+        throw error;
+      }
     }
   })();
 
@@ -37,21 +61,6 @@ async function ensureOffscreenDocument() {
     await offscreenDocumentPromise;
   } finally {
     offscreenDocumentPromise = null;
-  }
-}
-
-/**
- * Closes the offscreen document if it was created by this session
- * @param {boolean} wasCreated - Whether this session created the document
- */
-async function closeOffscreenDocument(wasCreated) {
-  if (wasCreated) {
-    try {
-      await chrome.offscreen.closeDocument();
-    } catch (error) {
-      // Ignore errors when closing offscreen document (it may already be closed)
-      console.debug('Error closing offscreen document:', error.message);
-    }
   }
 }
 
@@ -79,16 +88,11 @@ export default async function getBrowserTheme() {
 }
 
 async function detectTheme() {
-  let wasCreated = false;
-
   try {
-    // Check if offscreen document already exists
-    const existingContexts = await chrome.runtime.getContexts({
-      contextTypes: ['OFFSCREEN_DOCUMENT'],
-    });
-
-    wasCreated = existingContexts.length === 0;
     await ensureOffscreenDocument();
+
+    // Small delay to ensure offscreen document is fully ready
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Send message with timeout protection (5 seconds)
     const isLight = await Promise.race([
@@ -101,8 +105,6 @@ async function detectTheme() {
       ),
     ]);
 
-    await closeOffscreenDocument(wasCreated);
-
     // Validate response - default to light on unexpected results
     if (typeof isLight !== 'boolean') {
       console.warn('Unexpected theme response:', isLight);
@@ -111,12 +113,6 @@ async function detectTheme() {
     return isLight ? 'light' : 'dark';
   } catch (error) {
     console.error('Failed to detect browser theme:', error);
-    // Try to clean up on error
-    try {
-      await closeOffscreenDocument(wasCreated);
-    } catch (cleanupError) {
-      // Ignore cleanup errors
-    }
     // Fallback to light theme on error
     return 'light';
   }
@@ -128,16 +124,25 @@ async function detectTheme() {
  * @returns {Promise<Object>} Parsed document data for getKeywords and getDescription
  */
 export async function parseHTMLWithOffscreen(htmlContent) {
-  let wasCreated = false;
-
   try {
     // Check if offscreen document already exists
-    const existingContexts = await chrome.runtime.getContexts({
-      contextTypes: ['OFFSCREEN_DOCUMENT'],
-    });
+    try {
+      const hasDocument = await chrome.offscreen.hasDocument();
+      if (!hasDocument) {
+        await ensureOffscreenDocument();
+      }
+    } catch (error) {
+      // Fallback to getContexts
+      const existingContexts = await chrome.runtime.getContexts({
+        contextTypes: ['OFFSCREEN_DOCUMENT'],
+      });
+      if (existingContexts.length === 0) {
+        await ensureOffscreenDocument();
+      }
+    }
 
-    wasCreated = existingContexts.length === 0;
-    await ensureOffscreenDocument();
+    // Small delay to ensure offscreen document is fully ready
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     // Send message with timeout protection (10 seconds for parsing)
     const result = await Promise.race([
@@ -151,8 +156,6 @@ export async function parseHTMLWithOffscreen(htmlContent) {
       ),
     ]);
 
-    await closeOffscreenDocument(wasCreated);
-
     // Validate result structure
     if (!result || typeof result !== 'object') {
       throw new Error('Invalid response from offscreen document');
@@ -165,12 +168,6 @@ export async function parseHTMLWithOffscreen(htmlContent) {
     return result;
   } catch (error) {
     console.error('Failed to parse HTML with offscreen:', error);
-    // Try to clean up on error
-    try {
-      await closeOffscreenDocument(wasCreated);
-    } catch (cleanupError) {
-      // Ignore cleanup errors
-    }
     throw error;
   }
 }
