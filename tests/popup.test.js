@@ -63,8 +63,8 @@ describe('popup.js', () => {
 
     // Create mock DOM elements
     mockElements = {
-      form: {
-        id: 'form',
+      bookmarkForm: {
+        id: 'bookmarkForm',
         innerHTML: '',
         setAttribute: vi.fn(),
         appendChild: vi.fn(),
@@ -140,14 +140,14 @@ describe('popup.js', () => {
       expect(load_data).toHaveBeenCalledWith('credentials', 'appPassword');
 
       // Verify form was modified
-      expect(mockElements.form.setAttribute).toHaveBeenCalledWith(
+      expect(mockElements.bookmarkForm.setAttribute).toHaveBeenCalledWith(
         'class',
         'flex justify-center w-full'
       );
 
       // Verify button was created and appended
       expect(mockDocument.createElement).toHaveBeenCalledWith('button');
-      expect(mockElements.form.appendChild).toHaveBeenCalled();
+      expect(mockElements.bookmarkForm.appendChild).toHaveBeenCalled();
     });
 
     it('should initialize zen mode when credentials exist and zen mode is enabled', async () => {
@@ -284,10 +284,10 @@ describe('popup.js', () => {
 
       // Verify button was created with correct ID
       expect(mockDocument.createElement).toHaveBeenCalledWith('button');
-      expect(mockElements.form.appendChild).toHaveBeenCalled();
+      expect(mockElements.bookmarkForm.appendChild).toHaveBeenCalled();
 
       // Verify button click handler
-      const button = mockElements.form.appendChild.mock.calls[0][0];
+      const button = mockElements.bookmarkForm.appendChild.mock.calls[0][0];
       expect(button.addEventListener).toHaveBeenCalledWith(
         'click',
         expect.any(Function)
@@ -308,7 +308,7 @@ describe('popup.js', () => {
       }
 
       // Get the click handler
-      const button = mockElements.form.appendChild.mock.calls[0][0];
+      const button = mockElements.bookmarkForm.appendChild.mock.calls[0][0];
       const clickHandler = button.addEventListener.mock.calls[0][1];
 
       // Simulate click

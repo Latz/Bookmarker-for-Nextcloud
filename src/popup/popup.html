@@ -2,25 +2,29 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="theme-color" content="#0ea5e9" />
     <script type="module" src="popup.js"></script>
-    <link href="./css/tagify.css" rel="stylesheet" type="text/css" />
-    <link href="./css/popup.css" rel="stylesheet" type="text/css" />
-    <title>Document</title>
+    <link href="./css/tagify.css" rel="stylesheet" />
+    <link href="./css/popup.css" rel="stylesheet" />
+    <title>Bookmarker for Nextcloud</title>
   </head>
 
   <body class="w-[350px]">
-    <div id="form" class="responsive-margin p-2">
-      <div id="formData" class="w-full"></div>
-      <div class="flex flex-row space-x-4">
-        <div class="basis-1/3">
-          <button id="saveBookmark" class="btn btn-info w-full"></button>
+    <main role="main">
+      <h1 class="sr-only">Bookmarker for Nextcloud</h1>
+      <form id="bookmarkForm" class="responsive-margin p-2" role="form" aria-live="polite">
+        <div id="formData" class="w-full" aria-live="polite"></div>
+        <div class="flex flex-row space-x-4">
+          <div class="basis-1/3">
+            <button type="submit" id="saveBookmark" class="btn btn-info w-full" aria-label="Save bookmark"></button>
+          </div>
+          <div id="sub_message" class="basis-2/3" aria-live="polite" role="status">
+            <div id="loader" class="w-full text-center" aria-busy="true"></div>
+          </div>
         </div>
-        <div id="sub_message" class="basis-2/3">
-          <div id="loader" class="w-full text-center"></div>
-        </div>
-      </div>
-    </div>
+      </form>
+    </main>
   </body>
 </html>

@@ -31,7 +31,7 @@ document.onreadystatechange = async () => {
 function createErrorBox(data) {
   document.body.innerHTML = `
     <div class="parent w-full justify-items-center items-center border border-sky-500">
-      <div class="div1"><img src="../images/icon-64x64-light.png" height="64px" width="64px"></div>
+      <div class="div1"><img src="../images/icon-64x64-light.png" height="64" width="64" alt=""></div>
       <div class="div2 text-left text-3xl font-bold text-sky-500 underline">${chrome.i18n.getMessage(
         'error',
       )}:</div>
@@ -40,14 +40,15 @@ function createErrorBox(data) {
 }
 // --------------------------------------------------------------------------------------------------
 function createAuthorizeButton() {
-  const form = document.getElementById('form');
+  const form = document.getElementById('bookmarkForm');
   form.setAttribute('class', 'flex justify-center w-full');
   const button = document.createElement('button');
   button.setAttribute('id', 'authorize');
+  button.setAttribute('aria-label', chrome.i18n.getMessage('authorizeExtension'));
 
   button.innerHTML = chrome.i18n.getMessage('authorizeExtension');
-  document.getElementById('form').innerHTML = '';
-  document.getElementById('form').appendChild(button);
+  document.getElementById('bookmarkForm').innerHTML = '';
+  document.getElementById('bookmarkForm').appendChild(button);
   button.setAttribute('class', 'btn btn-primary w-full');
   button.addEventListener('click', () => {
     chrome.runtime.sendMessage({ msg: 'authorize' });
