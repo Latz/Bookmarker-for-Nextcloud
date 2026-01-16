@@ -189,9 +189,13 @@ function hashUrl(url) {
  * Uses connection pooling for better performance
  * @param {string} url - The URL that was checked (should be normalized)
  * @param {Object} result - The check result to cache
+ * @param {Object} options - Optional pre-fetched options object with cbx_cacheBookmarkChecks
  */
-export async function cacheBookmarkCheck(url, result) {
-  const cacheEnabled = await getOption('cbx_cacheBookmarkChecks');
+export async function cacheBookmarkCheck(url, result, options = null) {
+  // Use pre-fetched options if available, otherwise fetch
+  const cacheEnabled =
+    options?.cbx_cacheBookmarkChecks ??
+    (await getOption('cbx_cacheBookmarkChecks'));
   if (!cacheEnabled) return;
 
   try {
@@ -215,10 +219,14 @@ export async function cacheBookmarkCheck(url, result) {
  * Get cached bookmark check result
  * Uses connection pooling for better performance
  * @param {string} url - The URL to look up (should be normalized)
+ * @param {Object} options - Optional pre-fetched options object with cbx_cacheBookmarkChecks and input_bookmarkCacheTTL
  * @returns {Object|null} Cached result or null if not found/expired
  */
-export async function getCachedBookmarkCheck(url) {
-  const cacheEnabled = await getOption('cbx_cacheBookmarkChecks');
+export async function getCachedBookmarkCheck(url, options = null) {
+  // Use pre-fetched options if available, otherwise fetch
+  const cacheEnabled =
+    options?.cbx_cacheBookmarkChecks ??
+    (await getOption('cbx_cacheBookmarkChecks'));
   if (!cacheEnabled) return null;
 
   try {
@@ -230,8 +238,11 @@ export async function getCachedBookmarkCheck(url) {
 
     if (!cached) return null;
 
-    // Check TTL (in minutes)
-    const ttl = (await getOption('input_bookmarkCacheTTL')) || 10;
+    // Check TTL (in minutes) - use pre-fetched option if available
+    const ttl =
+      (options?.input_bookmarkCacheTTL ??
+        (await getOption('input_bookmarkCacheTTL'))) ||
+      10;
     const age = (new Date().getTime() - cached.timestamp) / 60000; // Convert to minutes
 
     if (age > ttl) {

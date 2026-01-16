@@ -5,10 +5,7 @@ import apiCall from '../../lib/apiCall.js';
 import { getOption, getOptions } from '../../lib/storage.js';
 import log from '../../lib/log.js';
 import { normalizeUrl } from '../../lib/urlNormalizer.js';
-import {
-  getCachedBookmarkCheck,
-  cacheBookmarkCheck,
-} from '../../lib/cache.js';
+import { getCachedBookmarkCheck, cacheBookmarkCheck } from '../../lib/cache.js';
 import {
   calculateSimilarity,
   batchSimilarityCheck,
@@ -120,12 +117,13 @@ export default async function getData() {
   const mockDoc = createMockDocument(parsedData);
 
   // --- Run parallel operations for speed
-  const [description, keywords, bookmarkCheckResult, folders] = await Promise.all([
-    Promise.resolve(getDescription(mockDoc)), // Synchronous, but wrapped for consistency
-    getKeywords(content, mockDoc),
-    checkBookmark(data.url, data.title, abortController.signal),
-    getFolders(),
-  ]);
+  const [description, keywords, bookmarkCheckResult, folders] =
+    await Promise.all([
+      Promise.resolve(getDescription(mockDoc)), // Synchronous, but wrapped for consistency
+      getKeywords(content, mockDoc),
+      checkBookmark(data.url, data.title, abortController.signal),
+      getFolders(),
+    ]);
 
   data.description = description;
   data.keywords = keywords;
@@ -174,25 +172,40 @@ async function getContent() {
 
 // ---------------------------------------------------------------------------------------------------
 async function checkBookmark(url, title, signal = null) {
-  // Batch fetch all needed options at once for speed
-  const options = await getOptions([
+  // OPTIMIZATION 1: Fetch cache-related options first (minimal set)
+  // This allows early cache check before fetching all options
+  const cacheOptions = await getOptions([
     'cbx_alreadyStored',
     'cbx_fuzzyUrlMatch',
-    'cbx_titleSimilarityCheck',
+    'cbx_cacheBookmarkChecks',
+    'input_bookmarkCacheTTL',
   ]);
 
   // Check if the user wants to check for stored bookmarks
   // -> Fake successful connection and no data found
-  if (!options.cbx_alreadyStored)
+  if (!cacheOptions.cbx_alreadyStored)
     return { ok: true, found: false, matches: [], count: 0 };
 
-  // Check cache first (using normalized URL for better cache hits)
-  const cacheKey = options.cbx_fuzzyUrlMatch ? normalizeUrl(url) : url;
-  const cached = await getCachedBookmarkCheck(cacheKey);
+  // OPTIMIZATION 2: Normalize URL once and reuse
+  const cacheKey = cacheOptions.cbx_fuzzyUrlMatch ? normalizeUrl(url) : url;
+
+  // OPTIMIZATION 3: Check cache BEFORE fetching remaining options
+  // Pass options to avoid redundant storage reads
+  const cached = await getCachedBookmarkCheck(cacheKey, cacheOptions);
   if (cached) {
     log(DEBUG, 'Using cached bookmark check for', url);
     return cached;
   }
+
+  // OPTIMIZATION 4: Only fetch title check option if cache missed
+  // Most requests should hit cache, so this saves a storage read
+  const titleCheckEnabled = await getOption('cbx_titleSimilarityCheck');
+
+  // Combine all options for passing to cache functions
+  const allOptions = {
+    ...cacheOptions,
+    cbx_titleSimilarityCheck: titleCheckEnabled,
+  };
 
   // Request deduplication: if same URL is being checked, wait for that result
   if (inflightChecks.has(cacheKey)) {
@@ -236,8 +249,9 @@ async function checkBookmark(url, title, signal = null) {
   // Create promise for this check and store it
   const checkPromise = (async () => {
     try {
+      // OPTIMIZATION 5: Pass normalized cacheKey to avoid re-normalizing
       // Run URL check first
-      const urlMatches = await checkByUrl(url, options.cbx_fuzzyUrlMatch, signal);
+      const urlMatches = await checkByUrl(cacheKey, signal);
 
       // Check if request was aborted
       if (signal && signal.aborted) {
@@ -248,12 +262,13 @@ async function checkBookmark(url, title, signal = null) {
       // This saves an API call and processing time
       if (urlMatches.found && urlMatches.matches.length > 0) {
         log(DEBUG, 'Found exact URL match - skipping title check');
-        await cacheBookmarkCheck(cacheKey, urlMatches);
+        // OPTIMIZATION 6: Pass options to avoid redundant storage reads
+        await cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
         return urlMatches;
       }
 
       // No URL match - try title check if enabled
-      if (options.cbx_titleSimilarityCheck && title) {
+      if (allOptions.cbx_titleSimilarityCheck && title) {
         const titleMatches = await checkByTitle(title, signal);
 
         if (titleMatches.length > 0) {
@@ -271,7 +286,8 @@ async function checkBookmark(url, title, signal = null) {
       }
 
       // Cache the result (using normalized URL as key)
-      await cacheBookmarkCheck(cacheKey, urlMatches);
+      // OPTIMIZATION 7: Pass options to avoid redundant storage reads
+      await cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
 
       log(DEBUG, 'checkBookmark response', urlMatches);
       return urlMatches;
@@ -288,9 +304,10 @@ async function checkBookmark(url, title, signal = null) {
 }
 
 // ---------------------------------------------------------------------------------------------------
-async function checkByUrl(url, fuzzyUrlMatch = false, signal = null) {
-  // Normalize URL if fuzzy matching is enabled (option passed in to avoid lookup)
-  const searchUrl = fuzzyUrlMatch ? normalizeUrl(url) : url;
+async function checkByUrl(url, signal = null) {
+  // OPTIMIZATION: URL is already normalized by caller when needed
+  // No need to normalize again - just use the URL as-is
+  const searchUrl = url;
 
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const method = 'GET';
@@ -413,30 +430,36 @@ function mergeMatches(urlMatches, titleMatches) {
 function createMockDocument(parsedData) {
   const mockDoc = {
     // querySelectorAll implementation - handles both simple and complex selectors
-    querySelectorAll: function(selector) {
+    querySelectorAll: function (selector) {
       // Handle specific selectors used in getKeywords.js
       if (selector === 'a[rel=tag]') {
-        return parsedData.aRelTag.map(text => ({ textContent: text }));
+        return parsedData.aRelTag.map((text) => ({ textContent: text }));
       }
       if (selector === 'a[rel=category]') {
-        return parsedData.aRelCategory.map(text => ({ text: text, textContent: text }));
+        return parsedData.aRelCategory.map((text) => ({
+          text: text,
+          textContent: text,
+        }));
       }
       if (selector === 'script[type="application/ld+json"]') {
-        return parsedData.jsonLdScripts.map(text => ({ innerText: text }));
+        return parsedData.jsonLdScripts.map((text) => ({ innerText: text }));
       }
       if (selector === 'script') {
-        return parsedData.scripts.map(text => ({ text: text }));
+        return parsedData.scripts.map((text) => ({ text: text }));
       }
       if (selector === 'a[data-ga-click="Topic, repository page"]') {
-        return parsedData.githubTopics.map(text => ({ textContent: text, trim: () => text.trim() }));
+        return parsedData.githubTopics.map((text) => ({
+          textContent: text,
+          trim: () => text.trim(),
+        }));
       }
       // For headlines
       if (selector.startsWith('h') && selector.length === 2) {
         const headlines = parsedData.headlines[selector] || [];
-        return headlines.map(text => ({
+        return headlines.map((text) => ({
           textContent: text,
           innerText: text,
-          split: (regex) => text.split(regex)
+          split: (regex) => text.split(regex),
         }));
       }
 
@@ -445,13 +468,15 @@ function createMockDocument(parsedData) {
       if (selector.includes('[') && selector.includes(']')) {
         // Extract attribute selector - handle both quoted and unquoted values
         // Match patterns like: [name="description"], [property="og:description" i], [name=description]
-        const attrMatch = selector.match(/\[([^\]=]+)=(?:"([^"]+)"|([^\s\]]+))(\s+i)?\]/);
+        const attrMatch = selector.match(
+          /\[([^\]=]+)=(?:"([^"]+)"|([^\s\]]+))(\s+i)?\]/,
+        );
         if (attrMatch) {
           const attrName = attrMatch[1];
           const attrValue = attrMatch[2] || attrMatch[3]; // Either quoted or unquoted
           const isCaseInsensitive = !!attrMatch[4]; // Has " i" suffix
 
-          const filtered = parsedData.metaTags.filter(meta => {
+          const filtered = parsedData.metaTags.filter((meta) => {
             const actualValue = meta[attrName];
             if (!actualValue || !attrValue) return false;
 
@@ -461,9 +486,9 @@ function createMockDocument(parsedData) {
             return actualValue === attrValue;
           });
 
-          return filtered.map(meta => ({
+          return filtered.map((meta) => ({
             getAttribute: (attr) => meta[attr],
-            content: meta.content
+            content: meta.content,
           }));
         }
       }
@@ -472,18 +497,20 @@ function createMockDocument(parsedData) {
     },
 
     // getElementById implementation
-    getElementById: function(id) {
+    getElementById: function (id) {
       if (id === '__NEXT_DATA__') {
-        return parsedData.nextData ? { innerText: parsedData.nextData, textContent: parsedData.nextData } : null;
+        return parsedData.nextData
+          ? { innerText: parsedData.nextData, textContent: parsedData.nextData }
+          : null;
       }
       return null;
     },
 
     // querySelector implementation (for single element)
-    querySelector: function(selector) {
+    querySelector: function (selector) {
       const results = this.querySelectorAll(selector);
       return results.length > 0 ? results[0] : null;
-    }
+    },
   };
 
   return mockDoc;
