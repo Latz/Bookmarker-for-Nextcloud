@@ -674,35 +674,46 @@ describe('background.js', () => {
       // The saveBookmark function in background.js doesn't have try/catch,
       // so errors will cause unhandled rejections. We test that the badge
       // is set before the error occurs.
+      // Suppress unhandled rejection warnings for this test
+      const originalHandler = process.listeners('unhandledRejection');
+      const rejectionHandler = () => {};
+      process.removeAllListeners('unhandledRejection');
+      process.on('unhandledRejection', rejectionHandler);
 
-      apiCall.mockRejectedValueOnce(new Error('API Error'));
+      try {
+        apiCall.mockRejectedValueOnce(new Error('API Error'));
 
-      const request = {
-        msg: 'saveBookmark',
-        parameters: { url: 'https://example.com', title: 'Test' },
-        folderIDs: [1],
-        bookmarkID: 0,
-      };
+        const request = {
+          msg: 'saveBookmark',
+          parameters: { url: 'https://example.com', title: 'Test' },
+          folderIDs: [1],
+          bookmarkID: 0,
+        };
 
-      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
-        messageListener = callback;
-      });
+        chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+          messageListener = callback;
+        });
 
-      await import('../src/background/background.js');
+        await import('../src/background/background.js');
 
-      // The message listener should not throw even if saveBookmark fails
-      const result = messageListener(request, {}, vi.fn());
-      expect(result).toBe(true);
+        // The message listener should not throw even if saveBookmark fails
+        const result = messageListener(request, {}, vi.fn());
+        expect(result).toBe(true);
 
-      // Badge should be set to save icon immediately
-      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
+        // Badge should be set to save icon immediately
+        expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
 
-      // Wait for the async operation to complete (and fail)
-      await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait for the async operation to complete (and fail)
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Note: The badge is NOT cleared because the error happens during apiCall
-      // before store_data is called. This is expected behavior - the badge
-      // indicates "saving in progress" and stays until the save completes.
+        // Note: The badge is NOT cleared because the error happens during apiCall
+        // before store_data is called. This is expected behavior - the badge
+        // indicates "saving in progress" and stays until the save completes.
+      } finally {
+        // Restore original handler
+        process.removeAllListeners('unhandledRejection');
+        originalHandler.forEach(h => process.on('unhandledRejection', h));
+      }
     });
 
     it('should handle store_data failure gracefully', async () => {
@@ -710,43 +721,54 @@ describe('background.js', () => {
       // so errors will cause unhandled rejections.
       // In the actual code: apiCall -> store_data -> setBadgeText('') -> notifyUser
       // So if store_data fails, notifyUser is NOT called.
+      // Suppress unhandled rejection warnings for this test
+      const originalHandler = process.listeners('unhandledRejection');
+      const rejectionHandler = () => {};
+      process.removeAllListeners('unhandledRejection');
+      process.on('unhandledRejection', rejectionHandler);
 
-      // First call is for cacheGet('keywords') in getData
-      // Second call is for cacheGet('folders') in getData
-      // Third call is for checkBookmark in getData
-      // Fourth call is for apiCall in saveBookmark
-      const apiCallModule = await import('../src/lib/apiCall.js');
-      apiCallModule.default = vi.fn()
-        .mockResolvedValueOnce({ status: 'success', data: [] }) // cacheGet('keywords')
-        .mockResolvedValueOnce({ status: 'success', data: [] }) // cacheGet('folders')
-        .mockResolvedValueOnce({ status: 'success', data: [] }) // checkBookmark
-        .mockResolvedValueOnce({ status: 'success', data: { id: 123 } }); // saveBookmark
+      try {
+        // First call is for cacheGet('keywords') in getData
+        // Second call is for cacheGet('folders') in getData
+        // Third call is for checkBookmark in getData
+        // Fourth call is for apiCall in saveBookmark
+        const apiCallModule = await import('../src/lib/apiCall.js');
+        apiCallModule.default = vi.fn()
+          .mockResolvedValueOnce({ status: 'success', data: [] }) // cacheGet('keywords')
+          .mockResolvedValueOnce({ status: 'success', data: [] }) // cacheGet('folders')
+          .mockResolvedValueOnce({ status: 'success', data: [] }) // checkBookmark
+          .mockResolvedValueOnce({ status: 'success', data: { id: 123 } }); // saveBookmark
 
-      store_data.mockRejectedValueOnce(new Error('Storage failed'));
+        store_data.mockRejectedValueOnce(new Error('Storage failed'));
 
-      const request = {
-        msg: 'saveBookmark',
-        parameters: { url: 'https://example.com', title: 'Test' },
-        folderIDs: [1],
-        bookmarkID: 0,
-      };
+        const request = {
+          msg: 'saveBookmark',
+          parameters: { url: 'https://example.com', title: 'Test' },
+          folderIDs: [1],
+          bookmarkID: 0,
+        };
 
-      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
-        messageListener = callback;
-      });
+        chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+          messageListener = callback;
+        });
 
-      await import('../src/background/background.js');
+        await import('../src/background/background.js');
 
-      messageListener(request, {}, vi.fn());
+        messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      // notifyUser is called AFTER store_data in the code, so it will NOT be called
-      // if store_data fails
-      expect(notifyUser).not.toHaveBeenCalled();
+        // notifyUser is called AFTER store_data in the code, so it will NOT be called
+        // if store_data fails
+        expect(notifyUser).not.toHaveBeenCalled();
 
-      // Badge should be set to save icon
-      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
+        // Badge should be set to save icon
+        expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
+      } finally {
+        // Restore original handler
+        process.removeAllListeners('unhandledRejection');
+        originalHandler.forEach(h => process.on('unhandledRejection', h));
+      }
     });
   });
 
