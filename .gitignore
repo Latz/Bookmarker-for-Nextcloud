@@ -5,6 +5,7 @@ sonar-project.properties
 node_modules/
 .vite/
 dist/
+.parcel-cache/
 package-lock.json
 /.idea
 .vscode/settings.json
