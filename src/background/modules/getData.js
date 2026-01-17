@@ -172,32 +172,61 @@ async function getContent() {
 
 // ---------------------------------------------------------------------------------------------------
 async function checkBookmark(url, title, signal = null) {
-  // OPTIMIZATION 1: Fetch cache-related options first (minimal set)
-  // This allows early cache check before fetching all options
-  const cacheOptions = await getOptions([
+  // OPTIMIZATION 1: Fetch only essential options first (minimal reads)
+  // Check if feature is enabled and if caching is enabled
+  const essentialOptions = await getOptions([
     'cbx_alreadyStored',
-    'cbx_fuzzyUrlMatch',
     'cbx_cacheBookmarkChecks',
-    'input_bookmarkCacheTTL',
   ]);
 
   // Check if the user wants to check for stored bookmarks
   // -> Fake successful connection and no data found
-  if (!cacheOptions.cbx_alreadyStored)
+  if (!essentialOptions.cbx_alreadyStored)
     return { ok: true, found: false, matches: [], count: 0 };
 
-  // OPTIMIZATION 2: Normalize URL once and reuse
-  const cacheKey = cacheOptions.cbx_fuzzyUrlMatch ? normalizeUrl(url) : url;
+  // OPTIMIZATION 2: If caching is enabled, try both URL variants for cache hit
+  // This avoids fetching fuzzyUrlMatch option if we get a cache hit
+  let normalizedUrl = null; // Cache the normalized URL to avoid recalculating
 
-  // OPTIMIZATION 3: Check cache BEFORE fetching remaining options
-  // Pass options to avoid redundant storage reads
-  const cached = await getCachedBookmarkCheck(cacheKey, cacheOptions);
-  if (cached) {
-    log(DEBUG, 'Using cached bookmark check for', url);
-    return cached;
+  if (essentialOptions.cbx_cacheBookmarkChecks) {
+    // Try exact URL first (fastest - no normalization needed)
+    let cached = await getCachedBookmarkCheck(url, essentialOptions);
+    if (cached) {
+      log(DEBUG, 'Using cached bookmark check (exact URL) for', url);
+      return cached;
+    }
+
+    // Try normalized URL (common case when fuzzy matching is enabled)
+    normalizedUrl = normalizeUrl(url);
+    if (normalizedUrl !== url) {
+      cached = await getCachedBookmarkCheck(normalizedUrl, essentialOptions);
+      if (cached) {
+        log(DEBUG, 'Using cached bookmark check (normalized URL) for', url);
+        return cached;
+      }
+    }
   }
 
-  // OPTIMIZATION 4: Only fetch title check option if cache missed
+  // OPTIMIZATION 3: Cache missed or disabled - fetch remaining options
+  const additionalOptions = await getOptions([
+    'cbx_fuzzyUrlMatch',
+    'input_bookmarkCacheTTL',
+  ]);
+
+  // Combine all options
+  const cacheOptions = {
+    ...essentialOptions,
+    ...additionalOptions,
+  };
+
+  // OPTIMIZATION 4: Reuse normalized URL if already calculated, otherwise normalize based on setting
+  // This avoids calling normalizeUrl() twice
+  if (normalizedUrl === null) {
+    normalizedUrl = normalizeUrl(url);
+  }
+  const cacheKey = cacheOptions.cbx_fuzzyUrlMatch ? normalizedUrl : url;
+
+  // OPTIMIZATION 5: Only fetch title check option if cache missed
   // Most requests should hit cache, so this saves a storage read
   const titleCheckEnabled = await getOption('cbx_titleSimilarityCheck');
 

@@ -1,6 +1,6 @@
 import getMeta from './getMeta.js';
 import { cacheGet } from '../../lib/cache.js';
-import { getOption } from '../../lib/storage.js';
+import { getOption, getOptions } from '../../lib/storage.js';
 import getDescription from './getDescription.js';
 import log from '../../lib/log.js';
 
@@ -310,10 +310,17 @@ export default async function getKeywords(content, document) {
   // Loop through the various functions
   // --------------------------------------------------------------------------------------------
 
+  // OPTIMIZATION: Batch fetch all options upfront to avoid multiple storage reads
+  const options = await getOptions([
+    'cbx_autoTags',
+    'cbx_extendedKeywords',
+    'input_headlinesDepth',
+  ]);
+
   // This large try is lame but it keeps the extension running if there is any error
   // finding the keywords.
   //  try {
-  if (!(await getOption('cbx_autoTags'))) return [];
+  if (!options.cbx_autoTags) return [];
 
   for (const f of fs) {
     let keywords = [];
@@ -332,9 +339,12 @@ export default async function getKeywords(content, document) {
   // --- Last resort: Try to match parts of description or headlines with stored keywords ---
 
   // If the user does not want to use this feature, return an empty array
-  const extendedKeywords = await getOption('cbx_extendedKeywords');
-  log(DEBUG, ':: ~ getKeywords ~ extendedKeywords:', extendedKeywords);
-  if (!extendedKeywords) return Promise.resolve([]);
+  log(
+    DEBUG,
+    ':: ~ getKeywords ~ extendedKeywords:',
+    options.cbx_extendedKeywords,
+  );
+  if (!options.cbx_extendedKeywords) return Promise.resolve([]);
   log(DEBUG, 'Extended Keywords!');
 
   // --- description ---
@@ -348,7 +358,7 @@ export default async function getKeywords(content, document) {
     }
   } // --- headlines ---
   log(DEBUG, 'Headlines');
-  const maxLevel = await getOption('input_headlinesDepth');
+  const maxLevel = options.input_headlinesDepth;
   let level = 1;
   keywords = [];
   while (level <= maxLevel) {

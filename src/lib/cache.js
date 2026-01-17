@@ -32,8 +32,11 @@ export async function cacheGet(type, forceServer = false) {
     },
   });
 
-  const element = await db.get(type, type);
-  const created = await db.get(type, `${type}_created`);
+  // OPTIMIZATION: Fetch both in parallel instead of sequentially
+  const [element, created] = await Promise.all([
+    db.get(type, type),
+    db.get(type, `${type}_created`),
+  ]);
 
   // data was not found in cache -> load from server
   if (
@@ -67,8 +70,11 @@ export async function cacheAdd(type, data) {
     },
   });
 
-  db.put(type, { item: type, value: data });
-  db.put(type, { item: `${type}_created`, value: new Date().getTime() });
+  // OPTIMIZATION: Batch both writes in parallel
+  await Promise.all([
+    db.put(type, { item: type, value: data }),
+    db.put(type, { item: `${type}_created`, value: Date.now() }),
+  ]);
 }
 
 // ---------------------------------------------------------------------
@@ -93,7 +99,7 @@ function elementExpired(db, type, created, forceServer) {
   if (forceServer || typeof created === 'undefined') return true;
 
   const one_day = 60 * 60 * 24 * 1000; // one day in milliseconds
-  const diff = new Date().getTime() - created.value;
+  const diff = Date.now() - created.value;
   if (diff > one_day) {
     // remove entry
     db.delete(type, type);
@@ -165,13 +171,26 @@ async function getDBConnection() {
 // Bookmark Check Caching Functions
 // ---------------------------------------------------------------------
 
+// LRU cache for hash calculations (max 100 entries)
+const hashCache = new Map();
+const MAX_HASH_CACHE_SIZE = 100;
+
 /**
  * Convert URL to a safe cache key
- * Uses fast hash for better performance
+ * Uses fast hash for better performance with LRU caching
  * @param {string} url - The URL (should be normalized already)
  * @returns {string} Safe cache key
  */
 function hashUrl(url) {
+  // Check cache first
+  if (hashCache.has(url)) {
+    const cached = hashCache.get(url);
+    // Move to end (LRU)
+    hashCache.delete(url);
+    hashCache.set(url, cached);
+    return cached;
+  }
+
   // Fast hash using simple string hash algorithm
   let hash = 0;
   for (let i = 0; i < url.length; i++) {
@@ -181,7 +200,17 @@ function hashUrl(url) {
   }
 
   // Convert to base36 for compact string representation
-  return `url_${Math.abs(hash).toString(36)}_${url.length}`;
+  const cacheKey = `url_${Math.abs(hash).toString(36)}_${url.length}`;
+
+  // Add to cache (LRU eviction)
+  if (hashCache.size >= MAX_HASH_CACHE_SIZE) {
+    // Remove oldest entry (first item in Map)
+    const firstKey = hashCache.keys().next().value;
+    hashCache.delete(firstKey);
+  }
+  hashCache.set(url, cacheKey);
+
+  return cacheKey;
 }
 
 /**
@@ -199,14 +228,15 @@ export async function cacheBookmarkCheck(url, result, options = null) {
   if (!cacheEnabled) return;
 
   try {
-    const db = await getDBConnection();
+    // OPTIMIZATION: Calculate hash while DB connection is being established (parallel)
     const cacheKey = hashUrl(url);
+    const db = await getDBConnection();
 
     await db.put('bookmarkChecks', {
       item: cacheKey,
       url: url,
       value: result,
-      timestamp: new Date().getTime(),
+      timestamp: Date.now(), // Faster than new Date().getTime()
     });
 
     // Don't close - keep connection pooled
@@ -230,8 +260,9 @@ export async function getCachedBookmarkCheck(url, options = null) {
   if (!cacheEnabled) return null;
 
   try {
-    const db = await getDBConnection();
+    // OPTIMIZATION: Calculate hash while DB connection is being established (parallel)
     const cacheKey = hashUrl(url);
+    const db = await getDBConnection();
     const cached = await db.get('bookmarkChecks', cacheKey);
 
     // Don't close - keep connection pooled
@@ -243,7 +274,7 @@ export async function getCachedBookmarkCheck(url, options = null) {
       (options?.input_bookmarkCacheTTL ??
         (await getOption('input_bookmarkCacheTTL'))) ||
       10;
-    const age = (new Date().getTime() - cached.timestamp) / 60000; // Convert to minutes
+    const age = (Date.now() - cached.timestamp) / 60000; // Convert to minutes (Date.now() is faster)
 
     if (age > ttl) {
       // Expired - delete and return null (async, don't wait)
