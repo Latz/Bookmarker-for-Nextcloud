@@ -1,11 +1,16 @@
 import { getOption } from '../../lib/storage.js';
 import getBrowserTheme from './getBrowserTheme.js';
 
+// OPTIMIZATION: Constant for notification title (avoid repetition)
+const NOTIFICATION_TITLE = 'Bookmarker for Nextcloud';
+
+// OPTIMIZATION: Get icon URL with browser theme (reusable helper)
 async function getIconUrl() {
   const browserTheme = await getBrowserTheme();
   return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}.png`);
 }
 
+// OPTIMIZATION: Get error icon URL with fallback to regular icon
 async function getIconErrorUrl() {
   const browserTheme = await getBrowserTheme();
   const errorIconUrl = `/images/icon-128x128-${browserTheme}-error.png`;
@@ -22,21 +27,17 @@ async function getIconErrorUrl() {
   }
 
   // Fall back to regular icon
-  return getIconUrl();
+  return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}.png`);
 }
 
 export async function notifyUser(response) {
-  console.log('-> notifyUser', response);
-  const title = 'Bookmarker for Nextcloud';
-
-  console.log('response', response); // Check if this is an error response (has statusText property from apiCall)
   if (response.status === 'error') {
     // There was an error - always show error notifications (regardless of successMessage setting)
     const iconErrorUrl = await getIconErrorUrl();
 
     try {
       await chrome.notifications.create('', {
-        title,
+        title: NOTIFICATION_TITLE,
         message: `${chrome.i18n.getMessage('error')}: ${response.statusText}`,
         iconUrl: iconErrorUrl,
         type: 'basic',
@@ -51,23 +52,21 @@ export async function notifyUser(response) {
       console.error('Failed to create error notification:', error);
     }
   } else {
-    console.log('-> notifyUser - success');
     // Bookmark was saved successfully
     // Check if user wants success notifications
     const successNotifications = await getOption('cbx_successMessage');
     if (!successNotifications) return;
 
-    // load the browser theme to display a visible icon
+    // OPTIMIZATION: Only fetch icon if we're actually showing the notification
     const iconUrl = await getIconUrl();
 
     try {
-      const notifyResult = await chrome.notifications.create('', {
-        title,
+      await chrome.notifications.create('', {
+        title: NOTIFICATION_TITLE,
         message: `${chrome.i18n.getMessage('BookmarkSuccessfullySaved')}!`,
         iconUrl,
         type: 'basic',
       });
-      console.log('notifyResult', notifyResult);
     } catch (error) {
       console.error('Failed to create success notification:', error);
     }
@@ -78,7 +77,7 @@ export async function cacheRefreshNotification() {
   const iconUrl = await getIconUrl();
   try {
     await chrome.notifications.create('', {
-      title: 'Bookmarker for Nextcloud',
+      title: NOTIFICATION_TITLE,
       message: 'Cache was refreshed',
       iconUrl,
       type: 'basic',
