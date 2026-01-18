@@ -482,6 +482,24 @@ function createMockDocument(parsedData) {
           trim: () => text.trim(),
         }));
       }
+      // GitHub topic selectors (updated 2025)
+      if (
+        selector === 'a[class*="topic-tag"]' ||
+        selector === 'a[data-view-component="true"][title^="Topic:"]' ||
+        selector === 'a[href^="/topics/"]'
+      ) {
+        return parsedData.githubTopics.map((text) => ({
+          textContent: text,
+          trim: () => text.trim(),
+        }));
+      }
+      // GitHub topic name spans (nested inside topic links)
+      if (selector === 'a[href^="/topics/"] .topic-tag-name' || selector === 'span.topic-tag-name') {
+        return parsedData.githubTopics.map((text) => ({
+          textContent: text,
+          trim: () => text.trim(),
+        }));
+      }
       // For headlines
       if (selector.startsWith('h') && selector.length === 2) {
         const headlines = parsedData.headlines[selector] || [];

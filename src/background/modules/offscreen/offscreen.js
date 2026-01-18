@@ -45,8 +45,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // For Google Tag Manager
         scripts: Array.from(doc.querySelectorAll('script')).map(script => script.text),
 
-        // For GitHub keywords
-        githubTopics: Array.from(doc.querySelectorAll('a[data-ga-click="Topic, repository page"]')).map(a => a.textContent.trim()),
+        // For GitHub keywords (updated 2025 selectors)
+        // GitHub uses nested span.topic-tag-name inside topic links, or span.topic-tag with nested spans
+        githubTopics: [
+          // Modern GitHub: topics with topic-tag-name span
+          ...Array.from(doc.querySelectorAll('a[href^="/topics/"] .topic-tag-name')).map(span => span.textContent.trim()),
+          ...Array.from(doc.querySelectorAll('span.topic-tag-name')).map(span => span.textContent.trim()),
+          // Fallback: direct text content from topic links
+          ...Array.from(doc.querySelectorAll('a[href^="/topics/"]')).map(a => a.textContent.trim()),
+          // Legacy selectors for backward compatibility
+          ...Array.from(doc.querySelectorAll('a[class*="topic-tag"]')).map(a => a.textContent.trim()),
+          ...Array.from(doc.querySelectorAll('a[data-view-component="true"][title^="Topic:"]')).map(a => a.textContent.trim()),
+          ...Array.from(doc.querySelectorAll('a[data-ga-click="Topic, repository page"]')).map(a => a.textContent.trim())
+        ].filter((v, i, a) => v && a.indexOf(v) === i),
 
         // For Next.js data
         nextData: doc.getElementById('__NEXT_DATA__')?.textContent || '',
