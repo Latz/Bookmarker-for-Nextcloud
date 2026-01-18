@@ -12,23 +12,30 @@ const DEBUG = false;
 
 export default function getMeta(document, ...metaNames) {
   log(DEBUG, 'GetMeta');
-  const metas = [];
+
   for (const { type, id } of metaNames) {
     log(DEBUG, type, id);
     const metaNodelist = document.querySelectorAll(`[${type}="${id}" i]`);
 
-    if (metaNodelist.length > 0) {
-      for (const meta of metaNodelist) {
-        const { content } = meta;
-        if (content !== '' && content !== undefined) {
-          metas.push(content);
-        }
-      }
-      log(DEBUG, 'metas', metas);
-      if (metas.length > 0) {
-        return metas;
+    // OPTIMIZATION 1: Early continue if no matches (skip processing)
+    if (metaNodelist.length === 0) continue;
+
+    // OPTIMIZATION 2: Collect valid content values
+    const metas = [];
+    for (const meta of metaNodelist) {
+      const { content } = meta;
+      // OPTIMIZATION 3: Filter out only empty string and undefined (keep null for backward compatibility)
+      if (content !== '' && content !== undefined) {
+        metas.push(content);
       }
     }
+
+    // OPTIMIZATION 4: Early return on first match (avoid checking remaining metaNames)
+    if (metas.length > 0) {
+      log(DEBUG, 'metas', metas);
+      return metas;
+    }
   }
+
   return [];
 }
