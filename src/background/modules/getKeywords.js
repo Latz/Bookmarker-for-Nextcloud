@@ -4,7 +4,8 @@ import { getOption, getOptions } from '../../lib/storage.js';
 import getDescription from './getDescription.js';
 import log from '../../lib/log.js';
 
-const DEBUG = false;
+const DEBUG = true;
+console.log('🚀 ~ DEBUG:', DEBUG);
 
 // ---------------------------------------------------------------------------------------------------
 /**
@@ -25,6 +26,7 @@ const DEBUG = false;
  */
 async function reduceKeywords(keywords, force = false) {
   const cbx_reduceKeywords = await getOption('cbx_reduceKeywords');
+  console.log('🚀 ~ reduceKeywords ~ cbx_reduceKeywords:', cbx_reduceKeywords);
 
   if (force === false && cbx_reduceKeywords === false) {
     // if the user does not want to reduce the keywords, we return
@@ -123,7 +125,7 @@ export default async function getKeywords(content, document) {
     () => {
       const keywords = [];
       const relsCategories = document.querySelectorAll('a[rel=category]');
-      relsCategories.forEach((category) => keywords.push(category.text));
+      relsCategories.forEach((category) => keywords.push(category.textContent));
       return keywords;
     },
 
@@ -240,13 +242,33 @@ export default async function getKeywords(content, document) {
     () => {
       log(DEBUG, 'github');
       let keywords = [];
-      let gas = document.querySelectorAll(
-        'a[data-ga-click="Topic, repository page"]',
-      );
-      gas.forEach((ga) => {
-        keywords.push(ga.textContent.trim());
-      });
-      log(DEBUG, 'github', keywords);
+      // GitHub's current topic selectors (updated 2025)
+      // Topics are displayed as: <a href="/topics/opencode" class="topic-tag topic-tag-link">opencode</a>
+      const selectors = [
+        'a[class*="topic-tag"]', // Matches topic-tag class
+        'a[data-view-component="true"][title^="Topic:"]', // GitHub's newer structure
+        'a[href^="/topics/"]', // Topic links
+        'a[data-ga-click="Topic, repository page"]', // Legacy selector (for backward compatibility)
+      ];
+
+      for (const selector of selectors) {
+        const elements = document.querySelectorAll(selector);
+        log(
+          DEBUG,
+          `GitHub selector: ${selector}, found ${elements.length} elements`,
+        );
+        if (elements.length > 0) {
+          elements.forEach((el) => {
+            const text = el.textContent.trim();
+            if (text) {
+              keywords.push(text);
+            }
+          });
+          // Stop after finding topics with first successful selector
+          if (keywords.length > 0) break;
+        }
+      }
+      log(DEBUG, 'github keywords:', keywords);
 
       return keywords;
     },
@@ -278,7 +300,6 @@ export default async function getKeywords(content, document) {
       // xplGlobal.document.metadata -> https://ieeexplore.ieee.org/document/10243497
       const regex = /xplGlobal.document.metadata=(.*);/g;
       const match = regex.exec(content);
-      console.log('🚀 ~ match:', match);
       if (!match) return [];
       try {
         const xplJson = JSON.parse(match[1]);
@@ -330,7 +351,7 @@ export default async function getKeywords(content, document) {
     // use only keywords that are already stored in Bookmarks
     // switchable by Options/Advanced
     if (keywords && keywords.length > 0) {
-      const reducedKeywords = reduceKeywords(keywords);
+      const reducedKeywords = await reduceKeywords(keywords);
       return Promise.resolve(reducedKeywords);
     }
   }

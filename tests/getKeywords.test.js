@@ -20,6 +20,7 @@ vi.mock('../src/lib/cache.js', () => ({
 
 vi.mock('../src/lib/storage.js', () => ({
   getOption: vi.fn(),
+  getOptions: vi.fn(),
 }));
 
 vi.mock('../src/lib/log.js', () => ({
@@ -30,7 +31,7 @@ vi.mock('../src/lib/log.js', () => ({
 import getMeta from '../src/background/modules/getMeta.js';
 import getDescription from '../src/background/modules/getDescription.js';
 import { cacheGet } from '../src/lib/cache.js';
-import { getOption } from '../src/lib/storage.js';
+import { getOption, getOptions } from '../src/lib/storage.js';
 import getKeywords from '../src/background/modules/getKeywords.js';
 
 describe('getKeywords', () => {
@@ -52,25 +53,28 @@ describe('getKeywords', () => {
 
   describe('Auto-tags disabled', () => {
     it('should return empty array when cbx_autoTags is false', async () => {
-      getOption.mockResolvedValue(false);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
+      });
 
       const result = await getKeywords(mockContent, mockDocument);
 
       expect(result).toEqual([]);
-      expect(getOption).toHaveBeenCalledWith('cbx_autoTags');
+      expect(getOptions).toHaveBeenCalled();
     });
   });
 
   describe('Meta keywords extraction', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
+      getOption.mockResolvedValue(false);
     });
 
     it('should extract keywords from meta tags', async () => {
@@ -161,14 +165,13 @@ describe('getKeywords', () => {
 
   describe('Rel tag extraction', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
+      getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
     });
 
@@ -203,21 +206,20 @@ describe('getKeywords', () => {
 
   describe('Rel category extraction', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
+      getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
       mockDocument.querySelectorAll.mockReturnValue([]);
     });
 
     it('should extract keywords from a[rel=category] elements', async () => {
-      const mockCat1 = { text: 'category1' };
-      const mockCat2 = { text: 'category2' };
+      const mockCat1 = { textContent: 'category1' };
+      const mockCat2 = { textContent: 'category2' };
       mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([mockCat1, mockCat2]);
 
       const result = await getKeywords(mockContent, mockDocument);
@@ -229,14 +231,13 @@ describe('getKeywords', () => {
 
   describe('JSON-LD extraction', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
+      getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
       mockDocument.querySelectorAll.mockReturnValue([]);
     });
@@ -293,14 +294,13 @@ describe('getKeywords', () => {
 
   describe('Google Tag Manager extraction', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
+      getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
       mockDocument.querySelectorAll.mockReturnValue([]);
     });
@@ -330,41 +330,83 @@ describe('getKeywords', () => {
 
   describe('GitHub topics extraction', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
+      getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
       mockDocument.querySelectorAll.mockReturnValue([]);
     });
 
-    it('should extract keywords from GitHub topics', async () => {
-      const mockTopic1 = { textContent: '  topic1  ' };
-      const mockTopic2 = { textContent: '  topic2  ' };
-      // 5 querySelectorAll calls: rel=tag, rel=category, JSON-LD, GTM script, GitHub topics
-      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockTopic1, mockTopic2]);
+    it('should extract keywords from GitHub topics using topic-tag class selector', async () => {
+      const mockTopic1 = { textContent: '  opencode  ' };
+      const mockTopic2 = { textContent: '  ai-agents  ' };
+      // First 4 selectors (rel=tag, rel=category, JSON-LD, GTM) return empty
+      // GitHub selector with class*="topic-tag" returns topics
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])  // rel=tag
+        .mockReturnValueOnce([])  // rel=category
+        .mockReturnValueOnce([])  // JSON-LD
+        .mockReturnValueOnce([])  // GTM
+        .mockReturnValueOnce([mockTopic1, mockTopic2]);  // GitHub topic-tag
 
       const result = await getKeywords(mockContent, mockDocument);
 
-      expect(result).toEqual(['topic1', 'topic2']);
+      expect(result).toEqual(['opencode', 'ai-agents']);
+      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[class*="topic-tag"]');
+    });
+
+    it('should extract keywords from GitHub topics using href pattern selector', async () => {
+      const mockTopic1 = { textContent: 'claude' };
+      const mockTopic2 = { textContent: 'vibe-coding' };
+      // First 4 selectors return empty, topic-tag returns empty, data-view-component returns empty, href selector returns topics
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])  // rel=tag
+        .mockReturnValueOnce([])  // rel=category
+        .mockReturnValueOnce([])  // JSON-LD
+        .mockReturnValueOnce([])  // GTM
+        .mockReturnValueOnce([])  // GitHub topic-tag (no match)
+        .mockReturnValueOnce([])  // GitHub data-view-component (no match)
+        .mockReturnValueOnce([mockTopic1, mockTopic2]);  // GitHub href selector
+
+      const result = await getKeywords(mockContent, mockDocument);
+
+      expect(result).toEqual(['claude', 'vibe-coding']);
+      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[href^="/topics/"]');
+    });
+
+    it('should fall back to legacy selector if modern selectors fail', async () => {
+      const mockTopic1 = { textContent: 'legacy-topic' };
+      // All modern selectors fail, falls back to legacy data-ga-click selector
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])  // rel=tag
+        .mockReturnValueOnce([])  // rel=category
+        .mockReturnValueOnce([])  // JSON-LD
+        .mockReturnValueOnce([])  // GTM
+        .mockReturnValueOnce([])  // GitHub topic-tag (no match)
+        .mockReturnValueOnce([])  // GitHub data-view-component (no match)
+        .mockReturnValueOnce([])  // GitHub href (no match)
+        .mockReturnValueOnce([mockTopic1]);  // GitHub legacy selector
+
+      const result = await getKeywords(mockContent, mockDocument);
+
+      expect(result).toEqual(['legacy-topic']);
       expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[data-ga-click="Topic, repository page"]');
     });
   });
 
   describe('Next.js data extraction', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
+      getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
       mockDocument.querySelectorAll.mockReturnValue([]);
     });
@@ -408,14 +450,11 @@ describe('getKeywords', () => {
 
   describe('Extended keywords feature', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: true,
-          cbx_extendedKeywords: true,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: true,
+        input_headlinesDepth: 3,
       });
     });
 
@@ -445,16 +484,15 @@ describe('getKeywords', () => {
 
   describe('Keyword reduction', () => {
     it('should reduce keywords when cbx_reduceKeywords is true', async () => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: true,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: true,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
 
       getMeta.mockReturnValue(['keyword1', 'keyword2', 'keyword1']);
+      getOption.mockResolvedValue(true); // cbx_reduceKeywords for reduceKeywords function
       cacheGet.mockResolvedValue(['keyword1', 'keyword2', 'keyword3']);
 
       const result = await getKeywords(mockContent, mockDocument);
@@ -463,16 +501,15 @@ describe('getKeywords', () => {
     });
 
     it('should return empty array when cache has no keywords for reduction', async () => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: true,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: true,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
 
       getMeta.mockReturnValue(['keyword1', 'keyword2']);
+      getOption.mockResolvedValue(true); // cbx_reduceKeywords for reduceKeywords function
       cacheGet.mockResolvedValue([]);
 
       const result = await getKeywords(mockContent, mockDocument);
@@ -481,16 +518,15 @@ describe('getKeywords', () => {
     });
 
     it('should handle cache error gracefully', async () => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: true,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: true,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
 
       getMeta.mockReturnValue(['keyword1', 'keyword2']);
+      getOption.mockResolvedValue(true); // cbx_reduceKeywords for reduceKeywords function
       cacheGet.mockRejectedValue(new Error('Cache error'));
 
       // The implementation doesn't catch cache errors - they propagate
@@ -500,14 +536,13 @@ describe('getKeywords', () => {
 
   describe('xplGlobal extraction (IEEE)', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
+      getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
       mockDocument.querySelectorAll.mockReturnValue([]);
     });
@@ -539,14 +574,13 @@ describe('getKeywords', () => {
 
   describe('Brute force keywords extraction', () => {
     beforeEach(() => {
-      getOption.mockImplementation((key) => {
-        const options = {
-          cbx_autoTags: true,
-          cbx_reduceKeywords: false,
-          cbx_extendedKeywords: false,
-        };
-        return Promise.resolve(options[key]);
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
       });
+      getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
       mockDocument.querySelectorAll.mockReturnValue([]);
     });
@@ -570,6 +604,14 @@ describe('getKeywords', () => {
 
   describe('Error handling', () => {
     it('should handle errors gracefully and return empty array', async () => {
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: true,
+        cbx_extendedKeywords: false,
+        input_headlinesDepth: 3,
+      });
+      // Use a keyword with a divider to trigger reduceKeywords call
+      getMeta.mockReturnValue(['keyword1, keyword2']);
       getOption.mockRejectedValue(new Error('Storage error'));
 
       // The implementation doesn't catch errors from getOption - they propagate
