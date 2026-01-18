@@ -18,7 +18,7 @@ vi.mock('../src/lib/storage.js', () => ({
 
 // Import after mocking
 import { load_data, getOption } from '../src/lib/storage.js';
-import apiCall from '../src/lib/apiCall.js';
+import apiCall, { clearApiCallCache } from '../src/lib/apiCall.js';
 
 describe('apiCall.js', () => {
   let mockFetch;
@@ -26,6 +26,9 @@ describe('apiCall.js', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+
+    // Clear apiCall caches
+    clearApiCallCache();
 
     // Mock fetch
     mockFetch = vi.fn();
@@ -115,13 +118,13 @@ describe('apiCall.js', () => {
       const promise = apiCall('test/endpoint', 'GET');
 
       // Wait a bit for the fetch to be called and timeout to be set up
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Check that signal was created and is not yet aborted
       expect(abortSignal).toBeDefined();
 
       // Wait for timeout to trigger (10ms + buffer)
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Signal should now be aborted
       expect(abortSignal.aborted).toBe(true);
@@ -213,7 +216,7 @@ describe('apiCall.js', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': expect.stringContaining('Basic '),
+            Authorization: expect.stringContaining('Basic '),
             'OCS-APIREQUEST': 'true',
             'User-Agent': 'Bookmarker4Nextcloud',
           }),
@@ -240,7 +243,7 @@ describe('apiCall.js', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.not.objectContaining({
-            'Authorization': expect.any(String),
+            Authorization: expect.any(String),
           }),
         }),
       );
@@ -388,7 +391,7 @@ describe('apiCall.js', () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'Basic YWRtaW46c2VjcmV0MTIz',
+            Authorization: 'Basic YWRtaW46c2VjcmV0MTIz',
           }),
         }),
       );
