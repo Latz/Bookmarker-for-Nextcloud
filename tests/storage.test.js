@@ -207,6 +207,18 @@ describe('storage.js', () => {
 
       expect(result).toBe(false);
     });
+
+    it('should await db.put before calling db.close', async () => {
+      let putResolved = false;
+      mockDB.put.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => { putResolved = true; resolve(); }, 10))
+      );
+
+      await store_data('options', { cbx_enableZen: true });
+
+      expect(putResolved).toBe(true);
+      expect(mockDB.close).toHaveBeenCalled();
+    });
   });
 
   describe('delete_data', () => {

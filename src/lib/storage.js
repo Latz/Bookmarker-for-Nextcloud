@@ -95,11 +95,13 @@ export async function store_data(storeName, ...items) {
       initDatabase(db, dbVersion);
     },
   });
+  const puts = [];
   for (let item of items) {
     for (let key in item) {
-      db.put(storeName, { item: key, value: item[key] });
+      puts.push(db.put(storeName, { item: key, value: item[key] }));
     }
   }
+  await Promise.all(puts);
   db.close();
 
   // Clear cache if we're updating options
@@ -324,6 +326,7 @@ export function initDefaults() {
   store_data('options', { cbx_autoTags: true });
   store_data('options', { input_headlinesDepth: 3 });
   store_data('options', { input_networkTimeout: 10 });
+  store_data('options', { input_numberOfRetries: 5 });
   store_data('options', { cbx_reduceKeywords: true });
   store_data('options', { folderIDs: ['-1'] }); // Default to root folder
   store_data('options', { zenFolderIDs: ['-1'] }); // Default to root folder
