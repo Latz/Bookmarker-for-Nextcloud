@@ -24,7 +24,7 @@ console.log('🚀 ~ DEBUG:', DEBUG);
  * @param {Array} keywords - An array of keywords to be reduced.
  * @return {Array} - An array of reduced keywords.
  */
-async function reduceKeywords(keywords, force = false) {
+async function reduceKeywords(keywords, force = false, cachedAllKeywords = null) {
   const cbx_reduceKeywords = await getOption('cbx_reduceKeywords');
   console.log('🚀 ~ reduceKeywords ~ cbx_reduceKeywords:', cbx_reduceKeywords);
 
@@ -35,7 +35,8 @@ async function reduceKeywords(keywords, force = false) {
 
   keywords = [...new Set(keywords)];
 
-  let allKeywords = await cacheGet('keywords');
+  // Use pre-fetched list if provided, otherwise fetch from DB
+  let allKeywords = cachedAllKeywords ?? await cacheGet('keywords');
   if (allKeywords === undefined || Object.keys(allKeywords).length === 0) {
     return [];
   }
@@ -368,12 +369,15 @@ export default async function getKeywords(content, document) {
   if (!options.cbx_extendedKeywords) return [];
   log(DEBUG, 'Extended Keywords!');
 
+  // Fetch keyword list once for all extended-mode reduce calls below
+  const allKeywords = await cacheGet('keywords');
+
   // --- description ---
   log(DEBUG, 'Description');
   let description = getDescription(document);
   if (description.length > 0) {
     const words = description.split(/[\W_]+/g);
-    keywords = await reduceKeywords(words, true);
+    keywords = await reduceKeywords(words, true, allKeywords);
     if (keywords.length > 0) {
       return keywords;
     }
@@ -387,7 +391,7 @@ export default async function getKeywords(content, document) {
 
     for (const headline of headlines) {
       const words = headline.innerText.split(/[\W_]+/g);
-      keywords = await reduceKeywords(words, true);
+      keywords = await reduceKeywords(words, true, allKeywords);
     }
     if (keywords.length > 0) {
       return keywords;
