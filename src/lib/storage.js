@@ -20,6 +20,41 @@ export function clearOptionsCache() {
 }
 
 // -----------------------------------------------------------------------
+// Main DB connection pool
+// -----------------------------------------------------------------------
+
+let mainDbConnection = null;
+let mainDbConnectionPromise = null;
+
+async function getMainDBConnection() {
+  if (mainDbConnection) {
+    try {
+      if (mainDbConnection.objectStoreNames && mainDbConnection.objectStoreNames.contains('options')) {
+        return mainDbConnection;
+      }
+    } catch (e) {
+      mainDbConnection = null;
+    }
+  }
+
+  if (mainDbConnectionPromise) {
+    return mainDbConnectionPromise;
+  }
+
+  mainDbConnectionPromise = openDB(database, dbVersion, {
+    upgrade(db, oldVersion) {
+      initDatabase(db, oldVersion);
+    },
+  }).then((db) => {
+    mainDbConnection = db;
+    mainDbConnectionPromise = null;
+    return db;
+  });
+
+  return mainDbConnectionPromise;
+}
+
+// -----------------------------------------------------------------------
 
 /**
  * Loads data from the specified store for the given items.
@@ -29,12 +64,7 @@ export function clearOptionsCache() {
  * @return {Promise<any>|any} - A promise that resolves to an object containing the loaded data for each item, or a single value if only one item is provided.
  */
 export async function load_data(storeName, ...items) {
-  const db = await openDB(database, dbVersion, {
-    upgrade(db, dbVersion) {
-      console.log('upgrade', dbVersion);
-      initDatabase(db, dbVersion);
-    },
-  });
+  const db = await getMainDBConnection();
 
   let result = {};
 
@@ -45,7 +75,6 @@ export async function load_data(storeName, ...items) {
 
     result[item] = data !== undefined ? data.value : undefined;
   }
-  db.close();
 
   // if there's only 1 item in the object return the value instead of the object
   if (Object.keys(result).length === 1) {
@@ -64,18 +93,11 @@ export async function load_data(storeName, ...items) {
  * @returns {Promise<Array>} - A promise that resolves with an array of data from the store.
  */
 export async function load_data_all(storeName) {
-  // Open the database connection
-  const db = await openDB(database, dbVersion, {
-    upgrade(db, dbVersion) {
-      initDatabase(db, dbVersion);
-    },
-  });
+  const db = await getMainDBConnection();
 
-  // Retrieve all data from the specified store
   const result = await db.getAll(storeName).catch(() => {
     return result;
   });
-  db.close();
 
   return result;
 }
@@ -90,11 +112,7 @@ export async function load_data_all(storeName) {
  */
 export async function store_data(storeName, ...items) {
   console.log('store_data', storeName, items);
-  const db = await openDB(database, dbVersion, {
-    upgrade(db, dbVersion) {
-      initDatabase(db, dbVersion);
-    },
-  });
+  const db = await getMainDBConnection();
   const puts = [];
   for (let item of items) {
     for (let key in item) {
@@ -102,7 +120,6 @@ export async function store_data(storeName, ...items) {
     }
   }
   await Promise.all(puts);
-  db.close();
 
   // Clear cache if we're updating options
   if (storeName === 'options') {
@@ -119,18 +136,13 @@ export async function store_data(storeName, ...items) {
  * @return {Promise<void>} - A promise that resolves when the deletion is complete.
  */
 export async function delete_data(storeName, ...items) {
-  const db = await openDB(database, dbVersion, {
-    upgrade(db, dbVersion) {
-      initDatabase(db, dbVersion);
-    },
-  });
+  const db = await getMainDBConnection();
 
   const deletes = [];
   for (let item of items) {
     deletes.push(db.delete(storeName, item).catch(() => {}));
   }
   await Promise.all(deletes);
-  db.close();
 }
 
 // ----------------------------------------------------------------------------
@@ -140,14 +152,8 @@ export async function delete_data(storeName, ...items) {
  * @param {string} hash - The hash to be stored.
  */
 export async function store_hash(hash) {
-  const db = await openDB(database, dbVersion, {
-    upgrade(db, dbVersion) {
-      initDatabase(db, dbVersion);
-    },
-  });
-
-  await db.put('hashes', { item: hash, value: new Date().getTime() });
-  db.close();
+  const db = await getMainDBConnection();
+  await db.put('hashes', { item: hash, value: Date.now() });
 }
 // -----------------------------------------------------------------------
 /**
@@ -208,11 +214,7 @@ export async function getOptions(optionNames) {
 
   // Fetch missing/expired options from IndexedDB (truly batched with parallel gets)
   if (namesToFetch.length > 0) {
-    const db = await openDB(database, dbVersion, {
-      upgrade(db, dbVersion) {
-        initDatabase(db, dbVersion);
-      },
-    });
+    const db = await getMainDBConnection();
 
     // Fetch all options in parallel using Promise.all
     const promises = namesToFetch.map((name) =>
@@ -227,8 +229,6 @@ export async function getOptions(optionNames) {
       result[name] = value;
       optionsCache.set(name, { value, timestamp: now });
     });
-
-    db.close();
   }
 
   return result;
@@ -250,6 +250,13 @@ async function InitializeStores(db) {
 }
 // ---------------------------------------------------------------------
 export async function clearData(subject) {
+  // Close and reset pooled connection before destructive operations
+  if (mainDbConnection) {
+    mainDbConnection.close();
+    mainDbConnection = null;
+    mainDbConnectionPromise = null;
+  }
+
   const options_db = await openDB('Bookmarker', dbVersion, {
     upgrade(options_db) {
       initDefaults();

@@ -17,20 +17,7 @@ const CONNECTION_IDLE_TIME = 5 * 60 * 1000; // 5 minutes
 
 // ---------------------------------------------------------------------
 export async function cacheGet(type, forceServer = false) {
-  const db = await openDB(dbName, dbVersion, {
-    upgrade(db) {
-      // there's no way to add a store to an existing database
-      // without upgrading it, so the creation needs to done
-      // with explicit names.
-      try {
-        db.createObjectStore('keywords', { keyPath: 'item' });
-        db.createObjectStore('folders', { keyPath: 'item' });
-        db.createObjectStore('bookmarkChecks', { keyPath: 'item' });
-      } catch (e) {
-        console.log(e);
-      }
-    },
-  });
+  const db = await getDBConnection();
 
   // OPTIMIZATION: Fetch both in parallel instead of sequentially
   const [element, created] = await Promise.all([
@@ -67,11 +54,7 @@ export async function cacheGet(type, forceServer = false) {
 
 // ---------------------------------------------------------------------
 export async function cacheAdd(type, data) {
-  const db = await openDB(dbName, dbVersion, {
-    upgrade(db) {
-      db.createObjectStore(type, { keyPath: 'item' });
-    },
-  });
+  const db = await getDBConnection();
 
   // OPTIMIZATION: Batch both writes in parallel
   await Promise.all([
@@ -84,11 +67,7 @@ export async function cacheAdd(type, data) {
 // If the user enters a tag that's not already in the tags collection,
 // add it to the local cache
 export async function cacheTempAdd(type, newTags) {
-  const db = await openDB(dbName, dbVersion, {
-    upgrade(db) {
-      db.createObjectStore(type, { keyPath: 'item' });
-    },
-  });
+  const db = await getDBConnection();
 
   let cachedTags = await cacheGet(type);
   let allTags = cachedTags.concat(newTags);
