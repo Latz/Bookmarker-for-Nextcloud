@@ -12,7 +12,9 @@ export default async function fillFolders(selectbox, folders) {
     return;
   }
 
-  selectbox.innerHTML = folders;
+  const template = document.createElement('template');
+  template.innerHTML = folders;
+  selectbox.appendChild(template.content);
 
   const folderIDs = await getOption('folderIDs');
 

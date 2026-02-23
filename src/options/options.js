@@ -63,7 +63,9 @@ document.onreadystatechange = async () => {
     // fill zen folders selection box
     const folders = await getFolders(true);
     const input_zenFolders = document.getElementById('zen_folders');
-    input_zenFolders.innerHTML = folders;
+    const zenTemplate = document.createElement('template');
+    zenTemplate.innerHTML = folders;
+    input_zenFolders.appendChild(zenTemplate.content);
 
     // load previously selected folders from database
     let zenFolderIDs = await load_data(OPTION_STORE, 'zenFolderIDs');
