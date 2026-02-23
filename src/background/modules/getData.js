@@ -203,34 +203,20 @@ async function checkBookmark(url, title, signal = null) {
     }
   }
 
-  // OPTIMIZATION 3: Cache missed or disabled - fetch remaining options
-  const additionalOptions = await getOptions([
+  // OPTIMIZATION 3: Cache missed or disabled - fetch all remaining options in one call
+  const remainingOptions = await getOptions([
     'cbx_fuzzyUrlMatch',
     'input_bookmarkCacheTTL',
+    'cbx_titleSimilarityCheck',
   ]);
 
-  // Combine all options
-  const cacheOptions = {
-    ...essentialOptions,
-    ...additionalOptions,
-  };
+  const allOptions = { ...essentialOptions, ...remainingOptions };
 
   // OPTIMIZATION 4: Reuse normalized URL if already calculated, otherwise normalize based on setting
-  // This avoids calling normalizeUrl() twice
   if (normalizedUrl === null) {
     normalizedUrl = normalizeUrl(url);
   }
-  const cacheKey = cacheOptions.cbx_fuzzyUrlMatch ? normalizedUrl : url;
-
-  // OPTIMIZATION 5: Only fetch title check option if cache missed
-  // Most requests should hit cache, so this saves a storage read
-  const titleCheckEnabled = await getOption('cbx_titleSimilarityCheck');
-
-  // Combine all options for passing to cache functions
-  const allOptions = {
-    ...cacheOptions,
-    cbx_titleSimilarityCheck: titleCheckEnabled,
-  };
+  const cacheKey = allOptions.cbx_fuzzyUrlMatch ? normalizedUrl : url;
 
   // Request deduplication: if same URL is being checked, wait for that result
   if (inflightChecks.has(cacheKey)) {
