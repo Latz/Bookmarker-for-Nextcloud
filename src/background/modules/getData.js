@@ -10,7 +10,7 @@ import {
   calculateSimilarity,
   batchSimilarityCheck,
 } from '../../lib/stringSimilarity.js';
-import { parseHTMLWithOffscreen } from './getBrowserTheme.js';
+import { parseHTMLWithOffscreen, ensureOffscreenDocument } from './getBrowserTheme.js';
 
 const DEBUG = false;
 
@@ -88,6 +88,11 @@ export default async function getData() {
     };
   }
 
+  // Kick off offscreen doc preparation in parallel with content fetch.
+  // ensureOffscreenDocument is idempotent and deduplicated, so the later
+  // call inside parseHTMLWithOffscreen returns immediately if it already ran.
+  const offscreenReady = ensureOffscreenDocument();
+
   // unable to not get content, for example restricted pages
   try {
     content = await getContent(tabId);
@@ -100,6 +105,9 @@ export default async function getData() {
   if (!data.ok) {
     return data;
   }
+
+  // Ensure offscreen setup is complete before parsing
+  await offscreenReady;
 
   // Use offscreen document to parse HTML (DOMParser not available in service worker)
   let parsedData;

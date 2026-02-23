@@ -10,7 +10,7 @@ let cachedTheme = null; // Cache theme result (never changes during session)
  * Gets or creates the offscreen document for various operations
  * @returns {Promise<void>}
  */
-async function ensureOffscreenDocument() {
+export async function ensureOffscreenDocument() {
   // If we already have a promise for creating the document, return it
   if (offscreenDocumentPromise) {
     return offscreenDocumentPromise;
