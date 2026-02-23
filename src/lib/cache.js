@@ -67,10 +67,9 @@ export async function cacheAdd(type, data) {
 // If the user enters a tag that's not already in the tags collection,
 // add it to the local cache
 export async function cacheTempAdd(type, newTags) {
+  const cachedTags = await cacheGet(type);
+  const allTags = cachedTags.concat(newTags);
   const db = await getDBConnection();
-
-  let cachedTags = await cacheGet(type);
-  let allTags = cachedTags.concat(newTags);
   await db.put(type, { item: type, value: allTags.sort() });
 }
 
