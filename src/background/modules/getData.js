@@ -90,7 +90,7 @@ export default async function getData() {
 
   // unable to not get content, for example restricted pages
   try {
-    content = await getContent();
+    content = await getContent(tabId);
   } catch (error) {
     data = {
       ok: false,
@@ -155,14 +155,10 @@ export default async function getData() {
  *
  * @returns {Promise<string>} The HTML content of the active tab.
  */
-async function getContent() {
-  // Query the active tab in the current window
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  const activeTab = tabs[0];
-
+async function getContent(tabId) {
   // Execute a script in the active tab to retrieve the HTML content
   const injectionResults = await chrome.scripting.executeScript({
-    target: { tabId: activeTab.id },
+    target: { tabId },
     func: () => document.documentElement.innerHTML,
   });
 
