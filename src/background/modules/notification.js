@@ -4,29 +4,38 @@ import getBrowserTheme from './getBrowserTheme.js';
 // OPTIMIZATION: Constant for notification title (avoid repetition)
 const NOTIFICATION_TITLE = 'Bookmarker for Nextcloud';
 
+// Cache which themes have error icons (checked once at startup)
+let errorIconsAvailable = {}; // { 'light': true/false, 'dark': true/false }
+
 // OPTIMIZATION: Get icon URL with browser theme (reusable helper)
 async function getIconUrl() {
   const browserTheme = await getBrowserTheme();
   return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}.png`);
 }
 
-// OPTIMIZATION: Get error icon URL with fallback to regular icon
+// Initialize error icon availability cache at startup
+export async function initializeErrorIconCache() {
+  // Check both themes once at startup instead of fetching on every error
+  for (const theme of ['light', 'dark']) {
+    try {
+      const response = await fetch(chrome.runtime.getURL(`/images/icon-128x128-${theme}-error.png`));
+      errorIconsAvailable[theme] = response.ok;
+    } catch (e) {
+      errorIconsAvailable[theme] = false;
+    }
+  }
+}
+
+// OPTIMIZATION: Get error icon URL with fallback to regular icon (cached check)
 async function getIconErrorUrl() {
   const browserTheme = await getBrowserTheme();
-  const errorIconUrl = `/images/icon-128x128-${browserTheme}-error.png`;
 
-  // Try to get the error icon, fall back to regular icon if it doesn't exist
-  try {
-    // Check if the error icon exists by trying to fetch it
-    const response = await fetch(chrome.runtime.getURL(errorIconUrl));
-    if (response.ok) {
-      return chrome.runtime.getURL(errorIconUrl);
-    }
-  } catch (e) {
-    // Error icon doesn't exist, use regular icon
+  // Use cached check result (populated at startup by initializeErrorIconCache)
+  if (errorIconsAvailable[browserTheme]) {
+    return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}-error.png`);
   }
 
-  // Fall back to regular icon
+  // Fall back to regular icon if error icon doesn't exist
   return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}.png`);
 }
 

@@ -6,7 +6,7 @@ import {
   getOption,
   load_data,
 } from '../lib/storage.js';
-import { notifyUser } from './modules/notification.js';
+import { notifyUser, initializeErrorIconCache } from './modules/notification.js';
 import getBrowserTheme from './modules/getBrowserTheme.js';
 import { cacheGet } from '../lib/cache.js';
 import { zenMode, enableZenMode } from './modules/zenMode.js';
@@ -86,6 +86,9 @@ async function init() {
     console.error('Failed to detect browser theme, using default:', error);
     // Icon will remain as manifest default (light)
   }
+
+  // Initialize error icon availability cache (checked once at startup)
+  await initializeErrorIconCache();
 
   chrome.contextMenus.removeAll();
   const zenModeEnabled = await getOption('cbx_enableZen');
