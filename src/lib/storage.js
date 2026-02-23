@@ -146,7 +146,7 @@ export async function store_hash(hash) {
     },
   });
 
-  db.put('hashes', { item: hash, value: new Date().getTime() });
+  await db.put('hashes', { item: hash, value: new Date().getTime() });
   db.close();
 }
 // -----------------------------------------------------------------------

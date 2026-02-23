@@ -279,6 +279,18 @@ describe('storage.js', () => {
 
       vi.restoreAllMocks();
     });
+
+    it('should await db.put before calling db.close', async () => {
+      let putResolved = false;
+      mockDB.put.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => { putResolved = true; resolve(); }, 10))
+      );
+
+      await store_hash('test-hash');
+
+      expect(putResolved).toBe(true);
+      expect(mockDB.close).toHaveBeenCalled();
+    });
   });
 
   describe('getOption', () => {
