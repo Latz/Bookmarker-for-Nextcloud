@@ -52,6 +52,9 @@ export async function cacheGet(type, forceServer = false) {
     );
     if (type === 'folders') {
       data = preRenderFolders(data.data);
+    } else if (type === 'keywords') {
+      // Extract the actual array from the API response
+      data = data.data;
     }
     cacheAdd(type, data);
     if (forceServer) cacheRefreshNotification();
@@ -89,7 +92,7 @@ export async function cacheTempAdd(type, newTags) {
 
   let cachedTags = await cacheGet(type);
   let allTags = cachedTags.concat(newTags);
-  db.put(type, { item: type, value: allTags.sort() });
+  await db.put(type, { item: type, value: allTags.sort() });
 }
 
 // ---------------------------------------------------------------------

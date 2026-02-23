@@ -100,7 +100,8 @@ describe('cache.js', () => {
         'GET',
       );
       expect(mockDB.put).toHaveBeenCalled();
-      expect(result).toEqual(mockServerData);
+      // cacheGet now returns just the array, not the full API response
+      expect(result).toEqual(['tag1', 'tag2']);
     });
 
     it('should fetch from server when cache is expired', async () => {
@@ -116,7 +117,8 @@ describe('cache.js', () => {
 
       expect(apiCall).toHaveBeenCalled();
       expect(mockDB.delete).toHaveBeenCalled();
-      expect(result).toEqual(mockServerData);
+      // cacheGet now returns just the array, not the full API response
+      expect(result).toEqual(['new-tag']);
     });
 
     it('should handle folders with preRenderFolders', async () => {
@@ -154,7 +156,8 @@ describe('cache.js', () => {
       const result = await cacheGet('keywords');
 
       expect(apiCall).toHaveBeenCalled();
-      expect(result).toEqual(mockServerData);
+      // cacheGet now returns just the array, not the full API response
+      expect(result).toEqual(['tag1']);
     });
   });
 
@@ -193,17 +196,30 @@ describe('cache.js', () => {
     it('should handle empty existing cache', async () => {
       // When cacheGet is called, it will fetch from server since there's no cache
       // The server returns { data: [] } for empty tags
-      // cacheGet returns the server response directly
-      // cacheTempAdd needs to handle this case
+      // cacheGet now correctly extracts the array from the response
       mockDB.get.mockResolvedValue(undefined);
       apiCall.mockResolvedValue({ data: [] });
 
-      // This test documents the current behavior
-      // Note: The actual code has a bug where cacheGet returns the server response
-      // object { data: [] } but cacheTempAdd expects an array
-      // This would cause a TypeError: cachedTags.concat is not a function
-      // For now, we'll test the expected behavior if the bug were fixed
-      await expect(cacheTempAdd('keywords', ['tag1'])).rejects.toThrow();
+      await cacheTempAdd('keywords', ['tag1']);
+
+      expect(mockDB.put).toHaveBeenCalledWith('keywords', {
+        item: 'keywords',
+        value: ['tag1'].sort(),
+      });
+    });
+
+    it('should await db.put to complete before returning', async () => {
+      const existingTags = ['tag1', 'tag2'];
+      let putResolved = false;
+
+      mockDB.get.mockResolvedValue({ item: 'keywords', value: existingTags });
+      mockDB.put.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => { putResolved = true; resolve(); }, 10))
+      );
+
+      await cacheTempAdd('keywords', ['tag3']);
+
+      expect(putResolved).toBe(true);
     });
   });
 
