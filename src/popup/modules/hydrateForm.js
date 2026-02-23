@@ -1,6 +1,6 @@
 import fillKeywords from './fillKeywords.js';
 import fillFolders from './fillFolders.js';
-import { getOption } from '../../lib/storage.js';
+import { getOptions } from '../../lib/storage.js';
 
 function addTextInput(node, id, show) {
   const textInput = document.createElement('input');
@@ -31,11 +31,10 @@ function addTextArea(node, id, show = true) {
 // --------------------------------------------------------------------------------------------------
 // The extra <div> is added because the yelect> element does not have a resize event
 
-async function addDropdown(node, id) {
+function addDropdown(node, id, displayFolders) {
   // The user does not want to use folders, so we return
-  const displayFolders = await getOption('cbx_displayFolders');
   console.log('🚀 ~ addDropdown ~ displayFolders:', displayFolders);
-  if (!(await getOption('cbx_displayFolders'))) return;
+  if (!displayFolders) return;
 
   const container = document.createElement('div');
   container.setAttribute('id', `${id}-container`);
@@ -61,15 +60,25 @@ function addHiddenInput(node, id) {
 // ---------------------------------------------------------------------------------------------------
 export async function createForm() {
   const form = document.getElementById('formData');
-  const showUrl = await getOption('cbx_showUrl');
-  addTextInput(form, 'url', showUrl);
-  addTextInput(form, 'title', true);
-  await addDropdown(form, 'folders');
-  if (await getOption('cbx_showKeywords'))
-    addTextInput(form, 'keywords', await getOption('cbx_showKeywords'));
-  addTextArea(form, 'description', await getOption('cbx_showDescription'));
 
-  if (await getOption('cbx_alreadyStored')) {
+  // Batch fetch all options in one DB call
+  const options = await getOptions([
+    'cbx_showUrl',
+    'cbx_displayFolders',
+    'cbx_showKeywords',
+    'cbx_showDescription',
+    'cbx_alreadyStored',
+  ]);
+
+  addTextInput(form, 'url', options.cbx_showUrl);
+  addTextInput(form, 'title', true);
+  addDropdown(form, 'folders', options.cbx_displayFolders);
+
+  if (options.cbx_showKeywords)
+    addTextInput(form, 'keywords', options.cbx_showKeywords);
+  addTextArea(form, 'description', options.cbx_showDescription);
+
+  if (options.cbx_alreadyStored) {
     document.getElementById('sub_message').innerHTML =
       `<div class="text-center">${chrome.i18n.getMessage(
         'Checking',
@@ -85,10 +94,11 @@ export async function createForm() {
 export async function hydrateForm(data) {
   document.getElementById('url').value = data.url;
   document.getElementById('title').value = data.title;
-  if (
-    (await getOption('cbx_showDescription')) &&
-    (await getOption('cbx_autoDescription'))
-  ) {
+
+  // Batch fetch options in one DB call
+  const options = await getOptions(['cbx_showDescription', 'cbx_autoDescription']);
+
+  if (options.cbx_showDescription && options.cbx_autoDescription) {
     document.getElementById('description').value = data.description;
   }
   document.getElementById('bookmarkID').value = data.bookmarkID;
