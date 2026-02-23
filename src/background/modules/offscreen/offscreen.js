@@ -4,6 +4,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return false; // Not for us, don't handle
   }
 
+  // Handle readiness check (instant response, no processing needed)
+  if (request.msg === 'ready') {
+    sendResponse(true);
+    return false;
+  }
+
   // Handle theme detection
   if (request.msg === 'getBrowserTheme') {
     try {

@@ -91,8 +91,13 @@ async function detectTheme() {
   try {
     await ensureOffscreenDocument();
 
-    // Small delay to ensure offscreen document is fully ready
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Wait for offscreen document to be ready (instead of fixed 100ms delay)
+    await Promise.race([
+      chrome.runtime.sendMessage({ target: 'offscreen', msg: 'ready' }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Offscreen ready timeout')), 1000)
+      ),
+    ]);
 
     // Send message with timeout protection (5 seconds)
     const isLight = await Promise.race([
@@ -144,8 +149,13 @@ export async function parseHTMLWithOffscreen(htmlContent) {
       }
     }
 
-    // Small delay to ensure offscreen document is fully ready
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // Wait for offscreen document to be ready (instead of fixed 100ms delay)
+    await Promise.race([
+      chrome.runtime.sendMessage({ target: 'offscreen', msg: 'ready' }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Offscreen ready timeout')), 1000)
+      ),
+    ]);
 
     // Send message with timeout protection (10 seconds for parsing)
     const result = await Promise.race([
