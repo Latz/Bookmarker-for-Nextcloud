@@ -30,7 +30,7 @@ async function reduceKeywords(keywords, force = false) {
 
   if (force === false && cbx_reduceKeywords === false) {
     // if the user does not want to reduce the keywords, we return
-    return Promise.resolve(keywords);
+    return keywords;
   }
 
   keywords = [...new Set(keywords)];
@@ -54,7 +54,7 @@ async function reduceKeywords(keywords, force = false) {
   // make keywords unique
   reducedKeywords = [...new Set(reducedKeywords)];
 
-  return Promise.resolve(reducedKeywords);
+  return reducedKeywords;
 }
 
 // ----------------------------------------------------------------------------------------
@@ -352,7 +352,7 @@ export default async function getKeywords(content, document) {
     // switchable by Options/Advanced
     if (keywords && keywords.length > 0) {
       const reducedKeywords = await reduceKeywords(keywords);
-      return Promise.resolve(reducedKeywords);
+      return reducedKeywords;
     }
   }
 
@@ -365,7 +365,7 @@ export default async function getKeywords(content, document) {
     ':: ~ getKeywords ~ extendedKeywords:',
     options.cbx_extendedKeywords,
   );
-  if (!options.cbx_extendedKeywords) return Promise.resolve([]);
+  if (!options.cbx_extendedKeywords) return [];
   log(DEBUG, 'Extended Keywords!');
 
   // --- description ---
@@ -375,7 +375,7 @@ export default async function getKeywords(content, document) {
     const words = description.split(/[\W_]+/g);
     keywords = await reduceKeywords(words, true);
     if (keywords.length > 0) {
-      return Promise.resolve(keywords);
+      return keywords;
     }
   } // --- headlines ---
   log(DEBUG, 'Headlines');
@@ -390,13 +390,13 @@ export default async function getKeywords(content, document) {
       keywords = await reduceKeywords(words, true);
     }
     if (keywords.length > 0) {
-      return Promise.resolve(keywords);
+      return keywords;
     }
     level++;
   }
 
   // The functions have found no keywords return an empty array
-  return Promise.resolve([]);
+  return [];
 }
 
 /* -----------------------------------------------------------------------------------------

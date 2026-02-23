@@ -19,7 +19,7 @@ export async function getFolders(force = false) {
     cacheAdd('folders', folders);
   }
   log(DEBUG, 'folders', folders);
-  return Promise.resolve(folders);
+  return folders;
 }
 
 // ---------------------------------------------------------------------------------------------------

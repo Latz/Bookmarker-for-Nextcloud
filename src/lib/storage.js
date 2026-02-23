@@ -54,7 +54,7 @@ export async function load_data(storeName, ...items) {
 
   console.log('load_data', storeName, items, result);
 
-  return Promise.resolve(result);
+  return result;
 }
 
 // -----------------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ export async function load_data_all(storeName) {
   });
   db.close();
 
-  return Promise.resolve(result);
+  return result;
 }
 
 // -----------------------------------------------------------------------------------------------------
