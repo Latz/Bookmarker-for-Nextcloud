@@ -4,6 +4,7 @@
 // Request deduplication: prevent multiple simultaneous offscreen document creations
 let inflightThemeRequest = null;
 let offscreenDocumentPromise = null;
+let cachedTheme = null; // Cache theme result (never changes during session)
 
 /**
  * Gets or creates the offscreen document for various operations
@@ -66,10 +67,16 @@ async function ensureOffscreenDocument() {
 
 /**
  * Detects the browser's theme (light or dark) using the offscreen document API.
+ * Caches result since theme never changes during session.
  * Implements request deduplication to prevent race conditions.
  * @returns {Promise<'light'|'dark'>} The detected theme, or 'light' as fallback on error
  */
 export default async function getBrowserTheme() {
+  // Return cached result if available (theme never changes during session)
+  if (cachedTheme !== null) {
+    return cachedTheme;
+  }
+
   // If there's already a request in flight, return that promise
   if (inflightThemeRequest) {
     return inflightThemeRequest;
@@ -80,6 +87,7 @@ export default async function getBrowserTheme() {
 
   try {
     const result = await inflightThemeRequest;
+    cachedTheme = result; // Cache for subsequent calls
     return result;
   } finally {
     // Clear inflight request after completion (success or failure)
