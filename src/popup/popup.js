@@ -8,14 +8,14 @@ document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     const apppwd = await load_data('credentials', 'appPassword');
 
-    if ((await load_data('credentials', 'appPassword')) === undefined) {
+    if (apppwd === undefined) {
       createAuthorizeButton();
     } else {
       if (await getOption('cbx_enableZen')) {
         zenMode();
       } else {
         createForm();
-        const data = await chrome.runtime.sendMessage({ msg: 'getData' });
+        const data = await getDataWithRetry();
         if (!data.ok) {
           createErrorBox(data);
           textFit(document.getElementById('errormessage'));
@@ -27,6 +27,70 @@ document.onreadystatechange = async () => {
     }
   }
 };
+
+// --------------------------------------------------------------------------------------------------
+/**
+ * Gets data from the background with retry logic
+ * Retries the connection when it fails, up to the configured number of retries
+ * @returns {Promise<Object>} The data from the background or error object
+ */
+async function getDataWithRetry() {
+  const maxRetries = await getOption('input_numberOfRetries');
+  const retryCount = Number.isFinite(maxRetries) && maxRetries > 0 ? Math.round(maxRetries) : 5;
+
+  let lastError = null;
+
+  for (let attempt = 0; attempt < retryCount; attempt++) {
+    // Exceptions from sendMessage propagate immediately (no retry on throws)
+    const data = await chrome.runtime.sendMessage({ msg: 'getData' });
+
+    // If the data is ok, return it immediately
+    if (data.ok) {
+      return data;
+    }
+
+    // If data is not ok but we have more retries, wait and try again
+    lastError = data;
+
+    if (attempt < retryCount - 1) {
+      // Show retry message starting from the second retry (attempt 1)
+      if (attempt >= 1) {
+        showRetryMessage(attempt + 1, retryCount);
+      }
+      // Wait 500ms before retrying (exponential backoff could be added)
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  // All retries failed, return the last error
+  return lastError;
+}
+
+/**
+ * Shows a retry message in the popup
+ * @param {number} currentRetry - The current retry number (1-indexed)
+ * @param {number} maxRetries - The maximum number of retries
+ */
+function showRetryMessage(currentRetry, maxRetries) {
+  const baseMessage = chrome.i18n.getMessage('retryingConnection');
+  const message = `${baseMessage} (${currentRetry}/${maxRetries})`;
+  const retryDiv = document.createElement('div');
+  retryDiv.id = 'retryMessage';
+  retryDiv.className = 'text-center text-sm text-yellow-600 mt-2';
+  retryDiv.textContent = message;
+
+  // Remove any existing retry message
+  const existingMessage = document.getElementById('retryMessage');
+  if (existingMessage) {
+    existingMessage.remove();
+  }
+
+  // Add the retry message to the form
+  const form = document.getElementById('bookmarkForm');
+  if (form) {
+    form.appendChild(retryDiv);
+  }
+}
 // --------------------------------------------------------------------------------------------------
 function createErrorBox(data) {
   document.body.innerHTML = `
