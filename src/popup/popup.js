@@ -6,12 +6,16 @@ import textFit from 'textfit';
 // Check if the user credentials are
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
-    const apppwd = await load_data('credentials', 'appPassword');
+    // Fetch credential and zen mode in parallel (independent)
+    const [apppwd, enableZen] = await Promise.all([
+      load_data('credentials', 'appPassword'),
+      getOption('cbx_enableZen'),
+    ]);
 
     if (apppwd === undefined) {
       createAuthorizeButton();
     } else {
-      if (await getOption('cbx_enableZen')) {
+      if (enableZen) {
         zenMode();
       } else {
         createForm();
