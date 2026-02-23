@@ -76,6 +76,7 @@ vi.mock('../src/lib/storage.js', () => ({
 
 vi.mock('../src/background/modules/notification.js', () => ({
   notifyUser: vi.fn(),
+  initializeErrorIconCache: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../src/background/modules/getBrowserTheme.js', () => ({

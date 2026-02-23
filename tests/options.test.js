@@ -128,6 +128,7 @@ describe('options.js', () => {
           { value: '2', selected: false },
         ],
         addEventListener: vi.fn(),
+        appendChild: vi.fn(),
       },
       // Zen keywords input
       input_zenKeywords: {
@@ -192,6 +193,8 @@ describe('options.js', () => {
       ]),
       getElementById: vi.fn((id) => mockElements[id] || null),
       addEventListener: vi.fn(),
+      // createElement needed for DocumentFragment-based folder rendering
+      createElement: vi.fn(() => ({ innerHTML: '', content: {} })),
     };
 
     // Set up global document
@@ -334,7 +337,8 @@ describe('options.js', () => {
 
     it('should fill zen folders selection box', async () => {
       expect(getFolders).toHaveBeenCalledWith(true);
-      expect(mockElements.zen_folders.innerHTML).toBe('<option value="1">Folder 1</option><option value="2">Folder 2</option>');
+      // DocumentFragment-based rendering: appendChild is called with template.content
+      expect(mockElements.zen_folders.appendChild).toHaveBeenCalled();
     });
 
     it('should select previously stored folders', async () => {

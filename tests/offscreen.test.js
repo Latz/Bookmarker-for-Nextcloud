@@ -132,10 +132,12 @@ describe('Offscreen Document HTML Parsing', () => {
     it('should handle timeout errors', async () => {
       chrome.runtime.getContexts.mockResolvedValue([]);
 
-      // Mock a slow response that triggers timeout
-      chrome.runtime.sendMessage.mockImplementation(() =>
-        new Promise(resolve => setTimeout(resolve, 15000))
-      );
+      // Ready signal resolves immediately; only the parse call is slow so the parse
+      // timeout (10s) fires before the ready timeout (1s).
+      chrome.runtime.sendMessage.mockImplementation((msg) => {
+        if (msg.msg === 'ready') return Promise.resolve(true);
+        return new Promise(resolve => setTimeout(resolve, 15000));
+      });
 
       const htmlContent = '<html></html>';
 

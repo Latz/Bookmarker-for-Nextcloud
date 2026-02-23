@@ -26,6 +26,7 @@ import {
   initDefaults,
   createOldDatabase,
   clearOptionsCache,
+  _resetMainConnectionForTesting,
 } from '../src/lib/storage.js';
 
 describe('storage.js', () => {
@@ -35,7 +36,11 @@ describe('storage.js', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers(); // Ensure fake timers never leak between tests
     vi.resetModules();
+
+    // Reset the connection pool so each test gets a fresh openDB call
+    _resetMainConnectionForTesting();
 
     // Clear the options cache before each test
     clearOptionsCache();
@@ -81,7 +86,6 @@ describe('storage.js', () => {
 
       expect(mockDB.get).toHaveBeenCalledWith('credentials', 'appPassword');
       expect(result).toBe('secret123');
-      expect(mockDB.close).toHaveBeenCalled();
     });
 
     it('should load multiple items from store', async () => {
@@ -95,7 +99,6 @@ describe('storage.js', () => {
         loginname: 'admin',
         server: 'https://example.com',
       });
-      expect(mockDB.close).toHaveBeenCalled();
     });
 
     it('should return undefined for non-existent items', async () => {
@@ -117,7 +120,6 @@ describe('storage.js', () => {
       // and the function returns undefined (result[item] = undefined)
       const result = await load_data('credentials', 'appPassword');
       expect(result).toBe(undefined);
-      expect(mockDB.close).toHaveBeenCalled();
     });
 
     it('should return single value when only one item requested', async () => {
@@ -141,7 +143,6 @@ describe('storage.js', () => {
 
       expect(mockDB.getAll).toHaveBeenCalledWith('options');
       expect(result).toEqual(mockData);
-      expect(mockDB.close).toHaveBeenCalled();
     });
 
     it('should handle empty store', async () => {
@@ -169,7 +170,6 @@ describe('storage.js', () => {
         item: 'cbx_enableZen',
         value: true,
       });
-      expect(mockDB.close).toHaveBeenCalled();
     });
 
     it('should store multiple items', async () => {
@@ -208,7 +208,7 @@ describe('storage.js', () => {
       expect(result).toBe(false);
     });
 
-    it('should await db.put before calling db.close', async () => {
+    it('should await db.put before returning', async () => {
       let putResolved = false;
       mockDB.put.mockImplementation(
         () => new Promise(resolve => setTimeout(() => { putResolved = true; resolve(); }, 10))
@@ -217,7 +217,6 @@ describe('storage.js', () => {
       await store_data('options', { cbx_enableZen: true });
 
       expect(putResolved).toBe(true);
-      expect(mockDB.close).toHaveBeenCalled();
     });
   });
 
@@ -228,7 +227,6 @@ describe('storage.js', () => {
       await delete_data('credentials', 'appPassword');
 
       expect(mockDB.delete).toHaveBeenCalledWith('credentials', 'appPassword');
-      expect(mockDB.close).toHaveBeenCalled();
     });
 
     it('should delete multiple items', async () => {
@@ -251,7 +249,7 @@ describe('storage.js', () => {
       await expect(delete_data('options', 'test')).resolves.not.toThrow();
     });
 
-    it('should await db.delete before calling db.close', async () => {
+    it('should await db.delete before returning', async () => {
       let deleteResolved = false;
       mockDB.delete.mockImplementation(
         () => new Promise(resolve => setTimeout(() => { deleteResolved = true; resolve(); }, 10))
@@ -260,14 +258,13 @@ describe('storage.js', () => {
       await delete_data('credentials', 'appPassword');
 
       expect(deleteResolved).toBe(true);
-      expect(mockDB.close).toHaveBeenCalled();
     });
   });
 
   describe('store_hash', () => {
     it('should store hash with timestamp', async () => {
       const mockDate = 1234567890000;
-      vi.spyOn(Date.prototype, 'getTime').mockReturnValue(mockDate);
+      vi.spyOn(Date, 'now').mockReturnValue(mockDate);
 
       await store_hash('test-hash');
 
@@ -275,12 +272,11 @@ describe('storage.js', () => {
         item: 'test-hash',
         value: mockDate,
       });
-      expect(mockDB.close).toHaveBeenCalled();
 
       vi.restoreAllMocks();
     });
 
-    it('should await db.put before calling db.close', async () => {
+    it('should await db.put before returning', async () => {
       let putResolved = false;
       mockDB.put.mockImplementation(
         () => new Promise(resolve => setTimeout(() => { putResolved = true; resolve(); }, 10))
@@ -289,7 +285,6 @@ describe('storage.js', () => {
       await store_hash('test-hash');
 
       expect(putResolved).toBe(true);
-      expect(mockDB.close).toHaveBeenCalled();
     });
   });
 

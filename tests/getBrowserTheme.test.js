@@ -20,11 +20,15 @@ global.chrome = {
 };
 
 // Import the module
-import getBrowserTheme, { parseHTMLWithOffscreen } from '../src/background/modules/getBrowserTheme.js';
+import getBrowserTheme, {
+  parseHTMLWithOffscreen,
+  _resetCacheForTesting,
+} from '../src/background/modules/getBrowserTheme.js';
 
 describe('getBrowserTheme module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetCacheForTesting();
   });
 
   afterEach(() => {
@@ -190,9 +194,11 @@ describe('getBrowserTheme module', () => {
 
     it('should handle timeout', async () => {
       chrome.runtime.getContexts.mockResolvedValue([]);
-      chrome.runtime.sendMessage.mockImplementation(() =>
-        new Promise(resolve => setTimeout(resolve, 15000))
-      );
+      // Ready signal resolves immediately; only the parse call is slow
+      chrome.runtime.sendMessage.mockImplementation((msg) => {
+        if (msg.msg === 'ready') return Promise.resolve(true);
+        return new Promise(resolve => setTimeout(resolve, 15000));
+      });
 
       await expect(parseHTMLWithOffscreen('<html></html>'))
         .rejects.toThrow('HTML parsing timeout');
@@ -333,14 +339,17 @@ describe('getBrowserTheme module', () => {
 describe('Integration tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetCacheForTesting();
   });
 
   it('should work end-to-end for theme detection and HTML parsing', async () => {
     // Setup for theme detection
     chrome.runtime.getContexts.mockResolvedValue([]);
-    chrome.runtime.sendMessage.mockResolvedValueOnce(true); // Theme response (isLight=true)
+    chrome.runtime.sendMessage.mockResolvedValueOnce(true); // ready for getBrowserTheme
+    chrome.runtime.sendMessage.mockResolvedValueOnce(true); // getBrowserTheme (isLight=true -> 'dark')
 
-    // Setup for HTML parsing
+    // Setup for HTML parsing (ready + parse)
+    chrome.runtime.sendMessage.mockResolvedValueOnce(true); // ready for parseHTMLWithOffscreen
     chrome.runtime.sendMessage.mockResolvedValueOnce({
       metaTags: [{ name: 'description', property: null, itemprop: null, httpEquiv: null, content: 'Page desc' }],
       aRelTag: ['tag1'],

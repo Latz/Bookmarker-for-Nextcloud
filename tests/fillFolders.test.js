@@ -22,6 +22,7 @@ describe('fillFolders', () => {
     mockSelectbox = {
       innerHTML: '',
       options: [],
+      appendChild: vi.fn(), // needed for DocumentFragment-based rendering
     };
   });
 
@@ -54,7 +55,8 @@ describe('fillFolders', () => {
       const folders = '<option value="1">Folder 1</option><option value="2">Folder 2</option>';
       await fillFolders(mockSelectbox, folders);
 
-      expect(mockSelectbox.innerHTML).toBe(folders);
+      // DocumentFragment-based rendering: folders are inserted via appendChild(template.content)
+      expect(mockSelectbox.appendChild).toHaveBeenCalled();
     });
 
     it('should call getOption with folderIDs', async () => {

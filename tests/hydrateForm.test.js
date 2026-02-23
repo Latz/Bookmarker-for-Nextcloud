@@ -14,9 +14,16 @@ vi.mock('../src/popup/modules/fillFolders.js', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('../src/lib/storage.js', () => ({
-  getOption: vi.fn(),
-}));
+vi.mock('../src/lib/storage.js', () => {
+  const getOption = vi.fn();
+  // Adapter: hydrateForm now uses getOptions(), but tests mock getOption individually.
+  // getOptions delegates to getOption so all existing assertions still hold.
+  const getOptions = vi.fn(async (keys) => {
+    const entries = await Promise.all(keys.map(async (key) => [key, await getOption(key)]));
+    return Object.fromEntries(entries);
+  });
+  return { getOption, getOptions };
+});
 
 // Import the module after mocking
 import fillKeywords from '../src/popup/modules/fillKeywords.js';

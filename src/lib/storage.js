@@ -26,6 +26,12 @@ export function clearOptionsCache() {
 let mainDbConnection = null;
 let mainDbConnectionPromise = null;
 
+/** Reset the main DB connection pool — for test isolation only. */
+export function _resetMainConnectionForTesting() {
+  mainDbConnection = null;
+  mainDbConnectionPromise = null;
+}
+
 async function getMainDBConnection() {
   if (mainDbConnection) {
     try {

@@ -7,6 +7,11 @@ const NOTIFICATION_TITLE = 'Bookmarker for Nextcloud';
 // Cache which themes have error icons (checked once at startup)
 let errorIconsAvailable = {}; // { 'light': true/false, 'dark': true/false }
 
+/** Reset error icon availability cache — for test isolation only. */
+export function _resetErrorIconCacheForTesting(cache = {}) {
+  errorIconsAvailable = cache;
+}
+
 // OPTIMIZATION: Get icon URL with browser theme (reusable helper)
 async function getIconUrl() {
   const browserTheme = await getBrowserTheme();

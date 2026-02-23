@@ -6,6 +6,13 @@ let inflightThemeRequest = null;
 let offscreenDocumentPromise = null;
 let cachedTheme = null; // Cache theme result (never changes during session)
 
+/** Reset module-level cache — for test isolation only. */
+export function _resetCacheForTesting() {
+  cachedTheme = null;
+  inflightThemeRequest = null;
+  offscreenDocumentPromise = null;
+}
+
 /**
  * Gets or creates the offscreen document for various operations
  * @returns {Promise<void>}

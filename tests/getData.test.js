@@ -33,6 +33,7 @@ global.chrome = {
 // Mock the modules
 vi.mock('../src/background/modules/getBrowserTheme.js', () => ({
   parseHTMLWithOffscreen: vi.fn(),
+  ensureOffscreenDocument: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../src/background/modules/getDescription.js', () => ({

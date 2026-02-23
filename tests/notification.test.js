@@ -35,13 +35,14 @@ global.chrome = {
 };
 
 // Import the module after mocking
-import { notifyUser, cacheRefreshNotification } from '../src/background/modules/notification.js';
+import { notifyUser, cacheRefreshNotification, _resetErrorIconCacheForTesting } from '../src/background/modules/notification.js';
 import { getOption } from '../src/lib/storage.js';
 import getBrowserTheme from '../src/background/modules/getBrowserTheme.js';
 
 describe('notifyUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetErrorIconCacheForTesting(); // Reset error icon cache between tests
   });
 
   afterEach(() => {
@@ -80,7 +81,7 @@ describe('notifyUser', () => {
       };
 
       getBrowserTheme.mockResolvedValue('dark');
-      chrome.runtime.getURL.mockReturnValue('chrome-extension://mock-id/images/icon-128x128-dark-error.png');
+      _resetErrorIconCacheForTesting({ dark: true }); // Cache says dark error icon is available
       chrome.notifications.create.mockResolvedValue('notification-id');
 
       await notifyUser(response);
@@ -108,20 +109,14 @@ describe('notifyUser', () => {
       };
 
       getBrowserTheme.mockResolvedValue('dark');
-
-      // Mock fetch to fail (error icon doesn't exist)
-      global.fetch = vi.fn().mockRejectedValue(new Error('Not found'));
-
-      chrome.runtime.getURL
-        .mockReturnValueOnce('chrome-extension://mock-id/images/icon-128x128-dark-error.png')
-        .mockReturnValueOnce('chrome-extension://mock-id/images/icon-128x128-dark.png');
+      // Cache says dark error icon is NOT available (default from beforeEach is {})
+      _resetErrorIconCacheForTesting({ dark: false });
 
       chrome.notifications.create.mockResolvedValue('notification-id');
 
       await notifyUser(response);
 
-      // Should try error icon first, then fallback to regular icon
-      expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-dark-error.png');
+      // Error icon unavailable in cache → fallback to regular icon
       expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-dark.png');
     });
 
