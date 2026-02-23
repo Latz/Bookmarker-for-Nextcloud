@@ -250,6 +250,18 @@ describe('storage.js', () => {
       // Should not throw
       await expect(delete_data('options', 'test')).resolves.not.toThrow();
     });
+
+    it('should await db.delete before calling db.close', async () => {
+      let deleteResolved = false;
+      mockDB.delete.mockImplementation(
+        () => new Promise(resolve => setTimeout(() => { deleteResolved = true; resolve(); }, 10))
+      );
+
+      await delete_data('credentials', 'appPassword');
+
+      expect(deleteResolved).toBe(true);
+      expect(mockDB.close).toHaveBeenCalled();
+    });
   });
 
   describe('store_hash', () => {

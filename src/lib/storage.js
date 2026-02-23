@@ -125,11 +125,11 @@ export async function delete_data(storeName, ...items) {
     },
   });
 
+  const deletes = [];
   for (let item of items) {
-    db.delete(storeName, item).catch(() => {
-      return;
-    });
+    deletes.push(db.delete(storeName, item).catch(() => {}));
   }
+  await Promise.all(deletes);
   db.close();
 }
 
