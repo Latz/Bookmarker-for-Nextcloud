@@ -6,16 +6,16 @@
 
 ## Active Context
 
-**Current Focus**: Bookmarker-for-Nextcloud — performance optimizations
+**Current Focus**: Bookmarker-for-Nextcloud — code review items 2–5 (bugs from review)
 **Key Deadline**: [none]
 **Blockers**: [none]
 
 ## Project State
 
-- **Branch**: `main` (all work on main)
-- Session 2026-02-23: 5 commits fixing 18+ perf issues (DB batching, parallelization, fixed delays)
-- SonarCloud: 308 issues total; 33 critical in critical.md
-- Popup init: ~300ms faster (eliminated 100ms delays, reduced DB calls 7→2)
+- **Branch**: `main` (all work on main) ^tr-a3f8c2e914
+- 2026-02-23: 16 commits — 4 DB write fixes + 15-commit perf pass + test suite overhaul
+- 718 tests passing across 27 files (`npx vitest run --pool=threads`)
+- SonarCloud: 308 issues total; 33 critical in `critical.md`; S4123 (10 issues) all false positives
 
 ## Critical Preferences
 
@@ -31,11 +31,11 @@
 
 ## Open Loops
 
-- [None yet]
+- Code review items 2–5 still unfixed (see `open-loops.md` for details) ^tr-c9e4b2d781
 
 ## Session Continuity
 
-**2026-02-23**: Perf optimization pass. Fixed S7746 (9x Promise.resolve), eliminated 100ms offscreen delays, parallelized DB reads, batch fetched options. 5 commits, ~300ms popup speedup. S4123 issues (14x unexpected await) need re-scan or manual audit. Critical.md identifies 33 high-impact issues for follow-up.
+**2026-02-23**: Three passes: (1) Fixed 4 unawaited DB writes. (2) 15-commit perf optimization — connection pools for both DBs, offscreen ready-signal, `getOptions()` batching, DocumentFragment folder render, parallel offscreen+content, theme caching, error-icon startup check, keyword pre-fetch. (3) Repaired 8 test files broken by perf changes — getOptions adapter, `_reset*ForTesting` exports, fake-timer leak prevention, DocumentFragment mock updates. All decisions in `registers/decisions.md`.
 
 ---
 *For detailed history, see memory/registers/*
