@@ -279,12 +279,10 @@ export async function clearData(subject) {
 
   if (subject === 'options') {
     options_db.clear('options');
-    options_db.createObjectStore('options', { keyPath: 'item' });
   }
 
   if (subject === 'credentials') {
     options_db.clear('credentials');
-    db.createObjectStore('credentials', { keyPath: 'item' });
   }
 
   if (subject === 'cache') {

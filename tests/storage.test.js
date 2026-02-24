@@ -385,15 +385,13 @@ describe('storage.js', () => {
     });
 
     it('should clear only options', async () => {
-      // Note: The actual code has a bug where it tries to call createObjectStore
-      // on an existing database, which is not allowed. This causes a TypeError.
-      await expect(clearData('options')).rejects.toThrow();
+      await clearData('options');
+      expect(mockDB.clear).toHaveBeenCalledWith('options');
     });
 
     it('should clear only credentials', async () => {
-      // Note: The actual code has a bug where it references undefined 'db'
-      // instead of 'options_db'. This causes a ReferenceError.
-      await expect(clearData('credentials')).rejects.toThrow('db is not defined');
+      await clearData('credentials');
+      expect(mockDB.clear).toHaveBeenCalledWith('credentials');
     });
 
     it('should clear cache', async () => {
