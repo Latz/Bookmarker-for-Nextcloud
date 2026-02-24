@@ -56,7 +56,7 @@ describe('getKeywords', () => {
       getOptions.mockResolvedValue({
         cbx_autoTags: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
 
       const result = await getKeywords(mockContent, mockDocument);
@@ -72,7 +72,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       getOption.mockResolvedValue(false);
     });
@@ -169,7 +169,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
@@ -210,7 +210,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
@@ -235,7 +235,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
@@ -298,7 +298,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
@@ -334,7 +334,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
@@ -404,7 +404,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
@@ -454,7 +454,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: true,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
     });
 
@@ -488,7 +488,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: true,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
 
       getMeta.mockReturnValue(['keyword1', 'keyword2', 'keyword1']);
@@ -505,7 +505,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: true,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
 
       getMeta.mockReturnValue(['keyword1', 'keyword2']);
@@ -522,7 +522,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: true,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
 
       getMeta.mockReturnValue(['keyword1', 'keyword2']);
@@ -540,7 +540,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
@@ -578,7 +578,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: false,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       getOption.mockResolvedValue(false);
       getMeta.mockReturnValue([]);
@@ -608,7 +608,7 @@ describe('getKeywords', () => {
         cbx_autoTags: true,
         cbx_reduceKeywords: true,
         cbx_extendedKeywords: false,
-        input_headlinesDepth: 3,
+        input_headings_slider: 3,
       });
       // Use a keyword with a divider to trigger reduceKeywords call
       getMeta.mockReturnValue(['keyword1, keyword2']);

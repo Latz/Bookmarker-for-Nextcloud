@@ -336,7 +336,7 @@ export default async function getKeywords(content, document) {
   const options = await getOptions([
     'cbx_autoTags',
     'cbx_extendedKeywords',
-    'input_headlinesDepth',
+    'input_headings_slider',
   ]);
 
   // This large try is lame but it keeps the extension running if there is any error
@@ -383,7 +383,7 @@ export default async function getKeywords(content, document) {
     }
   } // --- headlines ---
   log(DEBUG, 'Headlines');
-  const maxLevel = options.input_headlinesDepth;
+  const maxLevel = options.input_headings_slider;
   let level = 1;
   keywords = [];
   while (level <= maxLevel) {
