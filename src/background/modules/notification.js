@@ -20,7 +20,21 @@ async function getIconUrl() {
 
 // Initialize error icon availability cache at startup
 export async function initializeErrorIconCache() {
-  // Check both themes once at startup instead of fetching on every error
+  // Try session storage first (persists across SW termination)
+  if (chrome.storage?.session) {
+    try {
+      const stored = await chrome.storage.session.get('errorIconsAvailable');
+      const s = stored.errorIconsAvailable;
+      if (s && typeof s.light === 'boolean' && typeof s.dark === 'boolean') {
+        errorIconsAvailable = s;
+        return;
+      }
+    } catch (_e) {
+      // Session storage unavailable — fall through to fetch
+    }
+  }
+
+  // Full check via fetch (runs once per browser session when SW first cold-starts)
   for (const theme of ['light', 'dark']) {
     try {
       const response = await fetch(chrome.runtime.getURL(`/images/icon-128x128-${theme}-error.png`));
@@ -28,6 +42,13 @@ export async function initializeErrorIconCache() {
     } catch (e) {
       errorIconsAvailable[theme] = false;
     }
+  }
+
+  // Persist result to session storage
+  if (chrome.storage?.session) {
+    chrome.storage.session
+      .set({ errorIconsAvailable: { ...errorIconsAvailable } })
+      .catch(() => {});
   }
 }
 

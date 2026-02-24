@@ -32,10 +32,21 @@ global.chrome = {
       return messages[key] || key;
     }),
   },
+  storage: {
+    session: {
+      get: vi.fn(),
+      set: vi.fn(),
+    },
+  },
 };
 
 // Import the module after mocking
-import { notifyUser, cacheRefreshNotification, _resetErrorIconCacheForTesting } from '../src/background/modules/notification.js';
+import {
+  notifyUser,
+  cacheRefreshNotification,
+  initializeErrorIconCache,
+  _resetErrorIconCacheForTesting,
+} from '../src/background/modules/notification.js';
 import { getOption } from '../src/lib/storage.js';
 import getBrowserTheme from '../src/background/modules/getBrowserTheme.js';
 
@@ -43,6 +54,8 @@ describe('notifyUser', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     _resetErrorIconCacheForTesting(); // Reset error icon cache between tests
+    chrome.storage.session.get.mockResolvedValue({});
+    chrome.storage.session.set.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -304,6 +317,8 @@ describe('notifyUser', () => {
 describe('cacheRefreshNotification', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    chrome.storage.session.get.mockResolvedValue({});
+    chrome.storage.session.set.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -360,5 +375,64 @@ describe('cacheRefreshNotification', () => {
     await cacheRefreshNotification();
 
     expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-dark.png');
+  });
+});
+
+describe('initializeErrorIconCache', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _resetErrorIconCacheForTesting();
+    chrome.storage.session.get.mockResolvedValue({});
+    chrome.storage.session.set.mockResolvedValue(undefined);
+  });
+
+  it('should restore error icon cache from session storage on cold start', async () => {
+    const cached = { light: true, dark: false };
+    chrome.storage.session.get.mockResolvedValue({ errorIconsAvailable: cached });
+
+    await initializeErrorIconCache();
+
+    // Should not have fetched anything — restored from session storage
+    expect(global.fetch).not.toHaveBeenCalled();
+    // Verify the restored cache is used when building error notification icon URL
+    getBrowserTheme.mockResolvedValue('light');
+    chrome.notifications.create.mockResolvedValue('id');
+    await notifyUser({ status: 'error', statusText: 'test' });
+    // light error icon available → should use error icon
+    expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-light-error.png');
+  });
+
+  it('should save error icon availability to session storage after detection', async () => {
+    // Session cache miss
+    chrome.storage.session.get.mockResolvedValue({});
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true })   // light-error.png exists
+      .mockResolvedValueOnce({ ok: false });  // dark-error.png does not exist
+
+    await initializeErrorIconCache();
+
+    expect(chrome.storage.session.set).toHaveBeenCalledWith({
+      errorIconsAvailable: { light: true, dark: false },
+    });
+  });
+
+  it('should fall through to fetch when session storage is empty', async () => {
+    chrome.storage.session.get.mockResolvedValue({});
+    global.fetch = vi.fn().mockResolvedValue({ ok: true });
+
+    await initializeErrorIconCache();
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('should fall through to fetch when session data is malformed', async () => {
+    // Partial object — missing 'dark' key
+    chrome.storage.session.get.mockResolvedValue({ errorIconsAvailable: { light: true } });
+    global.fetch = vi.fn().mockResolvedValue({ ok: true });
+
+    await initializeErrorIconCache();
+
+    // Partial data — should re-fetch
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });
