@@ -79,7 +79,26 @@ export async function ensureOffscreenDocument() {
  * @returns {Promise<'light'|'dark'>} The detected theme, or 'light' as fallback on error
  */
 export default async function getBrowserTheme() {
-  // Return cached result if available (theme never changes during session)
+  // Primary in-memory cache (fastest path — SW lifetime)
+  if (cachedTheme !== null) {
+    return cachedTheme;
+  }
+
+  // Secondary session cache (survives SW termination)
+  if (chrome.storage?.session) {
+    try {
+      const stored = await chrome.storage.session.get('browserTheme');
+      if (stored.browserTheme) {
+        cachedTheme = stored.browserTheme;
+        return cachedTheme;
+      }
+    } catch (_e) {
+      // Session storage unavailable — fall through
+    }
+  }
+
+  // Re-check in-memory cache (a concurrent call may have populated it while
+  // we were awaiting session storage)
   if (cachedTheme !== null) {
     return cachedTheme;
   }
@@ -89,12 +108,16 @@ export default async function getBrowserTheme() {
     return inflightThemeRequest;
   }
 
-  // Create new request
+  // Full detection via offscreen document
   inflightThemeRequest = detectTheme();
 
   try {
     const result = await inflightThemeRequest;
-    cachedTheme = result; // Cache for subsequent calls
+    cachedTheme = result;
+    // Persist to session storage for next cold start
+    if (chrome.storage?.session) {
+      chrome.storage.session.set({ browserTheme: result }).catch(() => {});
+    }
     return result;
   } finally {
     // Clear inflight request after completion (success or failure)

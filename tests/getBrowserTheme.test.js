@@ -17,6 +17,12 @@ global.chrome = {
     closeDocument: vi.fn(),
     hasDocument: vi.fn(),
   },
+  storage: {
+    session: {
+      get: vi.fn(),
+      set: vi.fn(),
+    },
+  },
 };
 
 // Import the module
@@ -29,6 +35,8 @@ describe('getBrowserTheme module', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     _resetCacheForTesting();
+    chrome.storage.session.get.mockResolvedValue({});
+    chrome.storage.session.set.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -146,6 +154,43 @@ describe('getBrowserTheme module', () => {
       // Should only create one offscreen document (deduplication)
       // Note: Each call will create and close its own, but the inflightRequest prevents duplicates
       expect(chrome.offscreen.createDocument).toHaveBeenCalled();
+    });
+
+    it('should return cached theme from session storage on cold start', async () => {
+      // Session storage has a theme, module cache is empty
+      chrome.storage.session.get.mockResolvedValue({ browserTheme: 'dark' });
+
+      const theme = await getBrowserTheme();
+
+      // Should return from session storage without any offscreen work
+      expect(theme).toBe('dark');
+      expect(chrome.offscreen.createDocument).not.toHaveBeenCalled();
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+      expect(chrome.storage.session.get).toHaveBeenCalledWith('browserTheme');
+    });
+
+    it('should save detected theme to session storage', async () => {
+      chrome.storage.session.get.mockResolvedValue({}); // Cache miss
+      chrome.offscreen.hasDocument.mockResolvedValue(false);
+      chrome.runtime.getContexts.mockResolvedValue([]);
+      chrome.runtime.sendMessage.mockResolvedValue(true); // isLight=true → 'dark'
+
+      await getBrowserTheme();
+
+      expect(chrome.storage.session.set).toHaveBeenCalledWith({ browserTheme: 'dark' });
+    });
+
+    it('should fall through to full detection when session storage is empty', async () => {
+      chrome.storage.session.get.mockResolvedValue({}); // No cached theme
+      chrome.offscreen.hasDocument.mockResolvedValue(false);
+      chrome.runtime.getContexts.mockResolvedValue([]);
+      chrome.runtime.sendMessage.mockResolvedValue(false); // isLight=false → 'light'
+
+      const theme = await getBrowserTheme();
+
+      // Full detection was run
+      expect(chrome.offscreen.createDocument).toHaveBeenCalled();
+      expect(theme).toBe('light');
     });
   });
 
@@ -340,6 +385,8 @@ describe('Integration tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     _resetCacheForTesting();
+    chrome.storage.session.get.mockResolvedValue({});
+    chrome.storage.session.set.mockResolvedValue(undefined);
   });
 
   it('should work end-to-end for theme detection and HTML parsing', async () => {
