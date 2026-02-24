@@ -267,7 +267,7 @@ describe('apiCall.js', () => {
       expect(result).toEqual(responseData);
     });
 
-    it('should handle error response', async () => {
+    it('should return error object for HTTP error responses', async () => {
       load_data.mockImplementation((store, key) => {
         if (key === 'server') return 'https://example.com';
         return { loginname: 'testuser', appPassword: 'testpass' };
@@ -280,10 +280,8 @@ describe('apiCall.js', () => {
         statusText: 'Not Found',
       });
 
-      // The code sets result with status/statusText, throws an Error,
-      // but the catch block only handles TypeError, so it returns {}
       const result = await apiCall('test/endpoint', 'GET');
-      expect(result).toEqual({});
+      expect(result).toEqual({ status: 'error', statusText: 'Not Found' });
     });
 
     it('should handle TypeError (network error)', async () => {
@@ -368,6 +366,24 @@ describe('apiCall.js', () => {
         'https://example.com/test/endpoint?',
         expect.any(Object),
       );
+    });
+
+    it('should return error object for HTTP error responses (401, 500, etc.)', async () => {
+      load_data.mockImplementation((store, key) => {
+        if (key === 'server') return 'https://example.com';
+        return { loginname: 'testuser', appPassword: 'testpass' };
+      });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      });
+
+      const result = await apiCall('test/endpoint', 'GET');
+
+      expect(result).toEqual({ status: 'error', statusText: 'Unauthorized' });
     });
   });
 

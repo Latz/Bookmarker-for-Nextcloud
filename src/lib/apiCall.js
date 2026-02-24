@@ -118,24 +118,18 @@ export default async function apiCall(
 
   let result = {};
   try {
-    // NOTE: This duplicate declaration creates variable shadowing - it's a bug but kept for backward compatibility
-    // The inner result is used for successful/error responses, outer result is used for catch block
-    let result = {};
-    // Perform the API call and handle the response
     const response = await timeoutFetch(url, fetchInfo);
     if (response.ok) {
       result = await response.json();
     } else {
       result = {
-        status: response.status,
+        status: 'error',
         statusText: response.statusText,
       };
       throw new Error(result.statusText);
     }
-    // OPTIMIZATION: Removed unnecessary Promise.resolve
     return result;
   } catch (error) {
-    // Only handle TypeError (network errors), other errors return {} (outer result)
     if (error instanceof TypeError) {
       result = {
         status: -1,
@@ -144,7 +138,6 @@ export default async function apiCall(
     }
   }
 
-  // OPTIMIZATION: Removed unnecessary Promise.resolve
   return result;
 }
 
