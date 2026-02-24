@@ -421,7 +421,7 @@ describe('storage.js', () => {
 
       // Check that default options are stored
       expect(mockDB.put).toHaveBeenCalledWith('options', {
-        item: 'cbx_showURL',
+        item: 'cbx_showUrl',
         value: true,
       });
       expect(mockDB.put).toHaveBeenCalledWith('options', {

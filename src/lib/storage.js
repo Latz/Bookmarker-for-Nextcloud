@@ -328,7 +328,7 @@ export async function initDatabase(db, oldVersion) {
 
 // -----------------------------------------------------------------------
 export function initDefaults() {
-  store_data('options', { cbx_showURL: true });
+  store_data('options', { cbx_showUrl: true });
   store_data('options', { cbx_showDescription: true });
   store_data('options', { cbx_autoDescription: true });
   store_data('options', { cbx_showKeywords: true });
