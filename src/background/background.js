@@ -173,6 +173,7 @@ async function warmupConnection() {
   const data = new URLSearchParams({ page: 0, limit: 1 }).toString();
   await apiCall(endpoint, 'GET', data);
 }
+
 function insertTimeOutMessage() {
   const loginForm = document.getElementById('login-form');
   const appTokenLogin = document.getElementById('app-token-login');
