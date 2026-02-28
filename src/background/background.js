@@ -155,8 +155,24 @@ async function init() {
       setZenModeMenu(info.checked);
     }
   });
+  // Fire-and-forget: warm up TCP/TLS and auth cache on every SW startup
+  warmupConnection().catch(() => {});
 }
 
+
+/**
+ * Warms up the connection to the Nextcloud server on SW startup.
+ * Primes the TCP/TLS connection, auth header cache, and network timeout cache.
+ * Fire-and-forget — errors are silently ignored.
+ */
+async function warmupConnection() {
+  const credentials = await load_data('credentials', 'server');
+  if (!credentials || !credentials.server) return;
+
+  const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
+  const data = new URLSearchParams({ page: 0, limit: 1 }).toString();
+  await apiCall(endpoint, 'GET', data);
+}
 function insertTimeOutMessage() {
   const loginForm = document.getElementById('login-form');
   const appTokenLogin = document.getElementById('app-token-login');

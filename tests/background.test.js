@@ -493,6 +493,43 @@ describe('background.js', () => {
     });
   });
 
+  describe('warmupConnection', () => {
+    it('should call apiCall with bookmark endpoint when server is configured', async () => {
+      const { load_data } = await import('../src/lib/storage.js');
+      load_data.mockResolvedValueOnce({ server: 'https://nextcloud.example.com' });
+
+      await import('../src/background/background.js');
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(apiCall).toHaveBeenCalledWith(
+        'index.php/apps/bookmarks/public/rest/v2/bookmark',
+        'GET',
+        'page=0&limit=1',
+      );
+    });
+
+    it('should not call apiCall when server is not configured', async () => {
+      const { load_data } = await import('../src/lib/storage.js');
+      load_data.mockResolvedValueOnce({});
+
+      await import('../src/background/background.js');
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // apiCall should not have been called (no server = skip warmup)
+      expect(apiCall).not.toHaveBeenCalled();
+    });
+
+    it('should silently ignore errors from the API call', async () => {
+      const { load_data } = await import('../src/lib/storage.js');
+      load_data.mockResolvedValueOnce({ server: 'https://nextcloud.example.com' });
+      apiCall.mockRejectedValueOnce(new Error('Network error'));
+
+      // Should not throw
+      await expect(import('../src/background/background.js')).resolves.not.toThrow();
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
+  });
+
   describe('Context menu click handlers', () => {
     beforeEach(async () => {
       // Capture context menu listener
