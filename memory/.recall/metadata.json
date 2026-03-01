@@ -1,0 +1,210 @@
+{
+  "a6d3f8c2e1": {
+    "created_at": "2026-03-01",
+    "last_reviewed_at": "2026-03-01",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/projects.md"
+  },
+  "c7e2f4a9b3": {
+    "created_at": "2026-03-01",
+    "last_reviewed_at": "2026-03-01",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "a2c5e8f3b7": {
+    "created_at": "2026-02-24",
+    "last_reviewed_at": "2026-02-24",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "a3f8c2e914": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "CLAUDE.local.md"
+  },
+  "a4c8d2f7b6": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/projects.md"
+  },
+  "a5f2c8e1b7": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "closed",
+    "tier": "registers/open-loops.md"
+  },
+  "a8f3c7e291": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "b3d7e4f1c9": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "b5d2e9a416": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "b7d1f5a923": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/projects.md"
+  },
+  "b8e2d4c7f1": {
+    "created_at": "2026-02-24",
+    "last_reviewed_at": "2026-02-24",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/projects.md"
+  },
+  "c4f8a2e6b5": {
+    "created_at": "2026-02-24",
+    "last_reviewed_at": "2026-02-24",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "c1a9f6e3b2": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "c3f7b1d824": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "c9e4b2d781": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-25",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "closed",
+    "tier": "registers/open-loops.md"
+  },
+  "d3a9f2c845": {
+    "created_at": "2026-02-25",
+    "last_reviewed_at": "2026-02-25",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/projects.md"
+  },
+  "d2f5c8a1e4": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "d5a7c3f162": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/tech-stack.md"
+  },
+  "d8c4b7f2a5": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "e7b4c1d692": {
+    "created_at": "2026-02-25",
+    "last_reviewed_at": "2026-02-25",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/projects.md"
+  },
+  "e2b8d4c037": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/tech-stack.md"
+  },
+  "e3a9f7b2c1": {
+    "created_at": "2026-02-24",
+    "last_reviewed_at": "2026-02-24",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/preferences.md"
+  },
+  "e6d1c3b8f4": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "f1a6e9c458": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/projects.md"
+  },
+  "f2a7b5c9e1": {
+    "created_at": "2026-02-23",
+    "last_reviewed_at": "2026-02-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/projects.md"
+  },
+  "f4b1d6c8e9": {
+    "created_at": "2026-02-24",
+    "last_reviewed_at": "2026-02-24",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  }
+}
