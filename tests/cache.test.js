@@ -262,11 +262,9 @@ describe('cache.js', () => {
 
   describe('getCachedBookmarkCheck', () => {
     it('should return cached result when valid', async () => {
-      getOption.mockImplementation((key) => {
-        if (key === 'cbx_cacheBookmarkChecks') return true;
-        if (key === 'input_bookmarkCacheTTL') return 10; // 10 minutes
-        return null;
-      });
+      getOption
+        .mockResolvedValueOnce(true) // 'cbx_cacheBookmarkChecks'
+        .mockResolvedValueOnce(10); // 'input_bookmarkCacheTTL'
 
       const url = 'https://example.com';
       const cacheKey = 'url_' + expect.any(String);
@@ -293,11 +291,9 @@ describe('cache.js', () => {
     });
 
     it('should return null when cache is expired', async () => {
-      getOption.mockImplementation((key) => {
-        if (key === 'cbx_cacheBookmarkChecks') return true;
-        if (key === 'input_bookmarkCacheTTL') return 5; // 5 minutes TTL
-        return null;
-      });
+      getOption
+        .mockResolvedValueOnce(true) // 'cbx_cacheBookmarkChecks'
+        .mockResolvedValueOnce(5); // 'input_bookmarkCacheTTL'
 
       const url = 'https://example.com';
       const expiredTimestamp = Date.now() - 10 * 60 * 1000; // 10 minutes ago
