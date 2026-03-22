@@ -167,7 +167,7 @@ async function init() {
  */
 async function warmupConnection() {
   const credentials = await load_data('credentials', 'server');
-  if (!credentials || !credentials.server) return;
+  if (!credentials?.server) return;
 
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const data = new URLSearchParams({ page: 0, limit: 1 }).toString();
