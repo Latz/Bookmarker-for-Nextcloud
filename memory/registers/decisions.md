@@ -82,6 +82,20 @@
 - **Outcome**: `warmupConnection()` guarded by `credentials.server` check; errors silently swallowed via `.catch(() => {})`; primes `cachedAuthHeader` and `cachedNetworkTimeout` in `apiCall.js`. 3 new tests. Commits: ea78141, 73668c1.
 - **Status**: in-effect
 
+## apiCall data.host Branch Calls authentication() — 2026-03-23 ^tr-da259ac786
+- **Decision**: Treat the `data.host` code path in `apiCall.js` as requiring a credentials mock in tests (unless `data.loginflow` is also set)
+- **Rationale**: When `data.host` is provided, `server = data.host` (skips `load_data` for server), but `authentication()` is still called unless `data.loginflow` is truthy — which calls `load_data('credentials', 'loginname', 'appPassword')`. A test that omitted this mock was silently passing only because `vi.clearAllMocks()` does not reset `mockImplementation`, so the previous test's implementation bled through.
+- **Alternatives considered**: Add `loginflow: true` to the test data (hides the real behavior; wrong); keep `mockImplementation` (masks the issue)
+- **Outcome**: `data.host` test in `apiCall.test.js` now has one explicit `mockResolvedValueOnce` for credentials. Pattern: `data.host` → one credentials mock; `data.host + loginflow` → no mocks needed; standard path → server mock + credentials mock.
+- **Status**: in-effect
+
+## vi.clearAllMocks() Does Not Reset mockImplementation — 2026-03-23 ^tr-3b9de8d046
+- **Decision**: Use `mockResolvedValueOnce` chains (not `mockImplementation`) for per-test mock setup in apiCall and cache tests
+- **Rationale**: `vi.clearAllMocks()` in `beforeEach` clears call history and queued `mockResolvedValueOnce` values, but does NOT reset `mockImplementation`. Tests relying on a prior test's `mockImplementation` silently pass even without their own mock setup. Switching to `mockResolvedValueOnce` makes each test self-contained and exposes any missing mocks immediately.
+- **Alternatives considered**: Use `vi.resetAllMocks()` instead of `vi.clearAllMocks()` (resets implementations too, but also resets spy return values which breaks other mocks); keep `mockImplementation` (masks implicit coupling)
+- **Outcome**: All 17 S3800 SonarCloud issues resolved; tests are now explicitly self-contained per mock call.
+- **Status**: in-effect (pattern to follow for future test mock setup)
+
 ## Test Isolation via _reset*ForTesting Exports — 2026-02-23 ^tr-b3d7e4f1c9
 - **Decision**: Export `_reset*ForTesting()` functions from modules that hold module-level state, to allow test isolation without module re-imports
 - **Rationale**: ES modules are singletons — `cachedTheme`, `mainDbConnection`, `errorIconsAvailable` persist across tests. `vi.resetModules()` is expensive and breaks import references. Explicit reset functions are lightweight and targeted.

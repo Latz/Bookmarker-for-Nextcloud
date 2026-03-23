@@ -1,4 +1,20 @@
 {
+  "3b9de8d046": {
+    "created_at": "2026-03-23",
+    "last_reviewed_at": "2026-03-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
+  "da259ac786": {
+    "created_at": "2026-03-23",
+    "last_reviewed_at": "2026-03-23",
+    "pinned": false,
+    "snoozed_until": null,
+    "status": "active",
+    "tier": "registers/decisions.md"
+  },
   "a6d3f8c2e1": {
     "created_at": "2026-03-01",
     "last_reviewed_at": "2026-03-01",

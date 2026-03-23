@@ -16,3 +16,13 @@ package-lock.json
 /.claude
 /.claude-dev-helper
 /x.html
+/performance_review.md
+/anything_else.md
+/AGENTS.md
+/changelog_031.md
+/code_review-2026-02-19.md
+/code_review.md
+/critical.md
+/sonar-issues.json
+/sonar-issues.md
+/sonar-scanner.sh
