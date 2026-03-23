@@ -2,7 +2,7 @@ import getDescription from './getDescription.js';
 import getKeywords from './getKeywords.js';
 import { getFolders } from './getFolders.js';
 import apiCall from '../../lib/apiCall.js';
-import { getOption, getOptions } from '../../lib/storage.js';
+import { getOptions } from '../../lib/storage.js';
 import log from '../../lib/log.js';
 import { normalizeUrl } from '../../lib/urlNormalizer.js';
 import { getCachedBookmarkCheck, cacheBookmarkCheck } from '../../lib/cache.js';

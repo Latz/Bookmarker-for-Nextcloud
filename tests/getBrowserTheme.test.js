@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Chrome APIs
-global.chrome = {
+globalThis.chrome = {
   runtime: {
     getContexts: vi.fn(),
     sendMessage: vi.fn(),

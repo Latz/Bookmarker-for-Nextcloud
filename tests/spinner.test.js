@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock chrome APIs
-global.chrome = {
+globalThis.chrome = {
   action: {
     setBadgeText: vi.fn(),
   },

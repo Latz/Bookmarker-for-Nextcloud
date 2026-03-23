@@ -35,7 +35,7 @@ export function _resetMainConnectionForTesting() {
 async function getMainDBConnection() {
   if (mainDbConnection) {
     try {
-      if (mainDbConnection.objectStoreNames && mainDbConnection.objectStoreNames.contains('options')) {
+      if (mainDbConnection.objectStoreNames?.contains('options')) {
         return mainDbConnection;
       }
     } catch (e) {

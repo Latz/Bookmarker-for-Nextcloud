@@ -5,6 +5,15 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+const createMockElement = () => ({
+  appendChild: vi.fn(),
+  setAttribute: vi.fn(),
+  addEventListener: vi.fn(),
+  options: [],
+  value: '',
+  innerHTML: '',
+});
+
 // Mock dependencies
 vi.mock('../src/popup/modules/fillKeywords.js', () => ({
   default: vi.fn(),
@@ -48,17 +57,7 @@ describe('createForm', () => {
       innerHTML: '',
     };
 
-    // Helper to create mock DOM elements
-    const createMockElement = () => ({
-      appendChild: vi.fn(),
-      setAttribute: vi.fn(),
-      addEventListener: vi.fn(),
-      options: [],
-      value: '',
-      innerHTML: '',
-    });
-
-    global.document = {
+    globalThis.document = {
       getElementById: vi.fn((id) => {
         switch (id) {
           case 'formData': return mockForm;
@@ -73,7 +72,7 @@ describe('createForm', () => {
       })),
     };
 
-    global.chrome = {
+    globalThis.chrome = {
       i18n: {
         getMessage: vi.fn((key) => {
           const messages = {
@@ -88,7 +87,7 @@ describe('createForm', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete global.chrome;
+    delete globalThis.chrome;
   });
 
   describe('URL input', () => {
@@ -337,7 +336,7 @@ describe('hydrateForm', () => {
       innerHTML: '',
     });
 
-    global.document = {
+    globalThis.document = {
       getElementById: vi.fn((id) => {
         switch (id) {
           case 'url': return mockUrlInput;
@@ -351,7 +350,7 @@ describe('hydrateForm', () => {
       }),
     };
 
-    global.chrome = {
+    globalThis.chrome = {
       i18n: {
         getMessage: vi.fn((key) => {
           const messages = {
@@ -365,15 +364,15 @@ describe('hydrateForm', () => {
       },
     };
 
-    global.navigator = {
+    globalThis.navigator = {
       language: 'en-US',
     };
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete global.chrome;
-    delete global.navigator;
+    delete globalThis.chrome;
+    delete globalThis.navigator;
   });
 
   it('should set URL value', async () => {
@@ -547,7 +546,7 @@ describe('hydrateForm', () => {
     getOption.mockResolvedValue(false);
 
     // Simulate missing elements by returning null
-    global.document.getElementById = vi.fn(() => null);
+    globalThis.document.getElementById = vi.fn(() => null);
 
     const data = { url: 'https://example.com', title: 'Test', bookmarkID: 1 };
     // Should not throw

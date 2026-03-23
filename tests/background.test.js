@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Chrome APIs
-global.chrome = {
+globalThis.chrome = {
   tabs: {
     query: vi.fn(),
     create: vi.fn(),
@@ -630,7 +630,7 @@ describe('background.js', () => {
         addEventListener: vi.fn(),
       };
 
-      global.document = mockDocument;
+      globalThis.document = mockDocument;
 
       const request = {
         msg: 'maxAttempts',

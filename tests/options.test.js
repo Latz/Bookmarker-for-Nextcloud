@@ -6,8 +6,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Chrome APIs
-global.chrome = {
-  ...global.chrome,
+globalThis.chrome = {
+  ...globalThis.chrome,
   i18n: {
     getMessage: vi.fn((key) => `[i18n:${key}]`),
   },
@@ -198,19 +198,19 @@ describe('options.js', () => {
     };
 
     // Set up global document
-    global.document = mockDocument;
-    global.window = {
+    globalThis.document = mockDocument;
+    globalThis.window = {
       open: vi.fn(),
     };
 
     // Set up global variables for elements accessed directly (browser creates these for IDs)
-    global.zen_folders = mockElements.zen_folders;
+    globalThis.zen_folders = mockElements.zen_folders;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     // Clean up global variables that the browser would create
-    if (global.zen_folders) delete global.zen_folders;
+    if (globalThis.zen_folders) delete globalThis.zen_folders;
   });
 
   describe('Document ready state handling', () => {

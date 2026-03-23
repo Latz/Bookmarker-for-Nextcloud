@@ -33,26 +33,26 @@ describe('addSaveBookmarkButtonListener', () => {
       preventDefault: vi.fn(),
     };
 
-    global.chrome = {
+    globalThis.chrome = {
       runtime: {
         sendMessage: vi.fn(),
       },
     };
 
-    global.window = {
+    globalThis.window = {
       close: vi.fn(),
     };
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete global.chrome;
-    delete global.window;
+    delete globalThis.chrome;
+    delete globalThis.window;
   });
 
   describe('Event listener registration', () => {
     it('should add click event listener to save button', () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockButton),
       };
 
@@ -63,7 +63,7 @@ describe('addSaveBookmarkButtonListener', () => {
     });
 
     it('should handle missing save button gracefully', () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(null),
       };
 
@@ -96,7 +96,7 @@ describe('addSaveBookmarkButtonListener', () => {
         ],
       };
 
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
             case 'saveBookmark': return mockButton;
@@ -388,7 +388,7 @@ describe('addSaveBookmarkButtonListener', () => {
       };
       mockButton = { addEventListener: vi.fn() };
 
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
             case 'saveBookmark': return mockButton;
@@ -534,7 +534,7 @@ describe('addSaveBookmarkButtonListener', () => {
       };
       mockButton = { addEventListener: vi.fn() };
 
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
             case 'saveBookmark': return mockButton;
@@ -579,7 +579,7 @@ describe('addSaveBookmarkButtonListener', () => {
     });
 
     it('should handle missing description input', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
             case 'saveBookmark': return mockButton;
@@ -614,7 +614,7 @@ describe('addSaveBookmarkButtonListener', () => {
     });
 
     it('should handle missing folders select', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
             case 'saveBookmark': return mockButton;
@@ -675,7 +675,7 @@ describe('addSaveBookmarkButtonListener', () => {
       };
       mockButton = { addEventListener: vi.fn() };
 
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
             case 'saveBookmark': return mockButton;

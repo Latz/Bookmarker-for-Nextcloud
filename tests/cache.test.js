@@ -189,7 +189,7 @@ describe('cache.js', () => {
 
       expect(mockDB.put).toHaveBeenCalledWith('keywords', {
         item: 'keywords',
-        value: ['tag1', 'tag2', 'tag3', 'tag4'].sort(),
+        value: ['tag1', 'tag2', 'tag3', 'tag4'].sort((a, b) => a.localeCompare(b)),
       });
     });
 
@@ -204,7 +204,7 @@ describe('cache.js', () => {
 
       expect(mockDB.put).toHaveBeenCalledWith('keywords', {
         item: 'keywords',
-        value: ['tag1'].sort(),
+        value: ['tag1'].sort((a, b) => a.localeCompare(b)),
       });
     });
 
@@ -267,7 +267,6 @@ describe('cache.js', () => {
         .mockResolvedValueOnce(10); // 'input_bookmarkCacheTTL'
 
       const url = 'https://example.com';
-      const cacheKey = 'url_' + expect.any(String);
       const cachedResult = { bookmarked: true, bookmarkId: 123 };
 
       mockDB.get.mockResolvedValue({

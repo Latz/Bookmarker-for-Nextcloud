@@ -14,15 +14,15 @@
   <body class="w-[350px]">
     <main role="main">
       <h1 class="sr-only">Bookmarker for Nextcloud</h1>
-      <form id="bookmarkForm" class="responsive-margin p-2" role="form" aria-live="polite">
+      <form id="bookmarkForm" class="responsive-margin p-2" aria-live="polite">
         <div id="formData" class="w-full" aria-live="polite"></div>
         <div class="flex flex-row space-x-4">
           <div class="basis-1/3">
             <button type="submit" id="saveBookmark" class="btn btn-info w-full" aria-label="Save bookmark"></button>
           </div>
-          <div id="sub_message" class="basis-2/3" aria-live="polite" role="status">
+          <output id="sub_message" class="basis-2/3" aria-live="polite">
             <div id="loader" class="w-full text-center" aria-busy="true"></div>
-          </div>
+          </output>
         </div>
       </form>
     </main>

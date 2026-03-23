@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { parseHTMLWithOffscreen } from '../src/background/modules/getBrowserTheme.js';
 
 // Mock Chrome APIs for offscreen document
-global.chrome = {
+globalThis.chrome = {
   runtime: {
     getContexts: vi.fn(),
     sendMessage: vi.fn(),

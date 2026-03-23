@@ -14,19 +14,17 @@ document.onreadystatechange = async () => {
 
     if (apppwd === undefined) {
       createAuthorizeButton();
+    } else if (enableZen) {
+      zenMode();
     } else {
-      if (enableZen) {
-        zenMode();
+      createForm();
+      const data = await getDataWithRetry();
+      if (!data.ok) {
+        createErrorBox(data);
+        textFit(document.getElementById('errormessage'));
       } else {
-        createForm();
-        const data = await getDataWithRetry();
-        if (!data.ok) {
-          createErrorBox(data);
-          textFit(document.getElementById('errormessage'));
-        } else {
-          hydrateForm(data);
-          addSaveBookmarkButtonListener(data.bookmarked);
-        }
+        hydrateForm(data);
+        addSaveBookmarkButtonListener(data.bookmarked);
       }
     }
   }

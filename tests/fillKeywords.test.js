@@ -20,9 +20,9 @@ vi.mock('@yaireo/tagify', () => {
 
   // Store references on global object for tests to access
   // eslint-disable-next-line no-undef
-  global.__mockAddTags = mockAddTags;
+  globalThis.__mockAddTags = mockAddTags;
   // eslint-disable-next-line no-undef
-  global.__mockTagifyConstructor = mockTagifyConstructor;
+  globalThis.__mockTagifyConstructor = mockTagifyConstructor;
 
   return {
     default: mockTagifyConstructor,
@@ -42,8 +42,8 @@ describe('fillKeywords', () => {
     vi.clearAllMocks();
 
     // Get the mock constructor from global storage
-    mockTagifyConstructor = global.__mockTagifyConstructor;
-    mockAddTags = global.__mockAddTags;
+    mockTagifyConstructor = globalThis.__mockTagifyConstructor;
+    mockAddTags = globalThis.__mockAddTags;
 
     mockTagsInput = {
       classList: {
@@ -62,7 +62,7 @@ describe('fillKeywords', () => {
 
   describe('DOM element handling', () => {
     it('should get keywords input element by ID', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -74,7 +74,7 @@ describe('fillKeywords', () => {
     });
 
     it('should remove input-sm class from input', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -86,7 +86,7 @@ describe('fillKeywords', () => {
     });
 
     it('should remove input class from input', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -100,7 +100,7 @@ describe('fillKeywords', () => {
 
   describe('Tagify initialization', () => {
     it('should initialize Tagify with correct configuration', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -120,7 +120,7 @@ describe('fillKeywords', () => {
     });
 
     it('should handle empty cached tags array', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -139,7 +139,7 @@ describe('fillKeywords', () => {
     });
 
     it('should handle cacheGet returning non-array value', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -159,7 +159,7 @@ describe('fillKeywords', () => {
     });
 
     it('should handle cacheGet returning object', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -180,7 +180,7 @@ describe('fillKeywords', () => {
 
   describe('Keyword addition', () => {
     it('should add keywords when provided', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -193,7 +193,7 @@ describe('fillKeywords', () => {
     });
 
     it('should not add keywords when array is empty', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -205,7 +205,7 @@ describe('fillKeywords', () => {
     });
 
     it('should not add keywords when keywords is undefined', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -217,7 +217,7 @@ describe('fillKeywords', () => {
     });
 
     it('should not add keywords when keywords is null', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -229,7 +229,7 @@ describe('fillKeywords', () => {
     });
 
     it('should handle single keyword string', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -243,7 +243,7 @@ describe('fillKeywords', () => {
 
   describe('Real-world scenarios', () => {
     it('should work with typical cached tags from Nextcloud', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -263,7 +263,7 @@ describe('fillKeywords', () => {
     });
 
     it('should handle large number of cached tags', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -283,7 +283,7 @@ describe('fillKeywords', () => {
     });
 
     it('should handle special characters in tags', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -303,7 +303,7 @@ describe('fillKeywords', () => {
     });
 
     it('should handle unicode tags', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -325,7 +325,7 @@ describe('fillKeywords', () => {
 
   describe('Error handling', () => {
     it('should handle cacheGet error gracefully', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -336,7 +336,7 @@ describe('fillKeywords', () => {
     });
 
     it('should handle missing document.getElementById', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(null),
       };
 
@@ -349,7 +349,7 @@ describe('fillKeywords', () => {
 
   describe('Tagify behavior', () => {
     it('should create Tagify instance with correct input element', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -361,7 +361,7 @@ describe('fillKeywords', () => {
     });
 
     it('should pass whitelist from cache to Tagify', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -374,7 +374,7 @@ describe('fillKeywords', () => {
     });
 
     it('should configure backspace behavior', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -386,7 +386,7 @@ describe('fillKeywords', () => {
     });
 
     it('should configure dropdown behavior', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -403,7 +403,7 @@ describe('fillKeywords', () => {
 
   describe('Class manipulation', () => {
     it('should remove both classes from input', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
@@ -416,7 +416,7 @@ describe('fillKeywords', () => {
     });
 
     it('should call remove in correct order', async () => {
-      global.document = {
+      globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 

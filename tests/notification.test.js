@@ -15,7 +15,7 @@ vi.mock('../src/background/modules/getBrowserTheme.js', () => ({
 }));
 
 // Mock chrome APIs
-global.chrome = {
+globalThis.chrome = {
   runtime: {
     getURL: vi.fn((path) => `chrome-extension://mock-id/${path}`),
   },
@@ -142,7 +142,7 @@ describe('notifyUser', () => {
       getBrowserTheme.mockResolvedValue('dark');
 
       // Mock fetch to return non-OK response
-      global.fetch = vi.fn().mockResolvedValue({ ok: false });
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: false });
 
       chrome.runtime.getURL
         .mockReturnValueOnce('chrome-extension://mock-id/images/icon-128x128-dark-error.png')
@@ -393,7 +393,7 @@ describe('initializeErrorIconCache', () => {
     await initializeErrorIconCache();
 
     // Should not have fetched anything — restored from session storage
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
     // Verify the restored cache is used when building error notification icon URL
     getBrowserTheme.mockResolvedValue('light');
     chrome.notifications.create.mockResolvedValue('id');
@@ -405,7 +405,7 @@ describe('initializeErrorIconCache', () => {
   it('should save error icon availability to session storage after detection', async () => {
     // Session cache miss
     chrome.storage.session.get.mockResolvedValue({});
-    global.fetch = vi.fn()
+    globalThis.fetch = vi.fn()
       .mockResolvedValueOnce({ ok: true })   // light-error.png exists
       .mockResolvedValueOnce({ ok: false });  // dark-error.png does not exist
 
@@ -418,21 +418,21 @@ describe('initializeErrorIconCache', () => {
 
   it('should fall through to fetch when session storage is empty', async () => {
     chrome.storage.session.get.mockResolvedValue({});
-    global.fetch = vi.fn().mockResolvedValue({ ok: true });
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
 
     await initializeErrorIconCache();
 
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('should fall through to fetch when session data is malformed', async () => {
     // Partial object — missing 'dark' key
     chrome.storage.session.get.mockResolvedValue({ errorIconsAvailable: { light: true } });
-    global.fetch = vi.fn().mockResolvedValue({ ok: true });
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
 
     await initializeErrorIconCache();
 
     // Partial data — should re-fetch
-    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
   });
 });

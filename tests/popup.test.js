@@ -6,8 +6,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Chrome APIs
-global.chrome = {
-  ...global.chrome,
+globalThis.chrome = {
+  ...globalThis.chrome,
   i18n: {
     getMessage: vi.fn((key) => {
       const messages = {
@@ -112,8 +112,8 @@ describe('popup.js', () => {
     };
 
     // Set up global document
-    global.document = mockDocument;
-    global.window = {
+    globalThis.document = mockDocument;
+    globalThis.window = {
       close: vi.fn(),
     };
   });
@@ -171,10 +171,10 @@ describe('popup.js', () => {
 
       // Verify zen mode was triggered
       expect(getOption).toHaveBeenCalledWith('cbx_enableZen');
-      expect(global.chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      expect(globalThis.chrome.runtime.sendMessage).toHaveBeenCalledWith({
         msg: 'zenMode',
       });
-      expect(global.window.close).toHaveBeenCalled();
+      expect(globalThis.window.close).toHaveBeenCalled();
     });
 
     it('should create form and hydrate data when credentials exist and zen mode is disabled', async () => {
@@ -194,7 +194,7 @@ describe('popup.js', () => {
         title: 'Example',
         bookmarked: false,
       };
-      global.chrome.runtime.sendMessage.mockResolvedValue(mockData);
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
       // Import and trigger the onreadystatechange handler
       await import('../src/popup/popup.js');
@@ -209,7 +209,7 @@ describe('popup.js', () => {
       expect(createForm).toHaveBeenCalled();
 
       // Verify getData message was sent
-      expect(global.chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      expect(globalThis.chrome.runtime.sendMessage).toHaveBeenCalledWith({
         msg: 'getData',
       });
 
@@ -235,7 +235,7 @@ describe('popup.js', () => {
         ok: false,
         error: 'Connection failed',
       };
-      global.chrome.runtime.sendMessage.mockResolvedValue(mockData);
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
       // Import and trigger the onreadystatechange handler
       await import('../src/popup/popup.js');
@@ -315,12 +315,12 @@ describe('popup.js', () => {
       clickHandler();
 
       // Verify message was sent
-      expect(global.chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      expect(globalThis.chrome.runtime.sendMessage).toHaveBeenCalledWith({
         msg: 'authorize',
       });
 
       // Verify window was closed
-      expect(global.window.close).toHaveBeenCalled();
+      expect(globalThis.window.close).toHaveBeenCalled();
     });
   });
 
@@ -340,7 +340,7 @@ describe('popup.js', () => {
         ok: false,
         error: 'Test error message',
       };
-      global.chrome.runtime.sendMessage.mockResolvedValue(mockData);
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
       // Import and trigger the onreadystatechange handler
       await import('../src/popup/popup.js');
@@ -372,7 +372,7 @@ describe('popup.js', () => {
         ok: false,
         error: 'Test error',
       };
-      global.chrome.runtime.sendMessage.mockResolvedValue(mockData);
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
       // Import and trigger the onreadystatechange handler
       await import('../src/popup/popup.js');
@@ -384,7 +384,7 @@ describe('popup.js', () => {
       }
 
       // Verify i18n was called for error label
-      expect(global.chrome.i18n.getMessage).toHaveBeenCalledWith('error');
+      expect(globalThis.chrome.i18n.getMessage).toHaveBeenCalledWith('error');
     });
   });
 
@@ -409,12 +409,12 @@ describe('popup.js', () => {
       }
 
       // Verify zen mode message was sent
-      expect(global.chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      expect(globalThis.chrome.runtime.sendMessage).toHaveBeenCalledWith({
         msg: 'zenMode',
       });
 
       // Verify window was closed
-      expect(global.window.close).toHaveBeenCalled();
+      expect(globalThis.window.close).toHaveBeenCalled();
     });
   });
 
@@ -440,7 +440,7 @@ describe('popup.js', () => {
         folders: ['1', '2'],
         bookmarkID: 123,
       };
-      global.chrome.runtime.sendMessage.mockResolvedValue(mockData);
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
       // Import and trigger the onreadystatechange handler
       await import('../src/popup/popup.js');
@@ -475,7 +475,7 @@ describe('popup.js', () => {
         title: 'Example Page',
         bookmarked: false,
       };
-      global.chrome.runtime.sendMessage.mockResolvedValue(mockData);
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
       // Import and trigger the onreadystatechange handler
       await import('../src/popup/popup.js');
@@ -518,7 +518,7 @@ describe('popup.js', () => {
       getOption.mockResolvedValue(false);
 
       // Mock error response from sendMessage
-      global.chrome.runtime.sendMessage.mockRejectedValue(
+      globalThis.chrome.runtime.sendMessage.mockRejectedValue(
         new Error('Message error')
       );
 

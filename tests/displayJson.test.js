@@ -35,8 +35,8 @@ describe('displayJson module', () => {
     };
 
     // Reset global state
-    delete global.window;
-    delete global.document;
+    delete globalThis.window;
+    delete globalThis.document;
   });
 
   afterEach(() => {
@@ -45,52 +45,52 @@ describe('displayJson module', () => {
 
   describe('URL parameter parsing', () => {
     it('should parse type=options from URL', () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=options',
         },
       };
 
-      const urlParams = global.window.location.search || '';
+      const urlParams = globalThis.window.location.search || '';
       const type = urlParams.split('=')[1];
 
       expect(type).toBe('options');
     });
 
     it('should parse type=cache from URL', () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=cache',
         },
       };
 
-      const urlParams = global.window.location.search || '';
+      const urlParams = globalThis.window.location.search || '';
       const type = urlParams.split('=')[1];
 
       expect(type).toBe('cache');
     });
 
     it('should handle empty URL parameters', () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '',
         },
       };
 
-      const urlParams = global.window.location.search || '';
+      const urlParams = globalThis.window.location.search || '';
       const type = urlParams.split('=')[1];
 
       expect(type).toBeUndefined();
     });
 
     it('should handle URL with no type parameter', () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?other=value',
         },
       };
 
-      const urlParams = global.window.location.search || '';
+      const urlParams = globalThis.window.location.search || '';
       const type = urlParams.split('=')[1];
 
       expect(type).toBe('value');
@@ -99,7 +99,7 @@ describe('displayJson module', () => {
 
   describe('Options data loading', () => {
     it('should load options data when type is options', async () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=options',
         },
@@ -123,7 +123,7 @@ describe('displayJson module', () => {
     });
 
     it('should return undefined when options are empty', async () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=options',
         },
@@ -141,7 +141,7 @@ describe('displayJson module', () => {
     });
 
     it('should handle load_data_all error', async () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=options',
         },
@@ -165,7 +165,7 @@ describe('displayJson module', () => {
 
   describe('Cache data loading', () => {
     it('should load cache data when type is cache', async () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=cache',
         },
@@ -188,7 +188,7 @@ describe('displayJson module', () => {
     });
 
     it('should handle empty cache data', async () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=cache',
         },
@@ -209,7 +209,7 @@ describe('displayJson module', () => {
     });
 
     it('should handle undefined cache data', async () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=cache',
         },
@@ -230,7 +230,7 @@ describe('displayJson module', () => {
     });
 
     it('should handle database error', async () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=cache',
         },
@@ -337,7 +337,7 @@ describe('displayJson module', () => {
 
   describe('Integration scenarios', () => {
     it('should display options data correctly', async () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=options',
         },
@@ -368,7 +368,7 @@ describe('displayJson module', () => {
     });
 
     it('should display cache data correctly', async () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=cache',
         },
@@ -397,26 +397,26 @@ describe('displayJson module', () => {
 
   describe('Edge cases', () => {
     it('should handle URL with trailing characters', () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=options&extra=param',
         },
       };
 
-      const urlParams = new URLSearchParams(global.window.location.search);
+      const urlParams = new URLSearchParams(globalThis.window.location.search);
       const type = urlParams.get('type');
 
       expect(type).toBe('options');
     });
 
     it('should handle URL with encoded characters', () => {
-      global.window = {
+      globalThis.window = {
         location: {
           search: '?type=options%2Fpath',
         },
       };
 
-      const urlParams = global.window.location.search || '';
+      const urlParams = globalThis.window.location.search || '';
       const type = urlParams.split('=')[1];
 
       expect(type).toBe('options%2Fpath');

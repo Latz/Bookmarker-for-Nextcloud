@@ -23,7 +23,7 @@ vi.mock('../src/background/modules/notification.js', () => ({
 }));
 
 // Mock chrome APIs
-global.chrome = {
+globalThis.chrome = {
   action: {
     setBadgeText: vi.fn(),
   },
@@ -388,7 +388,7 @@ describe('enableZenMode', () => {
   });
 
   it('should update menu item to checked state', () => {
-    global.chrome.contextMenus = {
+    globalThis.chrome.contextMenus = {
       update: vi.fn(),
     };
 
@@ -401,7 +401,7 @@ describe('enableZenMode', () => {
   });
 
   it('should work with different menu item objects', () => {
-    global.chrome.contextMenus = {
+    globalThis.chrome.contextMenus = {
       update: vi.fn(),
     };
 
@@ -415,7 +415,7 @@ describe('enableZenMode', () => {
   });
 
   it('should log the menu item state', () => {
-    global.chrome.contextMenus = {
+    globalThis.chrome.contextMenus = {
       update: vi.fn(),
     };
 

@@ -6,8 +6,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Chrome APIs
-global.chrome = {
-  ...global.chrome,
+globalThis.chrome = {
+  ...globalThis.chrome,
 };
 
 // Mock modules
@@ -32,7 +32,7 @@ describe('apiCall.js', () => {
 
     // Mock fetch
     mockFetch = vi.fn();
-    global.fetch = mockFetch;
+    globalThis.fetch = mockFetch;
 
     // Mock console.log to suppress output
     vi.spyOn(console, 'log').mockImplementation(() => {});

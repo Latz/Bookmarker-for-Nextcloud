@@ -6,8 +6,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Chrome APIs
-global.chrome = {
-  ...global.chrome,
+globalThis.chrome = {
+  ...globalThis.chrome,
   i18n: {
     getMessage: vi.fn((key) => {
       const messages = {
@@ -80,7 +80,7 @@ describe('login.js', () => {
     };
 
     // Set up global document
-    global.document = mockDocument;
+    globalThis.document = mockDocument;
   });
 
   afterEach(() => {
@@ -269,7 +269,7 @@ describe('login.js', () => {
   describe('loginPoll function', () => {
     it('should create login tab and poll for authorization', async () => {
       // Mock setTimeout to speed up polling
-      const originalSetTimeout = global.setTimeout;
+      const originalSetTimeout = globalThis.setTimeout;
       vi.useFakeTimers();
 
       // Import and initialize
@@ -302,7 +302,7 @@ describe('login.js', () => {
       };
 
       // Mock fetch for polling - return success on first call
-      global.fetch = vi.fn().mockResolvedValue(mockPollResponse);
+      globalThis.fetch = vi.fn().mockResolvedValue(mockPollResponse);
 
       // Mock chrome.tabs.create
       chrome.tabs.create.mockResolvedValue({ id: 123 });
@@ -322,7 +322,7 @@ describe('login.js', () => {
       });
 
       // Verify polling fetch was called
-      expect(global.fetch).toHaveBeenCalled();
+      expect(globalThis.fetch).toHaveBeenCalled();
 
       // Verify credentials were stored
       expect(store_data).toHaveBeenCalledWith('credentials', {
@@ -356,7 +356,7 @@ describe('login.js', () => {
       });
 
       // Mock failed poll response (not authorized)
-      global.fetch = vi.fn().mockResolvedValue({
+      globalThis.fetch = vi.fn().mockResolvedValue({
         ok: false,
       });
 
@@ -564,7 +564,7 @@ describe('login.js', () => {
       });
 
       // Mock fetch error during polling
-      global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
       // Mock chrome.tabs.create
       chrome.tabs.create.mockResolvedValue({ id: 123 });
