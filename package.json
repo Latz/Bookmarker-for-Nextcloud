@@ -1,6 +1,6 @@
 {
   "name": "bookmarker-for-nextcloud",
-  "version": "0.30.1",
+  "version": "0.31.0",
   "type": "module",
   "description": "Browser extension for managing Nextcloud bookmarks",
   "keywords": [
