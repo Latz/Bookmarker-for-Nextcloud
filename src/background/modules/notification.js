@@ -29,8 +29,8 @@ export async function initializeErrorIconCache() {
         errorIconsAvailable = s;
         return;
       }
-    } catch (_e) {
-      // Session storage unavailable — fall through to fetch
+    } catch (error) {
+      console.warn('[notification] Session storage unavailable, falling back:', error.message);
     }
   }
 

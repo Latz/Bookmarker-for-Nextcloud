@@ -38,7 +38,8 @@ async function getMainDBConnection() {
       if (mainDbConnection.objectStoreNames?.contains('options')) {
         return mainDbConnection;
       }
-    } catch (e) {
+    } catch (error) {
+      console.warn('[storage] DB connection invalid, resetting:', error.message);
       mainDbConnection = null;
     }
   }

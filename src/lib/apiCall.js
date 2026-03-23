@@ -51,6 +51,20 @@ async function timeoutFetch(resource, options = {}) {
   clearTimeout(id);
   return response;
 }
+async function resolveServerAndAuth(data) {
+  if (typeof data === 'object' && 'host' in data) {
+    const authHeader = data.loginflow ? null : await authentication();
+    return { server: data.host, authHeader };
+  }
+  // OPTIMIZATION: Fetch server and auth in parallel
+  const needsAuth = !data.loginflow;
+  const [server, authHeader] = await Promise.all([
+    load_data('credentials', 'server'),
+    needsAuth ? authentication() : Promise.resolve(null),
+  ]);
+  return { server, authHeader };
+}
+
 /**
  * Performs an API call to the specified endpoint with the given method and data.
  * @param {string} endpoint - The API endpoint to call.
@@ -65,24 +79,7 @@ export default async function apiCall(
   data = '',
   signal = null,
 ) {
-  // OPTIMIZATION: Parallel fetch of server and auth (if needed)
-  let server = '';
-  let authHeader = null;
-
-  if (typeof data === 'object' && 'host' in data) {
-    server = data.host;
-    // For loginflow, don't fetch auth
-    if (!data.loginflow) {
-      authHeader = await authentication();
-    }
-  } else {
-    // OPTIMIZATION: Fetch server and auth in parallel
-    const needsAuth = !data.loginflow;
-    [server, authHeader] = await Promise.all([
-      load_data('credentials', 'server'),
-      needsAuth ? authentication() : Promise.resolve(null),
-    ]);
-  }
+  let { server, authHeader } = await resolveServerAndAuth(data);
 
   // Add trailing slash to the server URL if not provided
   if (server && !server.endsWith('/')) {

@@ -154,7 +154,8 @@ describe('displayJson module', () => {
       if (type === 'options') {
         try {
           data = await load_data_all('options');
-        } catch (e) {
+        } catch (error) {
+          console.warn('[displayJson.test] options load failed:', error.message);
           data = null;
         }
       }
@@ -244,7 +245,8 @@ describe('displayJson module', () => {
         try {
           const db = await openDB('BookmarkerCache', 2);
           data = await db.get('keywords', 'keywords');
-        } catch (e) {
+        } catch (error) {
+          console.warn('[displayJson.test] cache load failed:', error.message);
           data = null;
         }
       }

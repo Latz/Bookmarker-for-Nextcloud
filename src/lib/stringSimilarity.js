@@ -57,29 +57,15 @@ function fastPreFilter(s1, s2, threshold = 0.75) {
   return null;
 }
 
-/**
- * Calculate Jaro similarity between two strings
- * @param {string} s1 - First string
- * @param {string} s2 - Second string
- * @returns {number} Similarity score between 0 and 1
- */
-function jaroSimilarity(s1, s2) {
-  // Handle edge cases
-  if (s1 === s2) return 1.0;
-  if (s1.length === 0 || s2.length === 0) return 0.0;
-
+function findMatches(s1, s2) {
   const matchWindow = Math.floor(Math.max(s1.length, s2.length) / 2) - 1;
   const s1Matches = new Array(s1.length).fill(false);
   const s2Matches = new Array(s2.length).fill(false);
-
   let matches = 0;
-  let transpositions = 0;
 
-  // Find matches
   for (let i = 0; i < s1.length; i++) {
     const start = Math.max(0, i - matchWindow);
     const end = Math.min(i + matchWindow + 1, s2.length);
-
     for (let j = start; j < end; j++) {
       if (s2Matches[j] || s1[i] !== s2[j]) continue;
       s1Matches[i] = true;
@@ -88,10 +74,11 @@ function jaroSimilarity(s1, s2) {
       break;
     }
   }
+  return { matches, s1Matches, s2Matches };
+}
 
-  if (matches === 0) return 0.0;
-
-  // Find transpositions
+function countTranspositions(s1, s2, s1Matches, s2Matches) {
+  let transpositions = 0;
   let k = 0;
   for (let i = 0; i < s1.length; i++) {
     if (!s1Matches[i]) continue;
@@ -99,7 +86,23 @@ function jaroSimilarity(s1, s2) {
     if (s1[i] !== s2[k]) transpositions++;
     k++;
   }
+  return transpositions;
+}
 
+/**
+ * Calculate Jaro similarity between two strings
+ * @param {string} s1 - First string
+ * @param {string} s2 - Second string
+ * @returns {number} Similarity score between 0 and 1
+ */
+function jaroSimilarity(s1, s2) {
+  if (s1 === s2) return 1.0;
+  if (s1.length === 0 || s2.length === 0) return 0.0;
+
+  const { matches, s1Matches, s2Matches } = findMatches(s1, s2);
+  if (matches === 0) return 0.0;
+
+  const transpositions = countTranspositions(s1, s2, s1Matches, s2Matches);
   return (
     (matches / s1.length +
       matches / s2.length +

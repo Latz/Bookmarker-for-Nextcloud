@@ -92,8 +92,8 @@ export default async function getBrowserTheme() {
         cachedTheme = stored.browserTheme;
         return cachedTheme;
       }
-    } catch (_e) {
-      // Session storage unavailable — fall through
+    } catch (error) {
+      console.warn('[getBrowserTheme] Session storage unavailable, falling back:', error.message);
     }
   }
 
