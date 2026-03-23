@@ -44,23 +44,23 @@
     "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.3.0",
+    "@crxjs/vite-plugin": "^2.4.0",
     "@linthtml/linthtml": "^0.10.2",
-    "@tailwindcss/cli": "^4.0.0",
-    "@vitest/coverage-v8": "^4.0.16",
-    "@vitest/ui": "^4.0.16",
-    "daisyui": "^5.0.0",
+    "@tailwindcss/cli": "^4.2.2",
+    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/ui": "^4.1.0",
+    "daisyui": "^5.5.19",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^27.4.0",
-    "prettier": "^3.7.4",
+    "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "rollup": "^4.59.0",
-    "tailwindcss": "^4.0.0",
+    "rollup": "^4.60.0",
+    "tailwindcss": "^4.2.2",
     "vite": "^6.4.1",
-    "vitest": "^4.0.16"
+    "vitest": "^4.1.0"
   },
   "dependencies": {
-    "@yaireo/tagify": "^4.35.6",
+    "@yaireo/tagify": "^4.36.0",
     "idb": "^8.0.3",
     "textfit": "^2.4.0"
   }
