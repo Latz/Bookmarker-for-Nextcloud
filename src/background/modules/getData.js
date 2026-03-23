@@ -306,7 +306,10 @@ async function checkBookmark(url, title, signal = null) {
 
       // Cache the result (using normalized URL as key)
       // OPTIMIZATION 7: Pass options to avoid redundant storage reads
-      await cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
+      // Only cache on successful server responses — don't persist connection errors
+      if (urlMatches.ok) {
+        await cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
+      }
 
       log(DEBUG, 'checkBookmark response', urlMatches);
       return urlMatches;

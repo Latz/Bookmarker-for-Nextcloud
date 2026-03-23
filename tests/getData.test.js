@@ -434,4 +434,44 @@ describe('getData - URL validation', () => {
       }
     });
   });
+
+  it('should not cache the result when the server is unreachable', async () => {
+    const { getCachedBookmarkCheck, cacheBookmarkCheck } = await import('../src/lib/cache.js');
+    const apiCallModule = await import('../src/lib/apiCall.js');
+    const { getOptions } = await import('../src/lib/storage.js');
+
+    chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com', title: 'Example' }]);
+    chrome.scripting.executeScript.mockResolvedValue([{ result: '<html></html>' }]);
+    parseHTMLWithOffscreen.mockResolvedValue({
+      metaTags: [], aRelTag: [], aRelCategory: [], jsonLdScripts: [],
+      scripts: [], githubTopics: [], nextData: '', description: [],
+      headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+    });
+
+    // Server unreachable
+    apiCallModule.default = vi.fn().mockResolvedValue({ status: -1, statusText: 'Failed to fetch' });
+
+    // Cache miss
+    getCachedBookmarkCheck.mockResolvedValue(null);
+
+    // Caching is enabled
+    getOptions.mockImplementation((keys) => {
+      const opts = {
+        cbx_alreadyStored: true,
+        cbx_cacheBookmarkChecks: true,
+        cbx_fuzzyUrlMatch: false,
+        cbx_titleSimilarityCheck: false,
+        input_bookmarkCacheTTL: 10,
+      };
+      const result = {};
+      keys.forEach((k) => (result[k] = opts[k]));
+      return Promise.resolve(result);
+    });
+
+    const result = await getData();
+
+    expect(result.ok).toBe(true);
+    expect(result.checkBookmark.ok).toBe(false);
+    expect(cacheBookmarkCheck).not.toHaveBeenCalled();
+  });
 });
