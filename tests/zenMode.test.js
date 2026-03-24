@@ -342,6 +342,47 @@ describe('zenMode', () => {
     });
   });
 
+  describe('Notification guard (cbx_zenDisplayNotification)', () => {
+    it('should call notifyUser when cbx_zenDisplayNotification is true', async () => {
+      getData.mockResolvedValue(mockData);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification
+      apiCall.mockResolvedValue({ status: 'success' });
+
+      await zenMode();
+
+      expect(notifyUser).toHaveBeenCalled();
+    });
+
+    it('should NOT call notifyUser for success when cbx_zenDisplayNotification is false', async () => {
+      getData.mockResolvedValue(mockData);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(false);      // cbx_zenDisplayNotification
+      apiCall.mockResolvedValue({ status: 'success' });
+
+      await zenMode();
+
+      expect(notifyUser).not.toHaveBeenCalled();
+    });
+
+    it('should always call notifyUser for errors regardless of cbx_zenDisplayNotification', async () => {
+      getData.mockResolvedValue(mockData);
+      load_data
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(false);      // notifications disabled
+      apiCall.mockResolvedValue({ status: 'error', statusText: 'Server error' });
+
+      await zenMode();
+
+      expect(notifyUser).toHaveBeenCalledWith({ status: 'error', statusText: 'Server error' });
+    });
+  });
+
   describe('Error handling', () => {
     it('should handle getData error', async () => {
       getData.mockRejectedValue(new Error('Failed to get data'));

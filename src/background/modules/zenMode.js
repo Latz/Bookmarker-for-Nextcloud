@@ -30,7 +30,10 @@ export async function zenMode() {
   chrome.action.setBadgeText({ text: '💾' });
   const response = await apiCall(endpoint, method, parameters);
   chrome.action.setBadgeText({ text: '' });
-  notifyUser(response);
+  const zenNotify = await load_data('options', 'cbx_zenDisplayNotification');
+  if (response.status === 'error' || zenNotify !== false) {
+    notifyUser(response);
+  }
 }
 
 export function enableZenMode(menuItemId) {
