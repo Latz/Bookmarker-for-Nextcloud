@@ -42,6 +42,48 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true;
 });
 
+// ------------------------------------------------------------------------------------------------
+// Context menu click handler — registered at top level so Chrome delivers the event
+// reliably on SW cold-starts (MV3 requires synchronous listener registration).
+// This function is only necessary because Vivaldi does not display the check mark in context menus.
+function setZenModeMenu(zenModeEnabled) {
+  console.log('zenModeEnabled', zenModeEnabled);
+  try {
+    if (zenModeEnabled) {
+      chrome.contextMenus.update('menuEnableZen', {
+        title: '⭢Zen Mode',
+        checked: true,
+      });
+    } else {
+      chrome.contextMenus.update('menuEnableZen', {
+        title: 'Zen Mode',
+        checked: false,
+      });
+    }
+  } catch (error) {
+    // Menu item may not exist yet if SW cold-started for this event
+  }
+}
+
+chrome.contextMenus.onClicked.addListener((info) => {
+  if (info.menuItemId === 'menuRefreshCache') {
+    cacheGet('keywords', true);
+    cacheGet('folders', true);
+  }
+  if (info.menuItemId === 'menuOldDatabase') {
+    createOldDatabase();
+  }
+  if (info.menuItemId === 'menuEnableZen') {
+    if (info.checked) {
+      store_data('options', { cbx_enableZen: true }).catch(() => {});
+    } else {
+      store_data('options', { cbx_enableZen: false }).catch(() => {});
+    }
+    setZenModeMenu(info.checked);
+  }
+});
+
+// ------------------------------------------------------------------------------------------------
 /**
  * Saves a bookmark by making an API call to create a new bookmark or update an existing one.
  * It also stores the last selected folders and displays a notification to the user based on the response from the API call.
@@ -122,39 +164,6 @@ async function init() {
   //   contexts: ['action'],
   // });
 
-  // This function is only necessary because Vivaldi does not display the check mark in context menus
-  function setZenModeMenu(zenModeEnabled) {
-    console.log('zenModeEnabled', zenModeEnabled);
-    if (zenModeEnabled) {
-      chrome.contextMenus.update('menuEnableZen', {
-        title: '⭢Zen Mode',
-        checked: true,
-      });
-    } else {
-      chrome.contextMenus.update('menuEnableZen', {
-        title: 'Zen Mode',
-        checked: false,
-      });
-    }
-  }
-
-  chrome.contextMenus.onClicked.addListener((info) => {
-    if (info.menuItemId === 'menuRefreshCache') {
-      cacheGet('keywords', true);
-      cacheGet('folders', true);
-    }
-    if (info.menuItemId === 'menuOldDatabase') {
-      createOldDatabase();
-    }
-    if (info.menuItemId === 'menuEnableZen') {
-      if (info.checked) {
-        store_data('options', { cbx_enableZen: true });
-      } else {
-        store_data('options', { cbx_enableZen: false });
-      }
-      setZenModeMenu(info.checked);
-    }
-  });
   // Fire-and-forget: warm up TCP/TLS and auth cache on every SW startup
   warmupConnection().catch(() => {});
 }
