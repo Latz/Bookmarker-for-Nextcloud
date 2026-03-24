@@ -175,8 +175,6 @@ describe('options.js', () => {
       // Checkboxes
       cbx_enableZen: { id: 'cbx_enableZen', type: 'checkbox', checked: false },
       cbx_autoTags: { id: 'cbx_autoTags', type: 'checkbox', checked: false },
-      // Active inactive indicator
-      activeInactive: { innerHTML: '' },
       // Database version input
       input_dbVersion: { id: 'input_dbVersion', value: '1.0' },
       // I18n elements
@@ -717,48 +715,6 @@ describe('options.js', () => {
       expect(mockElements.input_networkTimeout.value).toBe(8000);
     });
 
-    it('should update active/inactive indicator based on zen mode', async () => {
-      vi.resetModules();
-      Tagify.mockImplementation(function() {
-        return {
-          on: vi.fn(),
-          addTags: vi.fn(),
-          value: [],
-        };
-      });
-
-      load_data.mockResolvedValue(undefined);
-      load_data_all.mockResolvedValue([]);
-      getOption.mockResolvedValue(true); // zen mode enabled
-      getFolders.mockResolvedValue('<option value="1">Folder 1</option>');
-
-      await import('../src/options/options.js');
-      await mockDocument.onreadystatechange();
-
-      expect(getOption).toHaveBeenCalledWith('cbx_enableZen');
-      expect(mockElements.activeInactive.innerHTML).toBe('[i18n:active]');
-    });
-
-    it('should show inactive when zen mode is disabled', async () => {
-      vi.resetModules();
-      Tagify.mockImplementation(function() {
-        return {
-          on: vi.fn(),
-          addTags: vi.fn(),
-          value: [],
-        };
-      });
-
-      load_data.mockResolvedValue(undefined);
-      load_data_all.mockResolvedValue([]);
-      getOption.mockResolvedValue(false); // zen mode disabled
-      getFolders.mockResolvedValue('<option value="1">Folder 1</option>');
-
-      await import('../src/options/options.js');
-      await mockDocument.onreadystatechange();
-
-      expect(mockElements.activeInactive.innerHTML).toBe('[i18n:inactive]');
-    });
   });
 
   describe('Error handling', () => {

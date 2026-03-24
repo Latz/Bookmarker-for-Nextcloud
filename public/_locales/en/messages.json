@@ -35,6 +35,7 @@
   "autodescription": { "message": "Auto description" },
   "successnotification": { "message": "Display success notification" },
   "zenmode": { "message": "Zen Mode:" },
+  "enableZen": { "message": "Enable Zen Mode" },
   "alreadyStored": { "message": "Check for stored bookmarks" },
   "showUrl": { "message": "Show URL" },
   "showDescription": { "message": "Show Description" },

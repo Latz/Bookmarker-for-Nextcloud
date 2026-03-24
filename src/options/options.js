@@ -3,7 +3,6 @@ import {
   load_data_all,
   load_data,
   store_data,
-  getOption,
   initDefaults,
   clearData,
   createOldDatabase,
@@ -165,12 +164,6 @@ async function setOptions() {
   const options = document.getElementById('content');
   const optionsData = await load_data_all(OPTION_STORE);
   console.log('🚀 ~ setOptions ~ optionsData:', optionsData);
-
-  const zenModeEnabled = await getOption('cbx_enableZen');
-  console.log('🚀 ~ setOptions ~ zenModeEnabled:', zenModeEnabled);
-  document.getElementById('activeInactive').innerHTML = zenModeEnabled
-    ? chrome.i18n.getMessage('active')
-    : chrome.i18n.getMessage('inactive');
 
   // set all defaults
   optionsData.forEach((option) => {
