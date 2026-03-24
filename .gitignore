@@ -1,5 +1,7 @@
 
 src/.scannerwork/
+.scannerwork/
+docs/superpowers/
 src/sonarqube.bat
 sonar-project.properties
 node_modules/
