@@ -30,7 +30,7 @@ globalThis.chrome = {
 };
 
 // Import the module after mocking
-import { zenMode, enableZenMode } from '../src/background/modules/zenMode.js';
+import { zenMode } from '../src/background/modules/zenMode.js';
 import getData from '../src/background/modules/getData.js';
 import apiCall from '../src/lib/apiCall.js';
 import { notifyUser } from '../src/background/modules/notification.js';
@@ -468,60 +468,5 @@ describe('zenMode', () => {
 
       await expect(zenMode()).rejects.toThrow('Network error');
     });
-  });
-});
-
-describe('enableZenMode', () => {
-  let mockMenuItem;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockMenuItem = {
-      checked: false,
-    };
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('should update menu item to checked state', () => {
-    globalThis.chrome.contextMenus = {
-      update: vi.fn(),
-    };
-
-    enableZenMode(mockMenuItem);
-
-    expect(chrome.contextMenus.update).toHaveBeenCalledWith(
-      mockMenuItem,
-      { type: 'checkbox', checked: true }
-    );
-  });
-
-  it('should work with different menu item objects', () => {
-    globalThis.chrome.contextMenus = {
-      update: vi.fn(),
-    };
-
-    const anotherMenuItem = { id: 'zen-mode-item' };
-    enableZenMode(anotherMenuItem);
-
-    expect(chrome.contextMenus.update).toHaveBeenCalledWith(
-      anotherMenuItem,
-      { type: 'checkbox', checked: true }
-    );
-  });
-
-  it('should log the menu item state', () => {
-    globalThis.chrome.contextMenus = {
-      update: vi.fn(),
-    };
-
-    // Spy on console.log
-    const consoleSpy = vi.spyOn(console, 'log');
-
-    enableZenMode(mockMenuItem);
-
-    expect(consoleSpy).toHaveBeenCalledWith('enableZenMode', false);
   });
 });

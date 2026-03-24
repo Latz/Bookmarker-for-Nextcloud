@@ -9,7 +9,7 @@ import {
 import { notifyUser, initializeErrorIconCache } from './modules/notification.js';
 import getBrowserTheme from './modules/getBrowserTheme.js';
 import { cacheGet } from '../lib/cache.js';
-import { zenMode, enableZenMode } from './modules/zenMode.js';
+import { zenMode } from './modules/zenMode.js';
 
 const DEBUG = false;
 // -----------------------------------------------------------------------------------------------

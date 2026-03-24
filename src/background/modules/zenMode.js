@@ -36,7 +36,3 @@ export async function zenMode() {
   }
 }
 
-export function enableZenMode(menuItemId) {
-  console.log('enableZenMode', menuItemId.checked);
-  chrome.contextMenus.update(menuItemId, { type: 'checkbox', checked: true });
-}
