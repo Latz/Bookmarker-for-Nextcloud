@@ -416,6 +416,28 @@ describe('popup.js', () => {
       // Verify window was closed
       expect(globalThis.window.close).toHaveBeenCalled();
     });
+
+    it('should send zenMode message BEFORE closing window', async () => {
+      const callOrder = [];
+
+      load_data.mockImplementation((store, key) => {
+        if (key === 'appPassword') return Promise.resolve('test-password');
+        return Promise.resolve(undefined);
+      });
+      getOption.mockResolvedValue(true);
+
+      globalThis.chrome.runtime.sendMessage.mockImplementation(() => {
+        callOrder.push('sendMessage');
+        return Promise.resolve();
+      });
+      globalThis.window.close = vi.fn(() => callOrder.push('close'));
+
+      await import('../src/popup/popup.js');
+      const onreadystatechange = mockDocument.onreadystatechange;
+      if (onreadystatechange) await onreadystatechange();
+
+      expect(callOrder).toEqual(['sendMessage', 'close']);
+    });
   });
 
   describe('Form creation and hydration', () => {

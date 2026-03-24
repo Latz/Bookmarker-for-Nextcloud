@@ -123,6 +123,6 @@ function createAuthorizeButton() {
 }
 
 function zenMode() {
-  window.close();
   chrome.runtime.sendMessage({ msg: 'zenMode' });
+  window.close();
 }
