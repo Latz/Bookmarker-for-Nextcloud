@@ -56,7 +56,10 @@ describe('zenMode', () => {
   describe('Basic zen mode functionality', () => {
     it('should save bookmark with basic data', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined); // No selected folders
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -78,7 +81,10 @@ describe('zenMode', () => {
 
     it('should set loading badge when starting', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -88,7 +94,10 @@ describe('zenMode', () => {
 
     it('should clear loading badge when complete', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -98,7 +107,10 @@ describe('zenMode', () => {
 
     it('should handle API errors gracefully', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'error', statusText: 'API error' });
 
       await zenMode();
@@ -110,7 +122,10 @@ describe('zenMode', () => {
   describe('Folder handling', () => {
     it('should include selected folders in request', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(['folder1', 'folder2']);
+      load_data
+        .mockResolvedValueOnce(['folder1', 'folder2'])  // zenFolderIDs
+        .mockResolvedValueOnce(undefined)               // input_zenKeywords
+        .mockResolvedValueOnce(true);                   // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -125,7 +140,10 @@ describe('zenMode', () => {
 
     it('should not include folders parameter when none selected', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -139,7 +157,10 @@ describe('zenMode', () => {
 
     it('should handle empty folder array', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue([]);
+      load_data
+        .mockResolvedValueOnce([])          // zenFolderIDs (empty)
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -156,7 +177,10 @@ describe('zenMode', () => {
   describe('Tag handling', () => {
     it('should include zen keywords in request', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValueOnce(undefined).mockResolvedValueOnce(['zen1', 'zen2']);
+      load_data
+        .mockResolvedValueOnce(undefined)           // zenFolderIDs
+        .mockResolvedValueOnce(['zen1', 'zen2'])    // input_zenKeywords
+        .mockResolvedValueOnce(true);               // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -171,7 +195,10 @@ describe('zenMode', () => {
 
     it('should include data keywords in request', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -185,7 +212,10 @@ describe('zenMode', () => {
 
     it('should combine zen keywords and data keywords', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValueOnce(undefined).mockResolvedValueOnce(['zen1']);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(['zen1'])    // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -204,7 +234,10 @@ describe('zenMode', () => {
         keywords: [],
       };
       getData.mockResolvedValue(emptyData);
-      load_data.mockResolvedValueOnce(undefined).mockResolvedValueOnce(['zen1']);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(['zen1'])    // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -224,7 +257,10 @@ describe('zenMode', () => {
         keywords: [],
       };
       getData.mockResolvedValue(emptyData);
-      load_data.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -243,7 +279,10 @@ describe('zenMode', () => {
         keywords: [],
       };
       getData.mockResolvedValue(specialData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -263,7 +302,10 @@ describe('zenMode', () => {
         keywords: [],
       };
       getData.mockResolvedValue(specialData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -284,7 +326,10 @@ describe('zenMode', () => {
         keywords: [],
       };
       getData.mockResolvedValue(specialData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -301,7 +346,10 @@ describe('zenMode', () => {
   describe('Request parameters', () => {
     it('should include page=-1 parameter', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -315,7 +363,10 @@ describe('zenMode', () => {
 
     it('should use POST method', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -329,7 +380,10 @@ describe('zenMode', () => {
 
     it('should use correct endpoint', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -406,7 +460,10 @@ describe('zenMode', () => {
 
     it('should handle apiCall error', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValue(undefined);
+      load_data
+        .mockResolvedValueOnce(undefined)   // zenFolderIDs
+        .mockResolvedValueOnce(undefined)   // input_zenKeywords
+        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
       apiCall.mockRejectedValue(new Error('Network error'));
 
       await expect(zenMode()).rejects.toThrow('Network error');
