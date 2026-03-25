@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.32.0 — 2026-03-25
+
+### Improvements
+
+- **Better keyword extraction** — JSON-LD keyword extraction refactored into a dedicated helper with improved handling of `@graph` articles, comma-separated strings, `termCode` arrays, and `mainEntity.keywords`.
+- **GitHub topic detection** — Improved GitHub topic tag selectors to match current and legacy GitHub DOM structures.
+- **Request cancellation** — Opening the popup now cancels any still-running previous request for the same tab, preventing stale responses from overwriting fresh ones.
+- **Pre-flight URL validation** — Non-bookmarkable URLs (`chrome://`, `chrome-extension://`, `about:`, `data:`, `blob:`, `javascript:`) are rejected immediately before any network call.
+- **Request deduplication** — Duplicate in-flight requests for the same URL are deduplicated so the server is not hit twice.
+- **Accessibility improvements** — Options page zen-mode controls now have `aria-label` attributes and proper `<label>` elements for screen reader compatibility.
+
+### Fixes
+
+- **SonarCloud S6582** — Replaced `!credentials || !credentials.server` with optional chaining `!credentials?.server` in `warmupConnection()`.
+
 ## 0.31.0 — 2026-03-24
 
 ### Major Improvements

@@ -28,3 +28,5 @@ package-lock.json
 /sonar-issues.json
 /sonar-issues.md
 /sonar-scanner.sh
+.env
+/.env

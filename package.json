@@ -1,6 +1,6 @@
 {
   "name": "bookmarker-for-nextcloud",
-  "version": "0.31.0",
+  "version": "0.32.0",
   "type": "module",
   "description": "Browser extension for managing Nextcloud bookmarks",
   "keywords": [
@@ -28,20 +28,21 @@
     "build:css:options": "npx @tailwindcss/cli -i ./src/options/input.css -o ./src/options/options.css --minify",
     "build:css:popup": "npx @tailwindcss/cli -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify",
     "build:css": "npm run build:css:options && npm run build:css:popup",
-    "prebuild": "npm run clean",
+    "prebuild": "npm run clean && npm run clean:dist",
     "build": "npm run build:css && vite build",
-    "predev": "npm run clean",
+    "predev": "npm run clean && npm run clean:dist",
     "dev": "npm run build:css && vite",
     "watch": "npm run build:css && vite",
-    "prebuild:dev": "npm run clean",
+    "prebuild:dev": "npm run clean && npm run clean:dist",
     "build:dev": "npm run build:css && vite build --mode development",
-    "pred deploy": "npm run clean",
+    "pred deploy": "npm run clean && npm run clean:dist",
     "deploy": "npm run build:css && vite build --mode production",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "sonar:scan": "npm run test:coverage && sonar-scanner"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.4.0",
@@ -55,6 +56,7 @@
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "rollup": "^4.60.0",
+    "sonarqube-scanner": "^4.3.0",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.2",
     "vitest": "^4.1.0"

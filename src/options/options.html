@@ -95,10 +95,11 @@
                       type="checkbox"
                       id="cbx_enableZen"
                       class="toggle toggle-info toggle-xs"
+                      aria-label="Enable Zen Mode"
                     />
                   </td>
                   <td>
-                    <label for="cbx_enableZen" i18n-data="enableZen"></label>
+                    <label for="cbx_enableZen" i18n-data="enableZen">Enable Zen Mode</label>
                   </td>
                 </tr>
                 <tr>
@@ -107,24 +108,26 @@
                       type="checkbox"
                       id="cbx_zenDisplayNotification"
                       class="toggle toggle-info toggle-xs"
+                      aria-label="Display notification in Zen Mode"
                     />
                   </td>
                   <td>
                     <label
                       for="cbx_zenDisplayNotification"
                       i18n-data="zenDisplayNotification"
-                    ></label>
+                    >Display notification in Zen Mode</label>
                   </td>
                 </tr>
                 <tr>
                   <td class="mt-2 p-1 align-middle">
-                    <span i18n-data="zenkeywords"></span>
+                    <label for="input_zenKeywords" i18n-data="zenkeywords">Zen Keywords</label>
                   </td>
                   <td class="p-1 align-middle">
                     <input
                       type="text"
                       class="input input-sm input-info w-[350px]"
                       id="input_zenKeywords"
+                      aria-label="Zen keywords"
                     />
                   </td>
                 </tr>

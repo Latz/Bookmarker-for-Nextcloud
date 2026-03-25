@@ -52,11 +52,10 @@ describe('Performance Optimizations Tests', () => {
       const iterations = 1000;
 
       const startTime = performance.now();
-      const promises = Array(iterations)
-        .fill(null)
-        .map(() => normalizeUrl(url));
-
-      const results = await Promise.all(promises);
+      const results = [];
+      for (let i = 0; i < iterations; i++) {
+        results.push(normalizeUrl(url));
+      }
       const endTime = performance.now();
 
       // All results should be identical

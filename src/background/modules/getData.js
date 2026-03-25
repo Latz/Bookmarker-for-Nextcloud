@@ -175,43 +175,76 @@ async function getContent(tabId) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+/**
+ * Handles waiting for an in-flight request with proper abort signal handling
+ */
+async function waitForInflightRequest(inflightPromise, signal) {
+  if (!signal) {
+    return inflightPromise;
+  }
+
+  if (signal.aborted) {
+    throw new DOMException('Request aborted', 'AbortError');
+  }
+
+  return new Promise((resolve, reject) => {
+    const abortHandler = () => {
+      reject(new DOMException('Request aborted', 'AbortError'));
+    };
+    signal.addEventListener('abort', abortHandler);
+
+    inflightPromise
+      .then((result) => {
+        signal.removeEventListener('abort', abortHandler);
+        resolve(result);
+      })
+      .catch((error) => {
+        signal.removeEventListener('abort', abortHandler);
+        reject(error);
+      });
+  });
+}
+
+/**
+ * Checks cache for a bookmark check result
+ */
+async function checkCache(url, cacheBookmarkChecks) {
+  if (!cacheBookmarkChecks) return null;
+
+  let cached = await getCachedBookmarkCheck(url);
+  if (cached) {
+    log(DEBUG, 'Using cached bookmark check (exact URL) for', url);
+    return cached;
+  }
+
+  const normUrl = normalizeUrl(url);
+  if (normUrl !== url) {
+    cached = await getCachedBookmarkCheck(normUrl);
+    if (cached) {
+      log(DEBUG, 'Using cached bookmark check (normalized URL) for', url);
+      return cached;
+    }
+  }
+
+  return null;
+}
+
 async function checkBookmark(url, title, signal = null) {
-  // OPTIMIZATION 1: Fetch only essential options first (minimal reads)
-  // Check if feature is enabled and if caching is enabled
   const essentialOptions = await getOptions([
     'cbx_alreadyStored',
     'cbx_cacheBookmarkChecks',
   ]);
 
-  // Check if the user wants to check for stored bookmarks
-  // -> Fake successful connection and no data found
-  if (!essentialOptions.cbx_alreadyStored)
+  if (!essentialOptions.cbx_alreadyStored) {
     return { ok: true, found: false, matches: [], count: 0 };
-
-  // OPTIMIZATION 2: If caching is enabled, try both URL variants for cache hit
-  // This avoids fetching fuzzyUrlMatch option if we get a cache hit
-  let normalizedUrl = null; // Cache the normalized URL to avoid recalculating
-
-  if (essentialOptions.cbx_cacheBookmarkChecks) {
-    // Try exact URL first (fastest - no normalization needed)
-    let cached = await getCachedBookmarkCheck(url, essentialOptions);
-    if (cached) {
-      log(DEBUG, 'Using cached bookmark check (exact URL) for', url);
-      return cached;
-    }
-
-    // Try normalized URL (common case when fuzzy matching is enabled)
-    normalizedUrl = normalizeUrl(url);
-    if (normalizedUrl !== url) {
-      cached = await getCachedBookmarkCheck(normalizedUrl, essentialOptions);
-      if (cached) {
-        log(DEBUG, 'Using cached bookmark check (normalized URL) for', url);
-        return cached;
-      }
-    }
   }
 
-  // OPTIMIZATION 3: Cache missed or disabled - fetch all remaining options in one call
+  const cached = await checkCache(
+    url,
+    essentialOptions.cbx_cacheBookmarkChecks,
+  );
+  if (cached) return cached;
+
   const remainingOptions = await getOptions([
     'cbx_fuzzyUrlMatch',
     'input_bookmarkCacheTTL',
@@ -219,94 +252,45 @@ async function checkBookmark(url, title, signal = null) {
   ]);
 
   const allOptions = { ...essentialOptions, ...remainingOptions };
-
-  // OPTIMIZATION 4: Reuse normalized URL if already calculated, otherwise normalize based on setting
-  if (normalizedUrl === null) {
-    normalizedUrl = normalizeUrl(url);
-  }
+  const normalizedUrl = normalizeUrl(url);
   const cacheKey = allOptions.cbx_fuzzyUrlMatch ? normalizedUrl : url;
 
-  // Request deduplication: if same URL is being checked, wait for that result
   if (inflightChecks.has(cacheKey)) {
     log(DEBUG, 'Request deduplication - waiting for in-flight check', url);
-    const inflightPromise = inflightChecks.get(cacheKey);
-
-    // If this request's signal is already aborted, don't wait for inflight
-    if (signal && signal.aborted) {
-      throw new DOMException('Request aborted', 'AbortError');
-    }
-
-    // If this request has a signal, allow it to abort independently
-    if (signal) {
-      return new Promise((resolve, reject) => {
-        // Listen for abort on this request's signal
-        const abortHandler = () => {
-          reject(new DOMException('Request aborted', 'AbortError'));
-        };
-        signal.addEventListener('abort', abortHandler);
-
-        // Wait for the inflight promise
-        inflightPromise
-          .then((result) => {
-            signal.removeEventListener('abort', abortHandler);
-            resolve(result);
-          })
-          .catch((error) => {
-            signal.removeEventListener('abort', abortHandler);
-            reject(error);
-          });
-      });
-    }
-
-    // No signal on this request, just return the inflight promise
-    return inflightPromise;
+    return waitForInflightRequest(inflightChecks.get(cacheKey), signal);
   }
 
-  // Cache miss - proceed with API calls
   log(DEBUG, 'Cache miss - fetching bookmark check from server for', url);
 
-  // Create promise for this check and store it
   const checkPromise = (async () => {
     try {
-      // OPTIMIZATION 5: Pass normalized cacheKey to avoid re-normalizing
-      // Run URL check first
       const urlMatches = await checkByUrl(cacheKey, signal);
 
-      // Check if request was aborted
       if (signal && signal.aborted) {
         throw new DOMException('Request aborted', 'AbortError');
       }
 
-      // Early exit: if we found exact URL match(es), skip title check
-      // This saves an API call and processing time
       if (urlMatches.found && urlMatches.matches.length > 0) {
         log(DEBUG, 'Found exact URL match - skipping title check');
-        // OPTIMIZATION 6: Pass options to avoid redundant storage reads
         await cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
         return urlMatches;
       }
 
-      // No URL match - try title check if enabled
       if (allOptions.cbx_titleSimilarityCheck && title) {
         const titleMatches = await checkByTitle(title, signal);
 
         if (titleMatches.length > 0) {
-          // Merge and deduplicate matches
           const mergedMatches = mergeMatches(urlMatches.matches, titleMatches);
           urlMatches.matches = mergedMatches;
           urlMatches.count = mergedMatches.length;
           urlMatches.found = mergedMatches.length > 0;
 
-          // Update root level data with first match
           if (mergedMatches.length > 0) {
             Object.assign(urlMatches, mergedMatches[0]);
           }
         }
       }
 
-      // Cache the result (using normalized URL as key)
-      // OPTIMIZATION 7: Pass options to avoid redundant storage reads
-      // Only cache on successful server responses — don't persist connection errors
       if (urlMatches.ok) {
         await cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
       }
@@ -314,7 +298,6 @@ async function checkBookmark(url, title, signal = null) {
       log(DEBUG, 'checkBookmark response', urlMatches);
       return urlMatches;
     } finally {
-      // Clean up inflight request
       inflightChecks.delete(cacheKey);
     }
   })();

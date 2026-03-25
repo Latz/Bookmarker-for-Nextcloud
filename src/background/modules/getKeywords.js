@@ -4,8 +4,7 @@ import { getOption, getOptions } from '../../lib/storage.js';
 import getDescription from './getDescription.js';
 import log from '../../lib/log.js';
 
-const DEBUG = true;
-console.log('🚀 ~ DEBUG:', DEBUG);
+const DEBUG = false;
 
 // ---------------------------------------------------------------------------------------------------
 /**
@@ -26,7 +25,6 @@ console.log('🚀 ~ DEBUG:', DEBUG);
  */
 async function reduceKeywords(keywords, force = false, cachedAllKeywords = null) {
   const cbx_reduceKeywords = await getOption('cbx_reduceKeywords');
-  console.log('🚀 ~ reduceKeywords ~ cbx_reduceKeywords:', cbx_reduceKeywords);
 
   if (force === false && cbx_reduceKeywords === false) {
     // if the user does not want to reduce the keywords, we return
@@ -36,17 +34,17 @@ async function reduceKeywords(keywords, force = false, cachedAllKeywords = null)
   keywords = [...new Set(keywords)];
 
   // Use pre-fetched list if provided, otherwise fetch from DB
-  let allKeywords = cachedAllKeywords ?? await cacheGet('keywords');
-  if (allKeywords === undefined || Object.keys(allKeywords).length === 0) {
+  const allKeywordsRaw = cachedAllKeywords ?? await cacheGet('keywords');
+  if (allKeywordsRaw === undefined || Object.keys(allKeywordsRaw).length === 0) {
     return [];
   }
 
   // no keywords on server, api returns an error
-  if (allKeywords?.ok === false) {
+  if (allKeywordsRaw?.ok === false) {
     return [];
   }
 
-  allKeywords = allKeywords.map((keyword) => keyword.toLowerCase());
+  const allKeywords = allKeywordsRaw.map((keyword) => keyword.toLowerCase());
 
   let reducedKeywords = keywords.filter((keyword) =>
     allKeywords.includes(keyword.toLowerCase()),
@@ -59,6 +57,73 @@ async function reduceKeywords(keywords, force = false, cachedAllKeywords = null)
 }
 
 // ----------------------------------------------------------------------------------------
+
+/**
+ * Extracts keywords from JSON-LD structured data
+ */
+function extractKeywordsFromJsonLd(jsonld) {
+  // https://harpers.org/archive/2024/07/art-and-artifice-donna-tartt/
+  if (jsonld['@graph'] && Array.isArray(jsonld['@graph'])) {
+    for (const element of jsonld['@graph']) {
+      if (element['@type'] === 'Article') {
+        return element['keywords'] || [];
+      }
+    }
+  }
+  if (jsonld['@graph'] && jsonld['@graph']['@type'] === 'Article') {
+    return jsonld['@graph']['keywords'] || [];
+  }
+
+  if (jsonld.keywords) {
+    if (jsonld.keywords.length > 0) {
+      if (Array.isArray(jsonld.keywords)) {
+        return jsonld.keywords;
+      }
+      if (
+        typeof jsonld.keywords === 'string' ||
+        jsonld.keywords instanceof String
+      ) {
+        return jsonld.keywords.split(',');
+      }
+    }
+    //https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
+    if (Object.prototype.hasOwn(jsonld.keywords[0], 'termCode')) {
+      const terms = [];
+      jsonld.keywords.forEach((term) => {
+        if (term.termCode.label) terms.push(term.termCode.label);
+      });
+      return terms;
+    }
+    const keywords = jsonld.keywords
+      .split(',')
+      .map((keyword) => keyword.trim());
+    if (Array.isArray(keywords)) {
+      return keywords;
+    }
+    const tags = [];
+    jsonld.keywords?.forEach((keyword) => {
+      const [id, value] = keyword.split(':');
+      if (id.toLowerCase() === 'tag') tags.push(value);
+    });
+    if (tags.length > 0) {
+      return tags;
+    }
+    // keywords are only comma separated Array
+    // https://www.vox.com/platform/amp/down-to-earth/22679378/tree-planting-forest-restoration-climate-solutions
+    if (jsonld.keywords) {
+      return jsonld.keywords;
+    }
+  }
+  // https://www.nature.com/articles/d41586-024-00169-7
+  if (
+    jsonld?.mainEntity?.keywords?.length > 0 &&
+    Array.isArray(jsonld.mainEntity.keywords)
+  ) {
+    return jsonld.mainEntity.keywords;
+  }
+
+  return [];
+}
 
 export default async function getKeywords(content, document) {
   // define an array of function whcih can be looped through later and
@@ -129,7 +194,6 @@ export default async function getKeywords(content, document) {
       relsCategories.forEach((category) => keywords.push(category.textContent));
       return keywords;
     },
-
     // ------------------------------------------------
     // try JSON-LD
     () => {
@@ -146,67 +210,10 @@ export default async function getKeywords(content, document) {
             return true; // Continue to next item
           }
 
-          // https://harpers.org/archive/2024/07/art-and-artifice-donna-tartt/
-          if (jsonld['@graph'] && Array.isArray(jsonld['@graph'])) {
-            jsonld['@graph'].forEach((element) => {
-              if (element['@type'] === 'Article') {
-                keywords = element['keywords'];
-                return true;
-              }
-            });
-          }
-          if (jsonld['@graph'] && jsonld['@graph']['@type'] === 'Article') {
-            keywords = jsonld['@graph']['keywords'];
+          keywords = extractKeywordsFromJsonLd(jsonld);
+          if (keywords.length > 0) {
             return true;
           }
-
-          // https://allthatsinteresting.com/
-          if (jsonld.keywords) {
-            if (jsonld.keywords.length > 0) {
-              if (Array.isArray(jsonld.keywords)) {
-                keywords = jsonld.keywords;
-                return true;
-              }
-              if (
-                typeof jsonld.keywords === 'string' ||
-                jsonld.keywords instanceof String
-              ) {
-                keywords = jsonld.keywords.split(',');
-                return true;
-              }
-            }
-            //https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
-            if (Object.prototype.hasOwn(jsonld.keywords[0], 'termCode')) {
-              jsonld.keywords.forEach((term) => {
-                if (term.termCode.label) keywords.push(term.termCode.label);
-              });
-              return true;
-            }
-            keywords = jsonld.keywords
-              .split(',')
-              .map((keyword) => keyword.trim());
-            if (Array.isArray(keywords)) {
-              return true;
-            } // if keywords is an array the conversion was successful
-            jsonld.keywords?.forEach((keyword) => {
-              let [id, value] = keyword.split(':');
-              if (id.toLowerCase() === 'tag') keywords.push(value);
-            });
-            // keywords are only comma separated Array
-            // https://www.vox.com/platform/amp/down-to-earth/22679378/tree-planting-forest-restoration-climate-solutions
-            if (jsonld.keywords) {
-              keywords = jsonld.keywords;
-              return true;
-            }
-          }
-        }
-        // https://www.nature.com/articles/d41586-024-00169-7
-        if (
-          jsonld?.mainEntity?.keywords?.length > 0 &&
-          Array.isArray(jsonld.mainEntity.keywords)
-        ) {
-          keywords = jsonld.mainEntity.keywords;
-          return true;
         }
       });
       return keywords;
@@ -387,11 +394,15 @@ export default async function getKeywords(content, document) {
   let level = 1;
   keywords = [];
   while (level <= maxLevel) {
-    let headlines = document.querySelectorAll(`h${level}`);
+    const headlines = document.querySelectorAll(`h${level}`);
 
     for (const headline of headlines) {
       const words = headline.innerText.split(/[\W_]+/g);
-      keywords = await reduceKeywords(words, true, allKeywords);
+      const reducedKw = await reduceKeywords(words, true, allKeywords);
+      if (reducedKw && reducedKw.length > 0) {
+        keywords = reducedKw;
+        break;
+      }
     }
     if (keywords.length > 0) {
       return keywords;
