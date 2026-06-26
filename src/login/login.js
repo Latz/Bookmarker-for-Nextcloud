@@ -1,3 +1,4 @@
+// @ts-check
 // https://docs.nextcloud.com/server/latest/developer_manual/client_apis/LoginFlow/index.html
 
 import apiCall from '../lib/apiCall.js';
@@ -33,7 +34,7 @@ function getReasonPhrase(statusCode) {
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     document.getElementById('msg').innerText = '';
-    document.getElementById('testServer').innerHTML =
+    document.getElementById('testServer').textContent =
       chrome.i18n.getMessage('OpenLoginPage');
 
     document.getElementById('testServer').addEventListener('click', () => {
@@ -53,11 +54,11 @@ document.onreadystatechange = async () => {
 
 async function openServerPage() {
   // clear possible error message
-  document.getElementById('error').innerHTML = '';
-  document.getElementById('msg').innerHTML = '';
+  document.getElementById('error').textContent = '';
+  document.getElementById('msg').textContent = '';
 
   const testServer = document.getElementById('testServer');
-  testServer.innerHTML = `${chrome.i18n.getMessage('Loading')}...`;
+  testServer.textContent = `${chrome.i18n.getMessage('Loading')}...`;
   const host = document.getElementById('serverName').value;
 
   const endpoint = 'index.php/login/v2';
@@ -112,7 +113,7 @@ async function loginPoll(request) {
   // User did not interact after maxAttempts iterations
   if (maxAttempts === attempts) {
     chrome.runtime.sendMessage({ msg: 'maxAttempts', loginPage });
-    document.getElementById('testServer').innerHTML =
+    document.getElementById('testServer').textContent =
       chrome.i18n.getMessage('OpenLoginPage');
     document.getElementById('serverName').focus();
   } else {
@@ -139,6 +140,6 @@ function serverError(response) {
   } else if (response.statusText) {
     msg.innerText = ` ${response.statusText}`;
   }
-  testServer.innerHTML = chrome.i18n.getMessage('OpenLoginPage');
+  testServer.textContent = chrome.i18n.getMessage('OpenLoginPage');
   document.getElementById('serverName').focus();
 }

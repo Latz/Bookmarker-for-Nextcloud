@@ -61,6 +61,17 @@ describe('popup.js', () => {
     vi.clearAllMocks();
     vi.resetModules();
 
+    // Serialize a mock element tree into a flat string for innerHTML assertions
+    const serializeNode = (node) => {
+      if (typeof node === 'string') return node;
+      if (!node || typeof node !== 'object') return '';
+      let s = '';
+      if (node.id) s += `id="${node.id}" `;
+      if (node.textContent) s += node.textContent + ' ';
+      if (node._children) node._children.forEach((c) => { s += serializeNode(c); });
+      return s;
+    };
+
     // Create mock DOM elements
     mockElements = {
       bookmarkForm: {
@@ -68,6 +79,7 @@ describe('popup.js', () => {
         innerHTML: '',
         setAttribute: vi.fn(),
         appendChild: vi.fn(),
+        replaceChildren: vi.fn(),
         addEventListener: vi.fn(),
       },
       formData: {
@@ -89,6 +101,9 @@ describe('popup.js', () => {
       },
       body: {
         innerHTML: '',
+        replaceChildren: vi.fn(function (...nodes) {
+          mockElements.body.innerHTML = nodes.map(serializeNode).join('');
+        }),
       },
     };
 
@@ -104,6 +119,17 @@ describe('popup.js', () => {
           addEventListener: vi.fn(),
           innerHTML: '',
           innerText: '',
+          textContent: '',
+          className: '',
+          id: '',
+          src: '',
+          _children: [],
+          append: vi.fn(function (...nodes) {
+            element._children.push(...nodes);
+            nodes.forEach((n) => {
+              if (typeof n === 'string') element.textContent += n;
+            });
+          }),
         };
         return element;
       }),
@@ -147,7 +173,7 @@ describe('popup.js', () => {
 
       // Verify button was created and appended
       expect(mockDocument.createElement).toHaveBeenCalledWith('button');
-      expect(mockElements.bookmarkForm.appendChild).toHaveBeenCalled();
+      expect(mockElements.bookmarkForm.replaceChildren).toHaveBeenCalled();
     });
 
     it('should initialize zen mode when credentials exist and zen mode is enabled', async () => {
@@ -284,10 +310,10 @@ describe('popup.js', () => {
 
       // Verify button was created with correct ID
       expect(mockDocument.createElement).toHaveBeenCalledWith('button');
-      expect(mockElements.bookmarkForm.appendChild).toHaveBeenCalled();
+      expect(mockElements.bookmarkForm.replaceChildren).toHaveBeenCalled();
 
       // Verify button click handler
-      const button = mockElements.bookmarkForm.appendChild.mock.calls[0][0];
+      const button = mockElements.bookmarkForm.replaceChildren.mock.calls[0][0];
       expect(button.addEventListener).toHaveBeenCalledWith(
         'click',
         expect.any(Function)
@@ -308,7 +334,7 @@ describe('popup.js', () => {
       }
 
       // Get the click handler
-      const button = mockElements.bookmarkForm.appendChild.mock.calls[0][0];
+      const button = mockElements.bookmarkForm.replaceChildren.mock.calls[0][0];
       const clickHandler = button.addEventListener.mock.calls[0][1];
 
       // Simulate click

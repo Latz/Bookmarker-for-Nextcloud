@@ -1,3 +1,4 @@
+// @ts-check
 import { openDB } from 'idb';
 import { load_data_all } from '../lib/storage';
 
@@ -9,5 +10,6 @@ if (type === 'cache') {
   const db = await openDB('BookmarkerCache', 2);
   data = await db.get('keywords', 'keywords');
 }
-document.getElementById('jsondata').innerHTML =
-  '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
+const pre = document.createElement('pre');
+pre.textContent = JSON.stringify(data, null, 4);
+document.getElementById('jsondata').replaceChildren(pre);

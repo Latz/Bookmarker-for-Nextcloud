@@ -1,3 +1,4 @@
+// @ts-check
 import { getOption } from '../../lib/storage.js';
 import apiCall from '../../lib/apiCall.js';
 import { cacheGet, cacheAdd } from '../../lib/cache.js';
@@ -39,10 +40,7 @@ export function preRenderFolders(folders) {
   }
   json2tree(folders);
 
-  // convert JSOn to prerendered HTML
-  let selectElement = '';
-  folderStructure.forEach((folder) => {
-    selectElement += `<option value="${folder.value}">${folder.name}</option>`;
-  });
-  return selectElement;
+  return folderStructure
+    .map(({ value, name }) => `<option value="${value}">${name}</option>`)
+    .join('');
 }

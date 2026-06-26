@@ -1,3 +1,4 @@
+// @ts-check
 import getDescription from './getDescription.js';
 import getKeywords from './getKeywords.js';
 import { getFolders } from './getFolders.js';
@@ -54,9 +55,7 @@ export default async function getData() {
   let data = { ok: true };
 
   // --- get active tab info first (fast operation)
-  const activeTab = await chrome.tabs
-    .query({ active: true, currentWindow: true })
-    .then((tabs) => tabs[0]);
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
   data.url = activeTab.url;
   data.title = activeTab.title;
@@ -193,15 +192,15 @@ async function waitForInflightRequest(inflightPromise, signal) {
     };
     signal.addEventListener('abort', abortHandler);
 
-    inflightPromise
-      .then((result) => {
-        signal.removeEventListener('abort', abortHandler);
-        resolve(result);
-      })
-      .catch((error) => {
-        signal.removeEventListener('abort', abortHandler);
+    (async () => {
+      try {
+        resolve(await inflightPromise);
+      } catch (error) {
         reject(error);
-      });
+      } finally {
+        signal.removeEventListener('abort', abortHandler);
+      }
+    })();
   });
 }
 
@@ -264,7 +263,7 @@ async function checkBookmark(url, title, signal = null) {
 
   const checkPromise = (async () => {
     try {
-      const urlMatches = await checkByUrl(cacheKey, signal);
+      let urlMatches = await checkByUrl(cacheKey, signal);
 
       if (signal && signal.aborted) {
         throw new DOMException('Request aborted', 'AbortError');
@@ -286,7 +285,7 @@ async function checkBookmark(url, title, signal = null) {
           urlMatches.found = mergedMatches.length > 0;
 
           if (mergedMatches.length > 0) {
-            Object.assign(urlMatches, mergedMatches[0]);
+            urlMatches = { ...urlMatches, ...mergedMatches[0] };
           }
         }
       }
@@ -332,7 +331,7 @@ async function checkByUrl(url, signal = null) {
       response.count = result.data.length;
 
       // For backward compatibility, also include first match data at root level
-      Object.assign(response, result.data[0]);
+      response = { ...response, ...result.data[0] };
     } else {
       // No bookmarks found
       response.ok = true;

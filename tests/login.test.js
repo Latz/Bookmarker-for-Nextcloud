@@ -53,10 +53,12 @@ describe('login.js', () => {
         id: 'msg',
         innerText: '',
         innerHTML: '',
+        textContent: '',
       },
       testServer: {
         id: 'testServer',
         innerHTML: '',
+        textContent: '',
         addEventListener: vi.fn(),
       },
       serverName: {
@@ -69,6 +71,7 @@ describe('login.js', () => {
         id: 'error',
         innerHTML: '',
         innerText: '',
+        textContent: '',
       },
     };
 
@@ -100,7 +103,7 @@ describe('login.js', () => {
 
       // Verify elements were initialized
       expect(mockElements.msg.innerText).toBe('');
-      expect(mockElements.testServer.innerHTML).toBe('Open Login Page');
+      expect(mockElements.testServer.textContent).toBe('Open Login Page');
 
       // Verify event listeners were added
       expect(mockElements.testServer.addEventListener).toHaveBeenCalledWith(
@@ -159,8 +162,8 @@ describe('login.js', () => {
       await openServerPage();
 
       // Verify error and message elements are cleared
-      expect(mockElements.error.innerHTML).toBe('');
-      expect(mockElements.msg.innerHTML).toBe('');
+      expect(mockElements.error.textContent).toBe('');
+      expect(mockElements.msg.textContent).toBe('');
     });
 
     it('should show loading state when clicked', async () => {
@@ -183,7 +186,7 @@ describe('login.js', () => {
       await openServerPage();
 
       // Verify loading state
-      expect(mockElements.testServer.innerHTML).toBe('Loading...');
+      expect(mockElements.testServer.textContent).toBe('Loading...');
     });
 
     it('should call apiCall with correct parameters', async () => {
@@ -383,7 +386,7 @@ describe('login.js', () => {
       });
 
       // Verify testServer button text was reset
-      expect(mockElements.testServer.innerHTML).toBe('Open Login Page');
+      expect(mockElements.testServer.textContent).toBe('Open Login Page');
 
       // Verify serverName focus was called
       expect(mockElements.serverName.focus).toHaveBeenCalled();
@@ -418,7 +421,7 @@ describe('login.js', () => {
       expect(mockElements.msg.innerText).toBe('401  - Unauthorized');
 
       // Verify testServer button text was reset
-      expect(mockElements.testServer.innerHTML).toBe('Open Login Page');
+      expect(mockElements.testServer.textContent).toBe('Open Login Page');
 
       // Verify serverName focus was called
       expect(mockElements.serverName.focus).toHaveBeenCalled();

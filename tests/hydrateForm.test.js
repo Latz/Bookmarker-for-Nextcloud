@@ -52,9 +52,30 @@ describe('createForm', () => {
     };
     mockSubMessage = {
       innerHTML: '',
+      textContent: '',
+      replaceChildren: vi.fn(function (...nodes) {
+        mockSubMessage.innerHTML = nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        mockSubMessage.textContent = mockSubMessage.innerHTML;
+      }),
+      append: vi.fn(function (...nodes) {
+        const text = nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        mockSubMessage.innerHTML += text;
+        mockSubMessage.textContent += text;
+      }),
     };
     mockSaveButton = {
       innerHTML: '',
+      textContent: '',
+    };
+
+    const createDOMElement = (tag) => {
+      const el = { tagName: tag, className: '', textContent: '', id: '', innerHTML: '' };
+      el.setAttribute = vi.fn();
+      el.appendChild = vi.fn();
+      el.append = vi.fn((...nodes) => {
+        el.textContent += nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+      });
+      return el;
     };
 
     globalThis.document = {
@@ -66,10 +87,7 @@ describe('createForm', () => {
           default: return createMockElement();
         }
       }),
-      createElement: vi.fn((tag) => ({
-        setAttribute: vi.fn(),
-        appendChild: vi.fn(),
-      })),
+      createElement: vi.fn((tag) => createDOMElement(tag)),
     };
 
     globalThis.chrome = {
@@ -267,7 +285,7 @@ describe('createForm', () => {
       await createForm();
 
       expect(getOption).toHaveBeenCalledWith('cbx_alreadyStored');
-      expect(mockSubMessage.innerHTML).toContain('Checking');
+      expect(mockSubMessage.textContent).toContain('Checking');
     });
 
     it('should not show checking message when cbx_alreadyStored is false', async () => {
@@ -284,7 +302,7 @@ describe('createForm', () => {
       await createForm();
 
       expect(getOption).toHaveBeenCalledWith('cbx_alreadyStored');
-      expect(mockSubMessage.innerHTML).toBe('');
+      expect(mockSubMessage.textContent).toBe('');
     });
   });
 
@@ -305,7 +323,7 @@ describe('createForm', () => {
       await createForm();
 
       expect(chrome.i18n.getMessage).toHaveBeenCalledWith('saveBookmark');
-      expect(mockSaveButton.innerHTML).toBe('Save Bookmark');
+      expect(mockSaveButton.textContent).toBe('Save Bookmark');
     });
   });
 });
@@ -325,9 +343,21 @@ describe('hydrateForm', () => {
     mockDescriptionInput = { value: '' };
     mockBookmarkIdInput = { value: '' };
     mockFoldersSelect = { options: [] };
-    mockSubMessage = { innerHTML: '' };
+    mockSubMessage = {
+      innerHTML: '',
+      textContent: '',
+      replaceChildren: vi.fn(function (...nodes) {
+        mockSubMessage.innerHTML = nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        mockSubMessage.textContent = mockSubMessage.innerHTML;
+      }),
+      append: vi.fn(function (...nodes) {
+        const text = nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        mockSubMessage.innerHTML += text;
+        mockSubMessage.textContent += text;
+      }),
+    };
 
-    const createMockElement = () => ({
+    const createLocalMockElement = () => ({
       appendChild: vi.fn(),
       setAttribute: vi.fn(),
       addEventListener: vi.fn(),
@@ -335,6 +365,16 @@ describe('hydrateForm', () => {
       value: '',
       innerHTML: '',
     });
+
+    const createDOMElement = (tag) => {
+      const el = { tagName: tag, className: '', textContent: '', id: '', innerHTML: '' };
+      el.setAttribute = vi.fn();
+      el.appendChild = vi.fn();
+      el.append = vi.fn((...nodes) => {
+        el.textContent += nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+      });
+      return el;
+    };
 
     globalThis.document = {
       getElementById: vi.fn((id) => {
@@ -345,9 +385,10 @@ describe('hydrateForm', () => {
           case 'bookmarkID': return mockBookmarkIdInput;
           case 'folders': return mockFoldersSelect;
           case 'sub_message': return mockSubMessage;
-          default: return createMockElement();
+          default: return createLocalMockElement();
         }
       }),
+      createElement: vi.fn((tag) => createDOMElement(tag)),
     };
 
     globalThis.chrome = {
@@ -488,7 +529,7 @@ describe('hydrateForm', () => {
     };
     await hydrateForm(data);
 
-    expect(document.getElementById('sub_message').innerHTML).toContain('Already bookmarked');
+    expect(document.getElementById('sub_message').textContent).toContain('Already bookmarked');
   });
 
   it('should show modified date when added and lastmodified differ', async () => {
@@ -506,8 +547,8 @@ describe('hydrateForm', () => {
     await hydrateForm(data);
 
     const messageElement = document.getElementById('sub_message');
-    expect(messageElement.innerHTML).toContain('Already bookmarked');
-    expect(messageElement.innerHTML).toContain('Modified');
+    expect(messageElement.textContent).toContain('Already bookmarked');
+    expect(messageElement.textContent).toContain('Modified');
   });
 
   it('should show error message when checkBookmark fails', async () => {
@@ -523,7 +564,7 @@ describe('hydrateForm', () => {
     await hydrateForm(data);
 
     const messageElement = document.getElementById('sub_message');
-    expect(messageElement.innerHTML).toContain('Connection Error');
+    expect(messageElement.textContent).toContain('Connection Error');
   });
 
   it('should clear message when bookmark is not found and check is ok', async () => {
@@ -539,7 +580,7 @@ describe('hydrateForm', () => {
     await hydrateForm(data);
 
     const messageElement = document.getElementById('sub_message');
-    expect(messageElement.innerHTML).toBe('');
+    expect(messageElement.textContent).toBe('');
   });
 
   it('should handle missing DOM elements gracefully', async () => {

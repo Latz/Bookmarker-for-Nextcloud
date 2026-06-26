@@ -1,3 +1,4 @@
+// @ts-check
 import apiCall from '../lib/apiCall.js';
 import getData from './modules/getData.js';
 import {
@@ -25,7 +26,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       saveBookmark(request.parameters, request.folderIDs, request.bookmarkID);
       break;
     case 'getData':
-      getData(request.data).then((data) => sendResponse(data));
+      (async () => sendResponse(await getData(request.data)))();
       break;
     case 'authorize':
       chrome.tabs.create({
@@ -186,7 +187,7 @@ async function warmupConnection() {
 function insertTimeOutMessage() {
   const loginForm = document.getElementById('login-form');
   const appTokenLogin = document.getElementById('app-token-login');
-  loginForm.innerHTML = '';
+  loginForm.replaceChildren();
   const msg = document.createElement('div');
   msg.setAttribute(
     'style',
@@ -206,19 +207,17 @@ function insertTimeOutMessage() {
 
   loginForm.removeAttribute('action'); // reset default action
   loginForm.removeAttribute('method'); // reset default action
-  appTokenLogin.innerHTML = '';
+  appTokenLogin.replaceChildren();
 }
 
-function maxAttemptsError(loginPage) {
+async function maxAttemptsError(loginPage) {
   const tabId = loginPage.id;
-
-  chrome.scripting
-    .executeScript({
+  try {
+    await chrome.scripting.executeScript({
       target: { tabId },
       func: insertTimeOutMessage,
-    })
-    .then(() => {})
-    .catch((e) => {
-      console.log('!!!', e);
     });
+  } catch (e) {
+    console.log('!!!', e);
+  }
 }

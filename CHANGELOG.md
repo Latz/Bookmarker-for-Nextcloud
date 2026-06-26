@@ -1,5 +1,38 @@
 # Changelog
 
+## JS Modernization (ES2025/ES2026) — 2026-06-26
+
+### Syntax Upgrades
+
+- **Async/await throughout** — Replaced `.then()/.catch()` chains with `async`/`await` in `background.js`, `getData.js`, `saveBookmarks.js` (`Promise.all` + destructuring), and `zenMode.js`.
+- **Spread over Object.assign** — `Object.assign(target, source)` → `target = { ...target, ...source }` in `getData.js` (×2).
+- **Destructuring** — `chrome.tabs.query(...).then(tabs => tabs[0])` → `const [activeTab] = await chrome.tabs.query(...)`.
+- **Object.entries iteration** — `for (let key in item)` → `for (const [key, value] of Object.entries(item))` in `storage.js`.
+- **for…of with break** — `.every()` used as a side-effect loop with early exit replaced by `for...of` + `break` in `getKeywords.js`.
+- **map/join over string concatenation** — `forEach +=` HTML-building loops replaced with `map().join('')` in `getFolders.js` and `saveBookmarks.js`.
+
+### Performance Optimizations
+
+- **URLSearchParams** — Query-string building loops in `zenMode.js` and `saveBookmarks.js` replaced with `URLSearchParams` + `.append()` + `.toString()`.
+- **Lazy regex** — Greedy `(.*)` patterns replaced with `(.*?)` and `([^"]*)` in `getKeywords.js` to prevent catastrophic backtracking on malformed page content.
+
+### Security Hardening
+
+- **innerHTML → textContent** — All `element.innerHTML = i18nString` assignments in `login.js`, `hydrateForm.js`, and `popup.js` replaced with `element.textContent` to prevent XSS via i18n string injection.
+- **innerHTML → DOM construction** — `document.body.innerHTML = \`<div>...\`` in `popup.js` and `innerHTML = '<pre>...</pre>'` in `displayJson.js` replaced with `createElement`/`textContent`/`replaceChildren` chains.
+- **replaceChildren for clears** — `element.innerHTML = ''` clear patterns replaced with `element.replaceChildren()` in `background.js`, `hydrateForm.js`, and `popup.js`.
+
+### Type Definitions
+
+- **@ts-check added** to 11 files: `background.js`, `getData.js`, `zenMode.js`, `getFolders.js`, `saveBookmarks.js`, `storage.js`, `getKeywords.js`, `login.js`, `displayJson.js`, `hydrateForm.js`, `popup.js`.
+
+### Test Updates (self-healing)
+
+- `tests/zenMode.test.js` — Updated query-string assertions to match URLSearchParams encoding (`+` for spaces, `%5B%5D` for `[]`).
+- `tests/login.test.js` — Updated `innerHTML` assertions to `textContent`.
+- `tests/hydrateForm.test.js` — Added `replaceChildren`/`append` to mock elements; updated `innerHTML` assertions to `textContent`.
+- `tests/popup.test.js` — Added `replaceChildren`/`append`/child-tracking to mock elements; updated button-retrieval assertions from `appendChild` to `replaceChildren`.
+
 ## 0.32.0 — 2026-03-25
 
 ### Improvements

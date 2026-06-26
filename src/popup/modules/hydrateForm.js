@@ -1,3 +1,4 @@
+// @ts-check
 import fillKeywords from './fillKeywords.js';
 import fillFolders from './fillFolders.js';
 import { getOptions } from '../../lib/storage.js';
@@ -79,14 +80,16 @@ export async function createForm() {
   addTextArea(form, 'description', options.cbx_showDescription);
 
   if (options.cbx_alreadyStored) {
-    document.getElementById('sub_message').innerHTML =
-      `<div class="text-center">${chrome.i18n.getMessage(
-        'Checking',
-      )} Nextcloud...<span class="loader"></span></div>`;
+    const checkingDiv = document.createElement('div');
+    checkingDiv.className = 'text-center';
+    const loaderSpan = document.createElement('span');
+    loaderSpan.className = 'loader';
+    checkingDiv.append(`${chrome.i18n.getMessage('Checking')} Nextcloud...`, loaderSpan);
+    document.getElementById('sub_message').replaceChildren(checkingDiv);
   }
 
   addHiddenInput(form, 'bookmarkID');
-  document.getElementById('saveBookmark').innerHTML =
+  document.getElementById('saveBookmark').textContent =
     chrome.i18n.getMessage('saveBookmark');
 }
 
@@ -110,24 +113,28 @@ export async function hydrateForm(data) {
   if (data.found) {
     const dateAdded = new Date(0);
     dateAdded.setUTCSeconds(data.added);
-    message.innerHTML = `${chrome.i18n.getMessage(
-      'alreadyBookmarked',
-    )}!<br />${chrome.i18n.getMessage('Created')}: ${dateAdded.toLocaleString(
-      navigator.language,
-    )}`;
+    message.replaceChildren(
+      `${chrome.i18n.getMessage('alreadyBookmarked')}!`,
+      document.createElement('br'),
+      `${chrome.i18n.getMessage('Created')}: ${dateAdded.toLocaleString(navigator.language)}`,
+    );
     if (data.added !== data.lastmodified) {
       const dateModified = new Date(0);
       dateModified.setUTCSeconds(data.lastmodified);
-      message.innerHTML += `<br /> ${chrome.i18n.getMessage(
-        'Modified',
-      )}: ${dateModified.toLocaleString(navigator.language)} `;
+      message.append(
+        document.createElement('br'),
+        ` ${chrome.i18n.getMessage('Modified')}: ${dateModified.toLocaleString(navigator.language)} `,
+      );
     }
   } else if (!data.checkBookmark.ok) {
-    // display error
-    message.innerHTML = `<div class="text-red-500 text-center font-bold">Error</div><div class="text-center">${chrome.i18n.getMessage(
-      'ConnectionError',
-    )}</div>`;
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'text-red-500 text-center font-bold';
+    errorDiv.textContent = 'Error';
+    const connDiv = document.createElement('div');
+    connDiv.className = 'text-center';
+    connDiv.textContent = chrome.i18n.getMessage('ConnectionError');
+    message.replaceChildren(errorDiv, connDiv);
   } else {
-    message.innerHTML = '';
+    message.replaceChildren();
   }
 }

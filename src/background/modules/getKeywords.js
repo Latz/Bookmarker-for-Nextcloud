@@ -1,3 +1,4 @@
+// @ts-check
 import getMeta from './getMeta.js';
 import { cacheGet } from '../../lib/cache.js';
 import { getOption, getOptions } from '../../lib/storage.js';
@@ -201,21 +202,17 @@ export default async function getKeywords(content, document) {
       const jsonlds = document.querySelectorAll(
         'script[type="application/ld+json"]',
       );
-      jsonlds.every((jsonld) => {
-        if (jsonld || jsonld !== null) {
-          try {
-            jsonld = JSON.parse(jsonld.innerText);
-          } catch (e) {
-            // Skip invalid or empty JSON
-            return true; // Continue to next item
-          }
-
-          keywords = extractKeywordsFromJsonLd(jsonld);
-          if (keywords.length > 0) {
-            return true;
-          }
+      for (const jsonldEl of jsonlds) {
+        if (!jsonldEl) continue;
+        let parsed;
+        try {
+          parsed = JSON.parse(jsonldEl.innerText);
+        } catch {
+          continue;
         }
-      });
+        keywords = extractKeywordsFromJsonLd(parsed);
+        if (keywords.length === 0) break;
+      }
       return keywords;
     },
     // ------------------------------------------------------------------------------------------
@@ -230,7 +227,7 @@ export default async function getKeywords(content, document) {
       while (i < nodeList.length && keywords.length === 0) {
         const script = nodeList[i].text;
         if (script.includes('dataLayer.push')) {
-          const regex = /push\((.*)\)/g;
+          const regex = /push\((.*?)\)/g;
           const match = regex.exec(script);
           try {
             // JSON might be broken, so be carful
@@ -306,7 +303,7 @@ export default async function getKeywords(content, document) {
     // -----------------------------------------------------------------------------------------------
     () => {
       // xplGlobal.document.metadata -> https://ieeexplore.ieee.org/document/10243497
-      const regex = /xplGlobal.document.metadata=(.*);/g;
+      const regex = /xplGlobal\.document\.metadata=([^;]*);/g;
       const match = regex.exec(content);
       if (!match) return [];
       try {
@@ -327,7 +324,7 @@ export default async function getKeywords(content, document) {
       // -----------------------------------------------------------------------
       // Brute force search for pattern /keywords: "keyword1, keyword2, keyword3"/
       keywords = [];
-      const regex = /keywords:\s*"(.*)"/g;
+      const regex = /keywords:\s*"([^"]*)"/g;
       const match = regex.exec(content);
       if (match) {
         keywords = match[1].split(',');

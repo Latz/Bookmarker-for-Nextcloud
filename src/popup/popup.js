@@ -1,3 +1,4 @@
+// @ts-check
 import { createForm, hydrateForm } from './modules/hydrateForm.js';
 import { load_data, getOption } from '../lib/storage.js';
 import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
@@ -95,14 +96,29 @@ function showRetryMessage(currentRetry, maxRetries) {
 }
 // --------------------------------------------------------------------------------------------------
 function createErrorBox(data) {
-  document.body.innerHTML = `
-    <div class="parent w-full justify-items-center items-center border border-sky-500">
-      <div class="div1"><img src="../images/icon-64x64-light.png" height="64" width="64" alt=""></div>
-      <div class="div2 text-left text-3xl font-bold text-sky-500 underline">${chrome.i18n.getMessage(
-        'error',
-      )}:</div>
-      <div id="errormessage" class="div3 text-clip" >${data.error}</div>
-    </div>`;
+  const parent = document.createElement('div');
+  parent.className = 'parent w-full justify-items-center items-center border border-sky-500';
+
+  const iconDiv = document.createElement('div');
+  iconDiv.className = 'div1';
+  const img = document.createElement('img');
+  img.src = '../images/icon-64x64-light.png';
+  img.height = 64;
+  img.width = 64;
+  img.alt = '';
+  iconDiv.appendChild(img);
+
+  const labelDiv = document.createElement('div');
+  labelDiv.className = 'div2 text-left text-3xl font-bold text-sky-500 underline';
+  labelDiv.textContent = `${chrome.i18n.getMessage('error')}:`;
+
+  const msgDiv = document.createElement('div');
+  msgDiv.id = 'errormessage';
+  msgDiv.className = 'div3 text-clip';
+  msgDiv.textContent = data.error;
+
+  parent.append(iconDiv, labelDiv, msgDiv);
+  document.body.replaceChildren(parent);
 }
 // --------------------------------------------------------------------------------------------------
 function createAuthorizeButton() {
@@ -112,10 +128,9 @@ function createAuthorizeButton() {
   button.setAttribute('id', 'authorize');
   button.setAttribute('aria-label', chrome.i18n.getMessage('authorizeExtension'));
 
-  button.innerHTML = chrome.i18n.getMessage('authorizeExtension');
-  document.getElementById('bookmarkForm').innerHTML = '';
-  document.getElementById('bookmarkForm').appendChild(button);
+  button.textContent = chrome.i18n.getMessage('authorizeExtension');
   button.setAttribute('class', 'btn btn-primary w-full');
+  form.replaceChildren(button);
   button.addEventListener('click', () => {
     chrome.runtime.sendMessage({ msg: 'authorize' });
     window.close();

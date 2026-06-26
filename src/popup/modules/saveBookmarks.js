@@ -1,3 +1,4 @@
+// @ts-check
 import { cacheGet, cacheTempAdd } from '../../lib/cache.js';
 import { getOption } from '../../lib/storage.js';
 
@@ -10,76 +11,59 @@ export default function addSaveBookmarkButtonListener() {
 function saveBookmark(event) {
   event.preventDefault();
 
-  const url = document.getElementById('url').value;
-  const title = document.getElementById('title').value;
-  const bookmarkID = parseInt(document.getElementById('bookmarkID').value);
+  const url = /** @type {HTMLInputElement} */ (document.getElementById('url')).value;
+  const title = /** @type {HTMLInputElement} */ (document.getElementById('title')).value;
+  const bookmarkID = parseInt(/** @type {HTMLInputElement} */ (document.getElementById('bookmarkID')).value);
 
-  // Get options and form data asynchronously but don't await them
-  Promise.all([
-    getOption('cbx_showDescription'),
-    getOption('cbx_showKeywords'),
-    getOption('cbx_displayFolders'),
-  ]).then(async ([showDescription, showKeywords, displayFolders]) => {
-    let description = document.getElementById('description').value;
-    description = showDescription && description.length > 0
-      ? `&description=${description}`
+  (async () => {
+    const [showDescription, showKeywords, displayFolders] = await Promise.all([
+      getOption('cbx_showDescription'),
+      getOption('cbx_showKeywords'),
+      getOption('cbx_displayFolders'),
+    ]);
+
+    const rawDescription = /** @type {HTMLTextAreaElement} */ (document.getElementById('description')).value;
+    const description = showDescription && rawDescription.length > 0
+      ? `&description=${rawDescription}`
       : '';
 
-    let tags = '';
-    let keywords = [];
+    let keywords = /** @type {Array<{value: string}>} */ ([]);
+    let tags = '&tags[]=';
     try {
-      tags = '&tags[]=';
       if (showKeywords) {
-        keywords = JSON.parse(document.getElementById('keywords').value);
-        keywords.forEach((keyword) => (tags += `&tags[]=${keyword.value}`));
+        keywords = JSON.parse(/** @type {HTMLInputElement} */ (document.getElementById('keywords')).value);
+        tags += keywords.map((kw) => `&tags[]=${kw.value}`).join('');
       }
     } catch {
       tags = '&tags[]=';
     }
 
-    let selectedFolders = '';
-    let folderIDs = [];
+    let folderIDs = /** @type {string[]} */ ([]);
+    let selectedFolders;
     if (displayFolders) {
-      for (let folder of document.getElementById('folders').options) {
-        if (folder.selected) {
-          selectedFolders += `&folders[]=${folder.value}`;
-          folderIDs.push(folder.value);
-        }
-      }
+      folderIDs = Array.from(/** @type {HTMLSelectElement} */ (document.getElementById('folders')).options)
+        .filter((opt) => opt.selected)
+        .map((opt) => opt.value);
+      selectedFolders = folderIDs.map((id) => `&folders[]=${id}`).join('');
     } else {
-      // default to root folder
-      selectedFolders += `&folders[]=-1`;
+      selectedFolders = '&folders[]=-1';
     }
 
-    const parameters = `title=${encodeURIComponent(
-      title
-    )}&url=${encodeURIComponent(
-      url
-    )}${description}${tags}${selectedFolders}&page=-1`;
+    const parameters = `title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}${description}${tags}${selectedFolders}&page=-1`;
 
-    // Send message to background
-    chrome.runtime.sendMessage({
-      msg: 'saveBookmark',
-      parameters,
-      folderIDs,
-      bookmarkID,
-    });
+    chrome.runtime.sendMessage({ msg: 'saveBookmark', parameters, folderIDs, bookmarkID });
 
-    // Update cache for new tags
     try {
       let cachedTags = await cacheGet('keywords');
-      cachedTags = cachedTags.map((tag) => tag.toLowerCase());
-      let tempTags = [];
-      keywords.forEach((keyword) => {
-        if (!cachedTags.includes(keyword.value.toLowerCase())) {
-          tempTags.push(keyword.value);
-        }
-      });
+      cachedTags = cachedTags.map((/** @type {string} */ tag) => tag.toLowerCase());
+      const tempTags = keywords
+        .filter((kw) => !cachedTags.includes(kw.value.toLowerCase()))
+        .map((kw) => kw.value);
       if (tempTags.length > 0) cacheTempAdd('keywords', tempTags);
     } catch (error) {
       console.error('Error updating cache:', error);
     }
-  });
+  })();
 
   // Close popup immediately
   window.close();

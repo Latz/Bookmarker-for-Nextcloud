@@ -69,12 +69,12 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('title=Test%20Page')
+        expect.stringContaining('title=Test+Page')
       );
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('url=https://example.com')
+        expect.stringContaining('url=https%3A%2F%2Fexample.com')
       );
       expect(notifyUser).toHaveBeenCalledWith({ status: 'success' });
     });
@@ -134,7 +134,7 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('folders[]=folder1&folders[]=folder2')
+        expect.stringContaining('folders%5B%5D=folder1&folders%5B%5D=folder2')
       );
     });
 
@@ -189,7 +189,7 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('tags[]=zen1&tags[]=zen2')
+        expect.stringContaining('tags%5B%5D=zen1&tags%5B%5D=zen2')
       );
     });
 
@@ -206,7 +206,7 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('tags[]=keyword1&tags[]=keyword2')
+        expect.stringContaining('tags%5B%5D=keyword1&tags%5B%5D=keyword2')
       );
     });
 
@@ -221,9 +221,9 @@ describe('zenMode', () => {
       await zenMode();
 
       const callArgs = apiCall.mock.calls[0][2];
-      expect(callArgs).toContain('tags[]=zen1');
-      expect(callArgs).toContain('tags[]=keyword1');
-      expect(callArgs).toContain('tags[]=keyword2');
+      expect(callArgs).toContain('tags%5B%5D=zen1');
+      expect(callArgs).toContain('tags%5B%5D=keyword1');
+      expect(callArgs).toContain('tags%5B%5D=keyword2');
     });
 
     it('should handle empty keywords', async () => {
@@ -245,7 +245,7 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('tags[]=zen1')
+        expect.stringContaining('tags%5B%5D=zen1')
       );
     });
 
@@ -290,7 +290,7 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('title=Test%20%26%20%22Special%22%20%3CPage%3E')
+        expect.stringContaining('title=Test+%26+%22Special%22+%3CPage%3E')
       );
     });
 
@@ -310,11 +310,10 @@ describe('zenMode', () => {
 
       await zenMode();
 
-      // Note: URL is NOT encoded in the implementation
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('url=https://example.com/path?query=value&other=123')
+        expect.stringContaining('url=https%3A%2F%2Fexample.com%2Fpath%3Fquery%3Dvalue%26other%3D123')
       );
     });
 
@@ -334,11 +333,10 @@ describe('zenMode', () => {
 
       await zenMode();
 
-      // Note: Description is NOT encoded in the implementation
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('description=Test & \"description\" with <special> chars')
+        expect.stringContaining('description=Test+%26+%22description%22+with+%3Cspecial%3E+chars')
       );
     });
   });

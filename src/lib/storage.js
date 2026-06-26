@@ -1,3 +1,4 @@
+// @ts-check
 const database = 'Bookmarker';
 const dbVersion = 2; // since v0.3
 
@@ -121,9 +122,9 @@ export async function store_data(storeName, ...items) {
   console.log('store_data', storeName, items);
   const db = await getMainDBConnection();
   const puts = [];
-  for (let item of items) {
-    for (let key in item) {
-      puts.push(db.put(storeName, { item: key, value: item[key] }));
+  for (const item of items) {
+    for (const [key, value] of Object.entries(item)) {
+      puts.push(db.put(storeName, { item: key, value }));
     }
   }
   await Promise.all(puts);
