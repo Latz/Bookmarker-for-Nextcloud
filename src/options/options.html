@@ -13,12 +13,12 @@
   <body>
     <div id="header">
       <h1
-        class="z-0 mb-10 mt-0 pt-[40px] text-center text-5xl font-medium leading-tight text-sky-400"
+        class="z-0 mb-10 mt-0 pt-[40px] text-center text-5xl font-medium leading-tight text-sky-400 text-wrap-balance"
         i18n-data="optionsheader"
       ></h1>
     </div>
 
-    <div id="container" class="z-10 pl-[80px] pr-[80px]">
+    <div id="container" class="z-10 ps-[80px] pe-[80px]">
       <div id="clickarea">
         <div
           id="tabs"
@@ -197,8 +197,8 @@
               ></label
               ><br />
               <div class="flex flex-row">
-                <div i18n-data="searchDepth" class="pl-8"></div>
-                <div class="pl-2">
+                <div i18n-data="searchDepth" class="ps-8"></div>
+                <div class="ps-2">
                   <input
                     type="range"
                     min="1"
@@ -225,13 +225,13 @@
                 <table>
                   <tr>
                     <td i18n-data="networkTimeout"></td>
-                    <td class="pl-2">
+                    <td class="ps-2">
                       <input type="number" id="input_networkTimeout" />
                     </td>
                   </tr>
                   <tr>
                     <td></td>
-                    <td i18n-data="networkTimeoutNote" class="pl-2 text-xs">
+                    <td i18n-data="networkTimeoutNote" class="ps-2 text-xs">
                       (defaults to 10 seconds if not set)
                     </td>
                   </tr>
@@ -275,8 +275,8 @@
 
             <div class="mt-[20px]">
               Create old database:
-              <input type="number" id="input_dbVersion" class="ml-1 w-24" />
-              <button id="btn_create_db" class="btn btn-info btn-xs ml-1">
+              <input type="number" id="input_dbVersion" class="ms-1 w-24" />
+              <button id="btn_create_db" class="btn btn-info btn-xs ms-1">
                 Create
               </button>
             </div>
@@ -296,6 +296,6 @@
         </div>
       </div>
     </div>
-    <div class="absolute left-5 top-5 z-0"></div>
+    <div class="absolute start-5 top-5 z-0"></div>
   </body>
 </html>

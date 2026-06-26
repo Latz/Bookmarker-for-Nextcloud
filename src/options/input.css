@@ -6,22 +6,8 @@
 
 /* Tagify dropdown dark mode support */
 :root {
-  --tagify-dd-bg-color: white;
-  --tagify-dd-text-color: black;
-}
-
-/* Dark mode - system preference */
-@media (prefers-color-scheme:dark) {
-  :root:not([data-theme]) {
-    --tagify-dd-bg-color: oklch(25.33% .016 252.42);
-    --tagify-dd-text-color: oklch(97.807% .029 256.847);
-  }
-}
-
-/* Dark mode - explicit data-theme attribute */
-:root[data-theme="dark"] {
-  --tagify-dd-bg-color: oklch(25.33% .016 252.42);
-  --tagify-dd-text-color: oklch(97.807% .029 256.847);
+  --tagify-dd-bg-color: light-dark(white, oklch(25.33% .016 252.42));
+  --tagify-dd-text-color: light-dark(black, oklch(97.807% .029 256.847));
 }
 
 /* Ensure wrapper uses the variables */
@@ -38,7 +24,7 @@
 }
 
 .selected_heading {
-  color: #3abff8;
+  color: oklch(75% 0.14 220);
   font-weight: bold;
 }
 

@@ -1,4 +1,5 @@
 body {
+    color-scheme: light dark;
     background: url("./background.webp") no-repeat fixed center center;
     background-size: cover;
 }
@@ -6,20 +7,21 @@ body {
 .login-block {
     width: 320px;
     padding: 20px;
-    background: #03001c;
+    background: light-dark(oklch(8% 0.02 264), oklch(8% 0.02 264));
     border-radius: 5px;
-    border-top: 5px solid #5b8fb9;
-    margin: 0 auto 20px;
+    border-block-start: 5px solid oklch(58% 0.09 230);
+    margin-block-end: 20px;
+    margin-inline: auto;
+    color: light-dark(oklch(95% 0 0), oklch(95% 0 0));
 }
 
 .login-block h1 {
     text-align: center;
-    color: #f0f0f0;
     font-size: 18px;
     text-transform: uppercase;
-    margin-top: 0;
-    margin-bottom: 20px;
+    margin-block: 0 20px;
     font-family: Arial, Helvetica, sans-serif;
+    text-wrap: balance;
 }
 
 .login-block input {
@@ -27,26 +29,27 @@ body {
     height: 42px;
     box-sizing: border-box;
     border-radius: 5px;
-    border: 1px solid #ccc;
-    margin-bottom: 20px;
+    border: 1px solid oklch(80% 0 0);
+    margin-block-end: 20px;
     font-size: 14px;
-    padding: 0 0 0 5px;
+    padding-inline-start: 5px;
     outline: none;
+    color: oklch(10% 0 0);
 }
 
 .login-block input:active,
 .login-block input:focus {
-    border: 1px solid #0c0b0b;
+    border: 1px solid oklch(10% 0 0);
 }
 
 .login-block button {
     width: 100%;
     height: 40px;
-    background: #ff656c;
+    background: light-dark(oklch(65% 0.19 20), oklch(35% 0.18 278));
     box-sizing: border-box;
     border-radius: 5px;
-    border: 1px solid #e15960;
-    color: #fff;
+    border: 1px solid light-dark(oklch(62% 0.17 20), oklch(15% 0.08 20));
+    color: oklch(95% 0 0);
     font-weight: bold;
     text-transform: uppercase;
     font-size: 14px;
@@ -56,55 +59,30 @@ body {
 }
 
 .login-block button:hover {
-    background: #ff7b81;
+    background: light-dark(oklch(69% 0.17 20), oklch(44% 0.22 278));
 }
 
 .noicon {
-    background: #b6eada;
+    background: oklch(90% 0.06 168);
 }
 
 .accept {
-    background: #b6eada url("./images/accept.png") right no-repeat;
-    padding-right: 5px;
+    background: oklch(90% 0.06 168) url("./images/accept.png") right no-repeat;
+    padding-inline-end: 5px;
 }
 
 .deny {
-    background: #b6eada url("./images/deny.png") right no-repeat;
-    padding-right: 5px;
+    background: oklch(90% 0.06 168) url("./images/deny.png") right no-repeat;
+    padding-inline-end: 5px;
 }
 
 .wait {
-    background: #b6eada url("./images/spinner.gif") right no-repeat;
-    padding-right: 5px;
-}
-
-@media (prefers-color-scheme: dark) {
-    .login-block {
-        background: #03001c;
-        color: #f0f0f0f0;
-    }
-
-    .login-block button {
-        background: #3f2296;
-        border: 1px solid #330104;
-        color: #f0f0f0f0;
-    }
-
-    .login-block button:hover {
-        background: #522bc9;
-    }
-
-    .server-block {
-        margin-top: 50px;
-    }
-
-    .login-block input {
-        color: #000;
-    }
+    background: oklch(90% 0.06 168) url("./images/spinner.gif") right no-repeat;
+    padding-inline-end: 5px;
 }
 
 #error {
-    margin-top: 1em;
+    margin-block-start: 1em;
     font-size: 2em;
     font-weight: bold;
     color: red;
