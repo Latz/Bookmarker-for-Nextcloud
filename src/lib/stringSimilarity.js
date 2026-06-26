@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * String Similarity Calculator
  * Uses Jaro-Winkler distance algorithm for comparing strings

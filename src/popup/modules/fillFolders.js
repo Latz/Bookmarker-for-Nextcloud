@@ -1,3 +1,4 @@
+// @ts-check
 import { getOption } from '../../lib/storage.js';
 
 /**

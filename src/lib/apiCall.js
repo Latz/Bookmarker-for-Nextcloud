@@ -1,3 +1,4 @@
+// @ts-check
 import { getOption, load_data } from './storage.js';
 
 // OPTIMIZATION: Cache network timeout to avoid repeated storage reads
@@ -154,7 +155,7 @@ async function authentication() {
 
     // Generate the authentication token using the loginname and appPassword
     // OPTIMIZATION: Removed unnecessary Promise.resolve
-    cachedAuthHeader = 'Basic ' + btoa(data.loginname + ':' + data.appPassword);
+    cachedAuthHeader = `Basic ${btoa(`${data.loginname}:${data.appPassword}`)}`;
     authCacheExpiry = now + AUTH_CACHE_TTL;
   }
 

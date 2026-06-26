@@ -1,3 +1,4 @@
+// @ts-check
 // https://developer.chrome.com/docs/extensions/mv3/options/
 import {
   load_data_all,
@@ -84,12 +85,9 @@ document.onreadystatechange = async () => {
 
     // store selected folder to database if selection changes
     zen_folders.addEventListener('change', (event) => {
-      const folders = [];
-      for (let folder of input_zenFolders.options) {
-        if (folder.selected) {
-          folders.push(folder.value);
-        }
-      }
+      const folders = Array.from(input_zenFolders.options)
+        .filter((f) => f.selected)
+        .map((f) => f.value);
       store_data(OPTION_STORE, { zenFolderIDs: folders });
     });
 
@@ -102,10 +100,7 @@ document.onreadystatechange = async () => {
 
 function saveZenTags() {
   console.log('saveZenTags');
-  let tags = [];
-  tagify.value.forEach((tag) => {
-    tags.push(tag.value);
-  });
+  const tags = tagify.value.map((tag) => tag.value);
   store_data(OPTION_STORE, { input_zenKeywords: tags });
 }
 

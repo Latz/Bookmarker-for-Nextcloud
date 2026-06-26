@@ -1,3 +1,4 @@
+// @ts-check
 import { cacheGet } from '../../lib/cache.js';
 import Tagify from '@yaireo/tagify';
 

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * URL Normalizer - Utility for normalizing URLs to catch duplicates
  * Handles common URL variations like protocol, www, trailing slashes, etc.

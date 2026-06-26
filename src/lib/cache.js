@@ -1,3 +1,4 @@
+// @ts-check
 import { openDB } from 'idb';
 import apiCall from './apiCall.js';
 import { preRenderFolders } from '../background/modules/getFolders.js';

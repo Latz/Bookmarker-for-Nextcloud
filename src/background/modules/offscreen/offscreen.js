@@ -1,3 +1,4 @@
+// @ts-check
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Validate message is intended for offscreen document
   if (request.target !== 'offscreen') {
@@ -53,7 +54,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         // For GitHub keywords (updated 2025 selectors)
         // GitHub uses nested span.topic-tag-name inside topic links, or span.topic-tag with nested spans
-        githubTopics: [
+        githubTopics: [...new Set([
           // Modern GitHub: topics with topic-tag-name span
           ...Array.from(doc.querySelectorAll('a[href^="/topics/"] .topic-tag-name')).map(span => span.textContent.trim()),
           ...Array.from(doc.querySelectorAll('span.topic-tag-name')).map(span => span.textContent.trim()),
@@ -63,7 +64,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           ...Array.from(doc.querySelectorAll('a[class*="topic-tag"]')).map(a => a.textContent.trim()),
           ...Array.from(doc.querySelectorAll('a[data-view-component="true"][title^="Topic:"]')).map(a => a.textContent.trim()),
           ...Array.from(doc.querySelectorAll('a[data-ga-click="Topic, repository page"]')).map(a => a.textContent.trim())
-        ].filter((v, i, a) => v && a.indexOf(v) === i),
+        ].filter(Boolean))],
 
         // For Next.js data
         nextData: doc.getElementById('__NEXT_DATA__')?.textContent || '',
