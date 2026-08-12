@@ -31,6 +31,25 @@ const httpStatusReasons = {
 function getReasonPhrase(statusCode) {
   return httpStatusReasons[statusCode] || 'Unknown Status';
 }
+
+/**
+ * True when the entered server address explicitly uses a non-https scheme.
+ *
+ * The Login Flow v2 exchange returns the app password in its response body,
+ * and every API call afterwards sends it as a Basic auth header -- both cross
+ * the network in cleartext for anything other than https.
+ *
+ * Only an explicit scheme is checked. A bare hostname (no "xxx://" prefix) is
+ * left untouched here, matching existing behaviour -- normalizing it is a
+ * separate concern from rejecting an explicitly insecure one.
+ *
+ * @param {string} input - Raw value of the #serverName field.
+ * @returns {boolean} True if the address names a scheme other than https.
+ */
+function isInsecureServerUrl(input) {
+  const match = input.trim().match(/^([a-z][a-z0-9+.-]*):\/\//i);
+  return !!match && match[1].toLowerCase() !== 'https';
+}
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     document.getElementById('msg').innerText = '';
@@ -58,8 +77,16 @@ async function openServerPage() {
   document.getElementById('msg').textContent = '';
 
   const testServer = document.getElementById('testServer');
-  testServer.textContent = `${chrome.i18n.getMessage('Loading')}...`;
   const host = document.getElementById('serverName').value;
+
+  if (isInsecureServerUrl(host)) {
+    document.getElementById('error').innerText =
+      `${chrome.i18n.getMessage('InsecureServerUrl')}!`;
+    document.getElementById('serverName').focus();
+    return;
+  }
+
+  testServer.textContent = `${chrome.i18n.getMessage('Loading')}...`;
 
   const endpoint = 'index.php/login/v2';
   const method = 'POST';

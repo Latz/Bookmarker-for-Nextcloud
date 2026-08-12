@@ -14,6 +14,7 @@ globalThis.chrome = {
         OpenLoginPage: 'Open Login Page',
         Loading: 'Loading',
         LoginServerError: 'Login Server Error',
+        InsecureServerUrl: 'Please use a secure (https://) server address',
       };
       return messages[key] || `[i18n:${key}]`;
     }),
@@ -216,6 +217,50 @@ describe('login.js', () => {
           host: 'https://example.com',
           loginflow: true,
         }
+      );
+    });
+
+    it('should reject an explicit http:// server address (S4)', async () => {
+      // security.md S4: the Login Flow v2 exchange returns the app password
+      // in its response body, and every call afterwards sends it as a Basic
+      // auth header -- both cross the network in cleartext for http.
+      mockElements.serverName.value = 'http://example.com';
+
+      await openServerPage();
+
+      expect(apiCall).not.toHaveBeenCalled();
+      expect(mockElements.error.innerText).toBe(
+        'Please use a secure (https://) server address!'
+      );
+      expect(mockElements.serverName.focus).toHaveBeenCalled();
+    });
+
+    it('should reject a case-varied http scheme', async () => {
+      mockElements.serverName.value = 'HTTP://example.com';
+
+      await openServerPage();
+
+      expect(apiCall).not.toHaveBeenCalled();
+    });
+
+    it('should not reject a bare hostname with no scheme', async () => {
+      mockElements.serverName.value = 'example.com';
+      apiCall.mockResolvedValue({
+        login: 'https://example.com/login',
+        poll: {
+          endpoint: 'https://example.com/poll',
+          token: 'test-token',
+          value: 'https://example.com',
+        },
+      });
+      chrome.tabs.create.mockResolvedValue({ id: 123 });
+
+      await openServerPage();
+
+      expect(apiCall).toHaveBeenCalledWith(
+        'index.php/login/v2',
+        'POST',
+        { host: 'example.com', loginflow: true }
       );
     });
 

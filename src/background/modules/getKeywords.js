@@ -110,7 +110,12 @@ function extractKeywordsFromJsonLd(jsonld) {
       }
     }
     //https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
-    if (Object.prototype.hasOwn(jsonld.keywords[0], 'termCode')) {
+    // `Object.prototype.hasOwn` does not exist (the static method is
+    // `Object.hasOwn`), and `keywords[0]` can be undefined when `keywords` is
+    // an object with a truthy `length` but no index 0 -- both previously threw
+    // a TypeError that propagated out of getKeywords, crashing the whole
+    // extraction pipeline for any page with such JSON-LD.
+    if (jsonld.keywords[0] && Object.hasOwn(jsonld.keywords[0], 'termCode')) {
       const terms = [];
       jsonld.keywords.forEach((term) => {
         if (term.termCode.label) terms.push(term.termCode.label);
@@ -226,13 +231,17 @@ export default async function getKeywords(content, document) {
       );
       for (const jsonldEl of jsonlds) {
         if (!jsonldEl) continue;
-        let parsed;
         try {
-          parsed = JSON.parse(jsonldEl.innerText);
+          // extractKeywordsFromJsonLd is inside the try, not just JSON.parse:
+          // structured data can be valid JSON but still shaped in a way that
+          // throws inside extraction (see the hasOwn note above). A crash here
+          // must not take down keyword extraction for the whole page -- move
+          // on to the next script instead.
+          const parsed = JSON.parse(jsonldEl.innerText);
+          keywords = extractKeywordsFromJsonLd(parsed);
         } catch {
           continue;
         }
-        keywords = extractKeywordsFromJsonLd(parsed);
         if (keywords.length === 0) break;
       }
       return keywords;

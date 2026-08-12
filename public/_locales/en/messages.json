@@ -56,5 +56,6 @@
   "inactive": { "message": "inactive" },
   "zenDisplayNotification": {
     "message": "Show success message (Erros are always displayd.)"
-  }
+  },
+  "InsecureServerUrl": { "message": "Please use a secure (https://) server address" }
 }

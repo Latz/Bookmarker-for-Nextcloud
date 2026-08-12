@@ -290,6 +290,23 @@ describe('getKeywords', () => {
 
       expect(result).toEqual(['keyword1', 'keyword2']);
     });
+
+    it('should not crash on JSON-LD keywords shaped as a non-array, non-string object (S6)', async () => {
+      // security.md S6: `Object.prototype.hasOwn` does not exist, so this
+      // reached a TypeError on any page serving JSON-LD in this shape --
+      // { keywords: { length: 1, "0": {} } } passes the array/string checks
+      // (truthy, length > 0, not Array.isArray, not a string) and used to
+      // throw immediately. It still throws today (`.split is not a
+      // function`, since a plain object has no .split), but that throw must
+      // stay contained to this one script rather than crash the whole
+      // extraction pipeline for the page.
+      const mockScript = {
+        innerText: JSON.stringify({ keywords: { length: 1, '0': {} } }),
+      };
+      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
+
+      await expect(getKeywords(mockContent, mockDocument)).resolves.toEqual([]);
+    });
   });
 
   describe('Google Tag Manager extraction', () => {
