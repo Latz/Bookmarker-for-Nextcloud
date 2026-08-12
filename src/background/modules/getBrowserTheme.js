@@ -54,8 +54,8 @@ export async function ensureOffscreenDocument() {
     try {
       await chrome.offscreen.createDocument({
         url: chrome.runtime.getURL(offscreenPath),
-        reasons: ['MATCH_MEDIA', 'DOM_PARSER'],
-        justification: 'matchmedia request and HTML parsing',
+        reasons: ['MATCH_MEDIA'],
+        justification: 'matchmedia request for browser theme detection',
       });
     } catch (error) {
       // If creation fails because document already exists, ignore
@@ -161,64 +161,5 @@ async function detectTheme() {
     console.error('Failed to detect browser theme:', error);
     // Fallback to light theme on error
     return 'light';
-  }
-}
-
-/**
- * Parses HTML content using the offscreen document's DOMParser
- * @param {string} htmlContent - The HTML content to parse
- * @returns {Promise<Object>} Parsed document data for getKeywords and getDescription
- */
-export async function parseHTMLWithOffscreen(htmlContent) {
-  try {
-    // Check if offscreen document already exists
-    try {
-      const hasDocument = await chrome.offscreen.hasDocument();
-      if (!hasDocument) {
-        await ensureOffscreenDocument();
-      }
-    } catch (error) {
-      // Fallback to getContexts
-      const existingContexts = await chrome.runtime.getContexts({
-        contextTypes: ['OFFSCREEN_DOCUMENT'],
-      });
-      if (existingContexts.length === 0) {
-        await ensureOffscreenDocument();
-      }
-    }
-
-    // Wait for offscreen document to be ready (instead of fixed 100ms delay)
-    await Promise.race([
-      chrome.runtime.sendMessage({ target: 'offscreen', msg: 'ready' }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Offscreen ready timeout')), 1000)
-      ),
-    ]);
-
-    // Send message with timeout protection (10 seconds for parsing)
-    const result = await Promise.race([
-      chrome.runtime.sendMessage({
-        target: 'offscreen',
-        msg: 'parseHTML',
-        html: htmlContent,
-      }),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('HTML parsing timeout')), 10000)
-      ),
-    ]);
-
-    // Validate result structure
-    if (!result || typeof result !== 'object') {
-      throw new Error('Invalid response from offscreen document');
-    }
-
-    if (result.error) {
-      throw new Error(result.error);
-    }
-
-    return result;
-  } catch (error) {
-    console.error('Failed to parse HTML with offscreen:', error);
-    throw error;
   }
 }

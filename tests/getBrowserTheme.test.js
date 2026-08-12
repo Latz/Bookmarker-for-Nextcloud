@@ -27,7 +27,6 @@ globalThis.chrome = {
 
 // Import the module
 import getBrowserTheme, {
-  parseHTMLWithOffscreen,
   _resetCacheForTesting,
 } from '../src/background/modules/getBrowserTheme.js';
 
@@ -58,8 +57,8 @@ describe('getBrowserTheme module', () => {
       // Verify offscreen document was created
       expect(chrome.offscreen.createDocument).toHaveBeenCalledWith({
         url: 'chrome-extension://mock-id/src/background/modules/offscreen/offscreen.html',
-        reasons: ['MATCH_MEDIA', 'DOM_PARSER'],
-        justification: 'matchmedia request and HTML parsing',
+        reasons: ['MATCH_MEDIA'],
+        justification: 'matchmedia request for browser theme detection',
       });
 
       // Verify message was sent
@@ -194,119 +193,6 @@ describe('getBrowserTheme module', () => {
     });
   });
 
-  describe('parseHTMLWithOffscreen', () => {
-    it('should successfully parse HTML and return structured data', async () => {
-      chrome.runtime.getContexts.mockResolvedValue([]);
-
-      const mockParsedData = {
-        metaTags: [
-          { name: 'description', property: null, itemprop: null, httpEquiv: null, content: 'Test description' },
-        ],
-        aRelTag: ['tag1'],
-        aRelCategory: ['cat1'],
-        jsonLdScripts: ['{"keywords": ["test"]}'],
-        scripts: ['console.log("test");'],
-        githubTopics: ['topic1'],
-        nextData: '{"pageProps": {}}',
-        description: ['Test description'],
-        headlines: {
-          h1: ['Title'],
-          h2: [],
-          h3: [],
-          h4: [],
-          h5: [],
-          h6: [],
-        },
-      };
-
-      chrome.runtime.sendMessage.mockResolvedValue(mockParsedData);
-
-      const result = await parseHTMLWithOffscreen('<html></html>');
-
-      expect(result).toEqual(mockParsedData);
-      expect(chrome.offscreen.createDocument).toHaveBeenCalled();
-      // Note: The actual function doesn't close the document after successful parsing
-      // The document is kept open for potential reuse
-    });
-
-    it('should handle parsing errors', async () => {
-      chrome.runtime.getContexts.mockResolvedValue([]);
-      chrome.runtime.sendMessage.mockResolvedValue({ error: 'Parse error' });
-
-      await expect(parseHTMLWithOffscreen('<html></html>'))
-        .rejects.toThrow('Parse error');
-    });
-
-    it('should handle timeout', async () => {
-      chrome.runtime.getContexts.mockResolvedValue([]);
-      // Ready signal resolves immediately; only the parse call is slow
-      chrome.runtime.sendMessage.mockImplementation((msg) => {
-        if (msg.msg === 'ready') return Promise.resolve(true);
-        return new Promise(resolve => setTimeout(resolve, 15000));
-      });
-
-      await expect(parseHTMLWithOffscreen('<html></html>'))
-        .rejects.toThrow('HTML parsing timeout');
-    }, 15000);
-
-    it('should reuse existing offscreen document', async () => {
-      chrome.runtime.getContexts.mockResolvedValue([
-        { contextType: 'OFFSCREEN_DOCUMENT' },
-      ]);
-
-      const mockData = {
-        metaTags: [],
-        aRelTag: [],
-        aRelCategory: [],
-        jsonLdScripts: [],
-        scripts: [],
-        githubTopics: [],
-        nextData: '',
-        description: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
-      };
-
-      chrome.runtime.sendMessage.mockResolvedValue(mockData);
-
-      const result = await parseHTMLWithOffscreen('<html></html>');
-
-      expect(chrome.offscreen.createDocument).not.toHaveBeenCalled();
-      expect(chrome.offscreen.closeDocument).not.toHaveBeenCalled();
-      expect(result).toEqual(mockData);
-    });
-
-    it('should handle concurrent parsing requests', async () => {
-      chrome.runtime.getContexts.mockResolvedValue([]);
-
-      const mockData = {
-        metaTags: [],
-        aRelTag: [],
-        aRelCategory: [],
-        jsonLdScripts: [],
-        scripts: [],
-        githubTopics: [],
-        nextData: '',
-        description: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
-      };
-
-      chrome.runtime.sendMessage.mockResolvedValue(mockData);
-
-      const promises = [
-        parseHTMLWithOffscreen('<html><h1>Page 1</h1></html>'),
-        parseHTMLWithOffscreen('<html><h1>Page 2</h1></html>'),
-        parseHTMLWithOffscreen('<html><h1>Page 3</h1></html>'),
-      ];
-
-      const results = await Promise.all(promises);
-
-      expect(results).toHaveLength(3);
-      results.forEach(result => {
-        expect(result).toEqual(mockData);
-      });
-    });
-  });
-
   describe('Offscreen document lifecycle', () => {
     it('should create document with correct reasons', async () => {
       chrome.runtime.getContexts.mockResolvedValue([]);
@@ -316,7 +202,7 @@ describe('getBrowserTheme module', () => {
 
       expect(chrome.offscreen.createDocument).toHaveBeenCalledWith(
         expect.objectContaining({
-          reasons: expect.arrayContaining(['MATCH_MEDIA', 'DOM_PARSER']),
+          reasons: ['MATCH_MEDIA'],
         })
       );
     });
@@ -389,41 +275,25 @@ describe('Integration tests', () => {
     chrome.storage.session.set.mockResolvedValue(undefined);
   });
 
-  it('should work end-to-end for theme detection and HTML parsing', async () => {
-    // Setup for theme detection
+  it('should work end-to-end for theme detection', async () => {
+    // HTML parsing no longer goes through this module or the offscreen
+    // document at all (S5: moved to extractPageData, injected directly into
+    // the page) -- this offscreen document now exists only for matchMedia
+    // theme detection, covered by getBrowserTheme's own describe block above.
+    // This integration test is kept narrower, for the one thing left to
+    // integrate: theme detection end-to-end through a fresh document.
     chrome.runtime.getContexts.mockResolvedValue([]);
     chrome.runtime.sendMessage.mockResolvedValueOnce(true); // ready for getBrowserTheme
     chrome.runtime.sendMessage.mockResolvedValueOnce(true); // getBrowserTheme (isLight=true -> 'dark')
 
-    // Setup for HTML parsing (ready + parse)
-    chrome.runtime.sendMessage.mockResolvedValueOnce(true); // ready for parseHTMLWithOffscreen
-    chrome.runtime.sendMessage.mockResolvedValueOnce({
-      metaTags: [{ name: 'description', property: null, itemprop: null, httpEquiv: null, content: 'Page desc' }],
-      aRelTag: ['tag1'],
-      aRelCategory: ['cat1'],
-      jsonLdScripts: ['{"keywords": ["test"]}'],
-      scripts: ['console.log("test");'],
-      githubTopics: ['topic1'],
-      nextData: '',
-      description: ['Page desc'],
-      headlines: { h1: ['Title'], h2: [], h3: [], h4: [], h5: [], h6: [] },
-    });
-
-    // Run theme detection
-    // Mock returns true (browser is light), so function returns 'dark' for icon contrast
     const theme = await getBrowserTheme();
     expect(theme).toBe('dark');
 
-    // Run HTML parsing
-    const parsed = await parseHTMLWithOffscreen('<html></html>');
-    expect(parsed.metaTags).toHaveLength(1);
-    expect(parsed.aRelTag).toEqual(['tag1']);
-
-    // Verify document was created
-    // Note: Each function creates its own document because the mock always returns []
-    // for getContexts, so it doesn't detect the existing document
-    expect(chrome.offscreen.createDocument).toHaveBeenCalledTimes(2);
-    // Documents are NOT closed - they're kept open for potential reuse
+    expect(chrome.offscreen.createDocument).toHaveBeenCalledTimes(1);
+    expect(chrome.offscreen.createDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ reasons: ['MATCH_MEDIA'] }),
+    );
+    // Document is NOT closed -- kept open for potential reuse.
     expect(chrome.offscreen.closeDocument).not.toHaveBeenCalled();
   });
 });

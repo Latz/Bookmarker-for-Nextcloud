@@ -153,7 +153,7 @@ function extractKeywordsFromJsonLd(jsonld) {
   return [];
 }
 
-export default async function getKeywords(content, document) {
+export default async function getKeywords(parsedData, document) {
   // define an array of function whcih can be looped through later and
   // break if a function found keywords
 
@@ -332,36 +332,13 @@ export default async function getKeywords(content, document) {
     },
 
     // -----------------------------------------------------------------------------------------------
-    () => {
-      // xplGlobal.document.metadata -> https://ieeexplore.ieee.org/document/10243497
-      const regex = /xplGlobal\.document\.metadata=([^;]*);/g;
-      const match = regex.exec(content);
-      if (!match) return [];
-      try {
-        const xplJson = JSON.parse(match[1]);
-        keywords = [];
-        xplJson.keywords.forEach((tags) => {
-          let tagskwd = tags.kwd;
-          tagskwd.forEach((tag) => {
-            keywords.push(tag);
-          });
-        });
-        return keywords;
-      } catch (e) {
-        return [];
-      }
-    },
-    () => {
-      // -----------------------------------------------------------------------
-      // Brute force search for pattern /keywords: "keyword1, keyword2, keyword3"/
-      keywords = [];
-      const regex = /keywords:\s*"([^"]*)"/g;
-      const match = regex.exec(content);
-      if (match) {
-        keywords = match[1].split(',');
-      }
-      return keywords;
-    },
+    // xplGlobal.document.metadata -> https://ieeexplore.ieee.org/document/10243497
+    // Extraction (including the JSON.parse and error handling) now runs
+    // in-page inside extractPageData -- this is a pure field read.
+    () => parsedData.xplKeywords ?? [],
+    // Brute force search for pattern /keywords: "keyword1, keyword2, keyword3"/
+    // Same as above: the regex now runs in-page.
+    () => parsedData.bruteForceKeywords ?? [],
   ];
 
   // Loop through the various functions

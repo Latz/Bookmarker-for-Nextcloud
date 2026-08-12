@@ -31,11 +31,6 @@ globalThis.chrome = {
 };
 
 // Mock the modules
-vi.mock('../src/background/modules/getBrowserTheme.js', () => ({
-  parseHTMLWithOffscreen: vi.fn(),
-  ensureOffscreenDocument: vi.fn(() => Promise.resolve()),
-}));
-
 vi.mock('../src/background/modules/getDescription.js', () => ({
   default: vi.fn(() => 'Test description'),
 }));
@@ -70,6 +65,7 @@ vi.mock('../src/lib/storage.js', () => ({
       cbx_titleSimilarityCheck: false,
       input_titleCheckLimit: 20,
       input_titleSimilarityThreshold: 75,
+      input_headings_slider: 3,
     };
     const result = {};
     keys.forEach(key => result[key] = options[key]);
@@ -97,7 +93,27 @@ vi.mock('../src/lib/stringSimilarity.js', () => ({
 
 // Import after mocking
 import getData from '../src/background/modules/getData.js';
-import { parseHTMLWithOffscreen } from '../src/background/modules/getBrowserTheme.js';
+
+// Shape returned by extractPageData for a page with nothing to extract.
+// Extraction now runs inside chrome.scripting.executeScript's injected
+// function (S5), so this is the whole mock -- there is no longer a separate
+// offscreen-parsing round trip to mock alongside it.
+function emptyParsedData(overrides = {}) {
+  return {
+    metaTags: [],
+    aRelTag: [],
+    aRelCategory: [],
+    jsonLdScripts: [],
+    scripts: [],
+    githubTopics: [],
+    nextData: '',
+    description: [],
+    headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+    xplKeywords: [],
+    bruteForceKeywords: [],
+    ...overrides,
+  };
+}
 
 describe('getData with offscreen document parsing', () => {
   beforeEach(async () => {
@@ -121,23 +137,25 @@ describe('getData with offscreen document parsing', () => {
       title: 'Example Page'
     }]);
 
-    // Mock content extraction
+    // Extraction now runs inside the injected function itself (S5) --
+    // chrome.scripting.executeScript resolving the already-parsed object is
+    // the whole mock, where this previously needed a second mock
+    // (parseHTMLWithOffscreen) for the separate offscreen round trip.
     chrome.scripting.executeScript.mockResolvedValue([{
-      result: '<html><head><meta name="description" content="Test page"></head><body><h1>Title</h1></body></html>'
+      result: {
+        metaTags: [{ name: 'description', property: null, itemprop: null, httpEquiv: null, content: 'Test page' }],
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        description: ['Test page'],
+        headlines: { h1: ['Title'], h2: [], h3: [], h4: [], h5: [], h6: [] },
+        xplKeywords: [],
+        bruteForceKeywords: [],
+      }
     }]);
-
-    // Mock offscreen parsing
-    parseHTMLWithOffscreen.mockResolvedValue({
-      metaTags: [{ name: 'description', property: null, itemprop: null, httpEquiv: null, content: 'Test page' }],
-      aRelTag: [],
-      aRelCategory: [],
-      jsonLdScripts: [],
-      scripts: [],
-      githubTopics: [],
-      nextData: '',
-      description: ['Test page'],
-      headlines: { h1: ['Title'], h2: [], h3: [], h4: [], h5: [], h6: [] }
-    });
 
     // Mock API call for bookmark check
     const apiCall = (await import('../src/lib/apiCall.js')).default;
@@ -148,11 +166,13 @@ describe('getData with offscreen document parsing', () => {
     // Verify tab was queried
     expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
 
-    // Verify content was extracted
-    expect(chrome.scripting.executeScript).toHaveBeenCalled();
-
-    // Verify offscreen parsing was called
-    expect(parseHTMLWithOffscreen).toHaveBeenCalled();
+    // Verify content was extracted via script injection
+    expect(chrome.scripting.executeScript).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: { tabId: 1 },
+        args: [3],
+      }),
+    );
 
     // Verify result structure
     expect(result.ok).toBe(true);
@@ -176,7 +196,7 @@ describe('getData with offscreen document parsing', () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toBe('URL is not bookmarkable');
-    expect(parseHTMLWithOffscreen).not.toHaveBeenCalled();
+    expect(chrome.scripting.executeScript).not.toHaveBeenCalled();
   });
 
   it('should handle content extraction errors', async () => {
@@ -195,7 +215,10 @@ describe('getData with offscreen document parsing', () => {
     expect(result.error).toBe('Cannot access page');
   });
 
-  it('should handle offscreen parsing errors', async () => {
+  it('should handle extraction errors from inside the injected function', async () => {
+    // extractPageData catches internally and returns {error} rather than
+    // throwing (see extractPageData.js) -- this is what a thrown error inside
+    // the injected page context looks like once it crosses back.
     chrome.tabs.query.mockResolvedValue([{
       id: 1,
       url: 'https://example.com',
@@ -203,11 +226,8 @@ describe('getData with offscreen document parsing', () => {
     }]);
 
     chrome.scripting.executeScript.mockResolvedValue([{
-      result: '<html></html>'
+      result: { error: 'Parsing failed' }
     }]);
-
-    // Mock offscreen parsing failure
-    parseHTMLWithOffscreen.mockRejectedValue(new Error('Parsing failed'));
 
     const result = await getData();
 
@@ -223,20 +243,8 @@ describe('getData with offscreen document parsing', () => {
     }]);
 
     chrome.scripting.executeScript.mockResolvedValue([{
-      result: '<html></html>'
+      result: emptyParsedData(),
     }]);
-
-    parseHTMLWithOffscreen.mockResolvedValue({
-      metaTags: [],
-      aRelTag: [],
-      aRelCategory: [],
-      jsonLdScripts: [],
-      scripts: [],
-      githubTopics: [],
-      nextData: '',
-      description: [],
-      headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
-    });
 
     // Import apiCall module and set up mock response for checkBookmark
     const apiCallModule = await import('../src/lib/apiCall.js');
@@ -271,23 +279,11 @@ describe('getData with offscreen document parsing', () => {
       title: 'Example'
     }]);
 
-    chrome.scripting.executeScript.mockResolvedValue([{
-      result: '<html></html>'
-    }]);
-
-    // Make the parsing slow to allow abort
-    parseHTMLWithOffscreen.mockImplementation(() =>
-      new Promise(resolve => setTimeout(() => resolve({
-        metaTags: [],
-        aRelTag: [],
-        aRelCategory: [],
-        jsonLdScripts: [],
-        scripts: [],
-        githubTopics: [],
-        nextData: '',
-        description: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
-      }), 100))
+    // Make extraction slow to allow abort -- this is now the one step that
+    // stands in for the page round trip (previously a separate, slower
+    // parseHTMLWithOffscreen mock).
+    chrome.scripting.executeScript.mockImplementation(() =>
+      new Promise(resolve => setTimeout(() => resolve([{ result: emptyParsedData() }]), 100))
     );
 
     // Start getData but don't await it
@@ -298,7 +294,7 @@ describe('getData with offscreen document parsing', () => {
     expect(result).toBeDefined();
   });
 
-  it('should handle empty content gracefully', async () => {
+  it('should handle a page with nothing to extract gracefully', async () => {
     chrome.tabs.query.mockResolvedValue([{
       id: 1,
       url: 'https://example.com',
@@ -306,20 +302,8 @@ describe('getData with offscreen document parsing', () => {
     }]);
 
     chrome.scripting.executeScript.mockResolvedValue([{
-      result: ''
+      result: emptyParsedData(),
     }]);
-
-    parseHTMLWithOffscreen.mockResolvedValue({
-      metaTags: [],
-      aRelTag: [],
-      aRelCategory: [],
-      jsonLdScripts: [],
-      scripts: [],
-      githubTopics: [],
-      nextData: '',
-      description: [],
-      headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
-    });
 
     const result = await getData();
 
@@ -336,20 +320,8 @@ describe('getData with offscreen document parsing', () => {
     }]);
 
     chrome.scripting.executeScript.mockResolvedValue([{
-      result: '<html></html>'
+      result: emptyParsedData(),
     }]);
-
-    parseHTMLWithOffscreen.mockResolvedValue({
-      metaTags: [],
-      aRelTag: [],
-      aRelCategory: [],
-      jsonLdScripts: [],
-      scripts: [],
-      githubTopics: [],
-      nextData: '',
-      description: [],
-      headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
-    });
 
     // The test verifies that getData completes efficiently by running operations in parallel
     // Note: Dynamic mock override doesn't work because getData imports getKeywords at top level
@@ -407,20 +379,8 @@ describe('getData - URL validation', () => {
       } else {
         // For valid URLs, mock the rest of the flow
         chrome.scripting.executeScript.mockResolvedValue([{
-          result: '<html></html>'
+          result: emptyParsedData(),
         }]);
-
-        parseHTMLWithOffscreen.mockResolvedValue({
-          metaTags: [],
-          aRelTag: [],
-          aRelCategory: [],
-          jsonLdScripts: [],
-          scripts: [],
-          githubTopics: [],
-          nextData: '',
-          description: [],
-          headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
-        });
 
         // Need to also mock apiCall for the parallel operations
         const apiCallModule = await import('../src/lib/apiCall.js');
@@ -441,12 +401,7 @@ describe('getData - URL validation', () => {
     const { getOptions } = await import('../src/lib/storage.js');
 
     chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com', title: 'Example' }]);
-    chrome.scripting.executeScript.mockResolvedValue([{ result: '<html></html>' }]);
-    parseHTMLWithOffscreen.mockResolvedValue({
-      metaTags: [], aRelTag: [], aRelCategory: [], jsonLdScripts: [],
-      scripts: [], githubTopics: [], nextData: '', description: [],
-      headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
-    });
+    chrome.scripting.executeScript.mockResolvedValue([{ result: emptyParsedData() }]);
 
     // Server unreachable
     apiCallModule.default = vi.fn().mockResolvedValue({ status: -1, statusText: 'Failed to fetch' });
@@ -462,6 +417,7 @@ describe('getData - URL validation', () => {
         cbx_fuzzyUrlMatch: false,
         cbx_titleSimilarityCheck: false,
         input_bookmarkCacheTTL: 10,
+        input_headings_slider: 3,
       };
       const result = {};
       keys.forEach((k) => (result[k] = opts[k]));

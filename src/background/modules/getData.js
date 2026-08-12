@@ -11,8 +11,8 @@ import {
   calculateSimilarity,
   batchSimilarityCheck,
 } from '../../lib/stringSimilarity.js';
-import { parseHTMLWithOffscreen, ensureOffscreenDocument } from './getBrowserTheme.js';
 import { createMockDocument } from './mockDocument.js';
+import { extractPageData } from './extractPageData.js';
 
 const DEBUG = false;
 
@@ -52,8 +52,12 @@ function isValidBookmarkableUrl(url) {
 }
 
 export default async function getData() {
-  let content = '';
   let data = { ok: true };
+
+  // Needed before extraction can run (bounds how many heading levels the
+  // injected function walks). Started here, in parallel with the tab lookup
+  // below, rather than serially in front of it.
+  const headingLevelPromise = getOptions(['input_headings_slider']);
 
   // --- get active tab info first (fast operation)
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -91,14 +95,15 @@ export default async function getData() {
     };
   }
 
-  // Kick off offscreen doc preparation in parallel with content fetch.
-  // ensureOffscreenDocument is idempotent and deduplicated, so the later
-  // call inside parseHTMLWithOffscreen returns immediately if it already ran.
-  const offscreenReady = ensureOffscreenDocument();
+  const { input_headings_slider: headingLevel = 3 } = await headingLevelPromise;
 
-  // unable to not get content, for example restricted pages
+  // Extraction runs inside the injected function, against the live page --
+  // only the small parsedData object below crosses back to the service
+  // worker, never the page's full HTML (previously ~1-5 MB, shipped once to
+  // the SW and again to an offscreen document for DOMParser extraction).
+  let parsedData;
   try {
-    content = await getContent(tabId);
+    parsedData = await getContent(tabId, headingLevel);
   } catch (error) {
     data = {
       ok: false,
@@ -112,17 +117,10 @@ export default async function getData() {
     return data;
   }
 
-  // Ensure offscreen setup is complete before parsing
-  await offscreenReady;
-
-  // Use offscreen document to parse HTML (DOMParser not available in service worker)
-  let parsedData;
-  try {
-    parsedData = await parseHTMLWithOffscreen(content);
-  } catch (error) {
+  if (parsedData.error) {
     return {
       ok: false,
-      error: `Failed to parse page content: ${error.message}`,
+      error: `Failed to parse page content: ${parsedData.error}`,
     };
   }
 
@@ -134,7 +132,7 @@ export default async function getData() {
   const [description, keywords, bookmarkCheckResult, folders] =
     await Promise.all([
       Promise.resolve(getDescription(mockDoc)), // Synchronous, but wrapped for consistency
-      getKeywords(content, mockDoc),
+      getKeywords(parsedData, mockDoc),
       checkBookmark(data.url, data.title, abortController.signal),
       getFolders(),
     ]);
@@ -165,18 +163,22 @@ export default async function getData() {
 }
 
 /**
- * Retrieves the content of the active tab in the Chrome browser.
+ * Extracts page data from the active tab by injecting extractPageData
+ * directly into it -- runs in the page's own isolated world (activeTab-
+ * covered, no offscreen document involved) and returns the already-parsed
+ * result.
  *
- * @returns {Promise<string>} The HTML content of the active tab.
+ * @param {number} tabId - Tab to extract from.
+ * @param {number} headingLevel - How many heading levels to extract (see extractPageData).
+ * @returns {Promise<Object>} The parsedData object (or {error} if extraction threw inside the page).
  */
-async function getContent(tabId) {
-  // Execute a script in the active tab to retrieve the HTML content
+async function getContent(tabId, headingLevel) {
   const injectionResults = await chrome.scripting.executeScript({
     target: { tabId },
-    func: () => document.documentElement.innerHTML,
+    func: extractPageData,
+    args: [headingLevel],
   });
 
-  // Return the HTML content
   return injectionResults[0].result;
 }
 

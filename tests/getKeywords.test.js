@@ -36,7 +36,7 @@ import getKeywords from '../src/background/modules/getKeywords.js';
 
 describe('getKeywords', () => {
   let mockDocument;
-  let mockContent;
+  let mockParsedData;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -44,7 +44,7 @@ describe('getKeywords', () => {
       querySelectorAll: vi.fn().mockReturnValue([]),
       getElementById: vi.fn(),
     };
-    mockContent = '';
+    mockParsedData = {};
   });
 
   afterEach(() => {
@@ -59,7 +59,7 @@ describe('getKeywords', () => {
         input_headings_slider: 3,
       });
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
       expect(getOptions).toHaveBeenCalled();
@@ -80,7 +80,7 @@ describe('getKeywords', () => {
     it('should extract keywords from meta tags', async () => {
       getMeta.mockReturnValue(['keyword1, keyword2, keyword3']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', 'keyword2', 'keyword3']);
       expect(getMeta).toHaveBeenCalled();
@@ -89,7 +89,7 @@ describe('getKeywords', () => {
     it('should handle single keyword string', async () => {
       getMeta.mockReturnValue(['singleKeyword']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       // Note: The implementation has a bug - when there's a single keyword without dividers,
       // it returns an empty array instead of the keyword itself
@@ -99,7 +99,7 @@ describe('getKeywords', () => {
     it('should split keywords by comma', async () => {
       getMeta.mockReturnValue(['keyword1,keyword2,keyword3']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', 'keyword2', 'keyword3']);
     });
@@ -107,7 +107,7 @@ describe('getKeywords', () => {
     it('should split keywords by semicolon', async () => {
       getMeta.mockReturnValue(['keyword1;keyword2;keyword3']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', 'keyword2', 'keyword3']);
     });
@@ -115,7 +115,7 @@ describe('getKeywords', () => {
     it('should split keywords by space', async () => {
       getMeta.mockReturnValue(['keyword1 keyword2 keyword3']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', 'keyword2', 'keyword3']);
     });
@@ -123,7 +123,7 @@ describe('getKeywords', () => {
     it('should split keywords by &amp;', async () => {
       getMeta.mockReturnValue(['keyword1&amp;keyword2&amp;keyword3']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       // Note: The implementation has a bug - it splits on &amp (without semicolon)
       // so the result includes &amp at the end of each keyword except the last
@@ -133,7 +133,7 @@ describe('getKeywords', () => {
     it('should trim quotes from keywords', async () => {
       getMeta.mockReturnValue(['"keyword1", "keyword2"']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', 'keyword2']);
     });
@@ -141,7 +141,7 @@ describe('getKeywords', () => {
     it('should trim whitespace from keywords', async () => {
       getMeta.mockReturnValue(['  keyword1  ,  keyword2  ']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', 'keyword2']);
     });
@@ -149,7 +149,7 @@ describe('getKeywords', () => {
     it('should handle multiple meta keyword tags', async () => {
       getMeta.mockReturnValue(['keyword1', 'keyword2']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', 'keyword2']);
     });
@@ -157,7 +157,7 @@ describe('getKeywords', () => {
     it('should return empty array when no meta keywords found', async () => {
       getMeta.mockReturnValue([]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
     });
@@ -180,7 +180,7 @@ describe('getKeywords', () => {
       const mockTag2 = { textContent: 'tag2' };
       mockDocument.querySelectorAll.mockReturnValue([mockTag1, mockTag2]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['tag1', 'tag2']);
       expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[rel=tag]');
@@ -189,7 +189,7 @@ describe('getKeywords', () => {
     it('should handle empty rel tag results', async () => {
       mockDocument.querySelectorAll.mockReturnValue([]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
     });
@@ -198,7 +198,7 @@ describe('getKeywords', () => {
       const mockTag = { textContent: '  tag  ' };
       mockDocument.querySelectorAll.mockReturnValue([mockTag]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['  tag  ']); // Note: textContent is used directly
     });
@@ -222,7 +222,7 @@ describe('getKeywords', () => {
       const mockCat2 = { textContent: 'category2' };
       mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([mockCat1, mockCat2]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['category1', 'category2']);
       expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[rel=category]');
@@ -249,7 +249,7 @@ describe('getKeywords', () => {
       // 4 querySelectorAll calls: rel=tag, rel=category, JSON-LD, script (GTM)
       mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['jsonld1', 'jsonld2']);
     });
@@ -264,7 +264,7 @@ describe('getKeywords', () => {
       };
       mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['graph1', 'graph2']);
     });
@@ -275,7 +275,7 @@ describe('getKeywords', () => {
       };
       mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
     });
@@ -286,7 +286,7 @@ describe('getKeywords', () => {
       };
       mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', 'keyword2']);
     });
@@ -305,7 +305,7 @@ describe('getKeywords', () => {
       };
       mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
 
-      await expect(getKeywords(mockContent, mockDocument)).resolves.toEqual([]);
+      await expect(getKeywords(mockParsedData, mockDocument)).resolves.toEqual([]);
     });
   });
 
@@ -328,7 +328,7 @@ describe('getKeywords', () => {
       };
       mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['gtm1', 'gtm2', 'gtm3']);
     });
@@ -339,7 +339,7 @@ describe('getKeywords', () => {
       };
       mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
     });
@@ -370,7 +370,7 @@ describe('getKeywords', () => {
         .mockReturnValueOnce([])  // GTM
         .mockReturnValueOnce([mockTopic1, mockTopic2]);  // GitHub topic-tag
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['opencode', 'ai-agents']);
       expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[class*="topic-tag"]');
@@ -389,7 +389,7 @@ describe('getKeywords', () => {
         .mockReturnValueOnce([])  // GitHub data-view-component (no match)
         .mockReturnValueOnce([mockTopic1, mockTopic2]);  // GitHub href selector
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['claude', 'vibe-coding']);
       expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[href^="/topics/"]');
@@ -408,7 +408,7 @@ describe('getKeywords', () => {
         .mockReturnValueOnce([])  // GitHub href (no match)
         .mockReturnValueOnce([mockTopic1]);  // GitHub legacy selector
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['legacy-topic']);
       expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[data-ga-click="Topic, repository page"]');
@@ -442,7 +442,7 @@ describe('getKeywords', () => {
       };
       mockDocument.getElementById.mockReturnValue(mockScript);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['next1', 'next2', 'next3']);
     });
@@ -450,7 +450,7 @@ describe('getKeywords', () => {
     it('should handle missing __NEXT_DATA__ gracefully', async () => {
       mockDocument.getElementById.mockReturnValue(null);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
     });
@@ -461,7 +461,7 @@ describe('getKeywords', () => {
       });
 
       // The implementation parses JSON before try-catch, so it throws SyntaxError
-      await expect(getKeywords(mockContent, mockDocument)).rejects.toThrow(SyntaxError);
+      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow(SyntaxError);
     });
   });
 
@@ -481,7 +481,7 @@ describe('getKeywords', () => {
       getDescription.mockReturnValue('This is a test description with some words');
       cacheGet.mockResolvedValue(['test', 'description', 'words']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(getDescription).toHaveBeenCalledWith(mockDocument);
       expect(result).toBeDefined();
@@ -493,7 +493,7 @@ describe('getKeywords', () => {
       getDescription.mockReturnValue('');
       cacheGet.mockResolvedValue(['headline', 'words']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toBeDefined();
     });
@@ -512,7 +512,7 @@ describe('getKeywords', () => {
       getOption.mockResolvedValue(true); // cbx_reduceKeywords for reduceKeywords function
       cacheGet.mockResolvedValue(['keyword1', 'keyword2', 'keyword3']);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', 'keyword2']);
     });
@@ -529,7 +529,7 @@ describe('getKeywords', () => {
       getOption.mockResolvedValue(true); // cbx_reduceKeywords for reduceKeywords function
       cacheGet.mockResolvedValue([]);
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
     });
@@ -547,11 +547,17 @@ describe('getKeywords', () => {
       cacheGet.mockRejectedValue(new Error('Cache error'));
 
       // The implementation doesn't catch cache errors - they propagate
-      await expect(getKeywords(mockContent, mockDocument)).rejects.toThrow('Cache error');
+      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow('Cache error');
     });
   });
 
-  describe('xplGlobal extraction (IEEE)', () => {
+  // S5: the xplGlobal/brute-force regexes moved into extractPageData.js,
+  // which runs in-page and returns their results as parsedData.xplKeywords /
+  // parsedData.bruteForceKeywords. getKeywords' closures are now pure field
+  // reads (see getKeywords.js), so these tests verify the read, not the
+  // regex/JSON-parsing logic -- that has its own coverage in
+  // extractPageData.test.js, including the malformed-JSON case.
+  describe('xplGlobal extraction (IEEE) -- pre-extracted field read', () => {
     beforeEach(() => {
       getOptions.mockResolvedValue({
         cbx_autoTags: true,
@@ -564,32 +570,24 @@ describe('getKeywords', () => {
       mockDocument.querySelectorAll.mockReturnValue([]);
     });
 
-    it('should extract keywords from xplGlobal.document.metadata', async () => {
-      mockContent = 'xplGlobal.document.metadata={"keywords": [{"kwd": ["kw1", "kw2"]}]};';
+    it('should use parsedData.xplKeywords when present', async () => {
+      mockParsedData = { xplKeywords: ['kw1', 'kw2'] };
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['kw1', 'kw2']);
     });
 
-    it('should handle missing xplGlobal pattern', async () => {
-      mockContent = 'no xplGlobal here';
+    it('should return empty when xplKeywords is absent', async () => {
+      mockParsedData = {};
 
-      const result = await getKeywords(mockContent, mockDocument);
-
-      expect(result).toEqual([]);
-    });
-
-    it('should handle invalid xplGlobal JSON', async () => {
-      mockContent = 'xplGlobal.document.metadata={invalid};';
-
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
     });
   });
 
-  describe('Brute force keywords extraction', () => {
+  describe('Brute force keywords extraction -- pre-extracted field read', () => {
     beforeEach(() => {
       getOptions.mockResolvedValue({
         cbx_autoTags: true,
@@ -602,18 +600,18 @@ describe('getKeywords', () => {
       mockDocument.querySelectorAll.mockReturnValue([]);
     });
 
-    it('should extract keywords from "keywords: " pattern', async () => {
-      mockContent = 'some text keywords: "keyword1, keyword2, keyword3" more text';
+    it('should use parsedData.bruteForceKeywords when present', async () => {
+      mockParsedData = { bruteForceKeywords: ['keyword1', ' keyword2', ' keyword3'] };
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['keyword1', ' keyword2', ' keyword3']);
     });
 
-    it('should handle missing keywords pattern', async () => {
-      mockContent = 'no keywords here';
+    it('should return empty when bruteForceKeywords is absent', async () => {
+      mockParsedData = {};
 
-      const result = await getKeywords(mockContent, mockDocument);
+      const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
     });
@@ -632,7 +630,7 @@ describe('getKeywords', () => {
       getOption.mockRejectedValue(new Error('Storage error'));
 
       // The implementation doesn't catch errors from getOption - they propagate
-      await expect(getKeywords(mockContent, mockDocument)).rejects.toThrow('Storage error');
+      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow('Storage error');
     });
   });
 });
