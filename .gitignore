@@ -8,7 +8,9 @@ node_modules/
 .vite/
 dist/
 .parcel-cache/
+coverage/
 package-lock.json
+/bookmarker-for-nextcloud-*.zip
 /.idea
 .vscode/settings.json
 /test.html
@@ -17,6 +19,7 @@ package-lock.json
 /.vscode
 /.claude
 /.claude-dev-helper
+/.qwen
 /x.html
 /performance_review.md
 /anything_else.md
