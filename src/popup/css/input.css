@@ -1,5 +1,8 @@
-@config "../../../tailwind.config.js";
-@import "tailwindcss";
+/* source(none) disables Tailwind 4's automatic project-wide scanning, so the
+   popup stylesheet is built only from popup markup. Without it the options
+   page's daisyUI components (.tab, .menu, .diff) end up in this file too. */
+@import "tailwindcss" source(none);
+@source "../**/*.{html,js}";
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;
 }

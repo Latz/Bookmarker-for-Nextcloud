@@ -1,5 +1,6 @@
-@config "../../tailwind.config.js";
-@import "tailwindcss";
+/* See src/popup/css/input.css -- scoped to the options page only. */
+@import "tailwindcss" source(none);
+@source "./**/*.{html,js}";
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;
 }

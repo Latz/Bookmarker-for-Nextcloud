@@ -24,7 +24,7 @@ function copyLoginHtmlPlugin() {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     crx({ manifest }),
     copyLoginHtmlPlugin()
@@ -32,7 +32,9 @@ export default defineConfig({
 
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // No maps in a release build: `vite build` defaults to production mode,
+    // while `build:dev` passes --mode development and keeps them.
+    sourcemap: mode !== 'production',
     minify: true,
     target: 'esnext',
     rollupOptions: {
@@ -59,4 +61,4 @@ export default defineConfig({
       port: 5173
     }
   }
-});
+}));
