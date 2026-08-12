@@ -156,8 +156,8 @@ describe('background.js', () => {
       // Call the listener
       const result = messageListener(request, sender, sendResponse);
 
-      // Should return true to keep the message channel open
-      expect(result).toBe(true);
+      // Fire-and-forget: nothing calls sendResponse, so the channel must close
+      expect(result).toBe(false);
 
       // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -250,7 +250,7 @@ describe('background.js', () => {
       await import('../src/background/background.js');
       const result = messageListener(request, sender, sendResponse);
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
 
       expect(chrome.tabs.create).toHaveBeenCalledWith({
         url: 'login/login.html',
@@ -275,7 +275,7 @@ describe('background.js', () => {
       await import('../src/background/background.js');
       const result = messageListener(request, sender, sendResponse);
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
 
       await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -303,12 +303,12 @@ describe('background.js', () => {
       await import('../src/background/background.js');
       const result = messageListener(request, sender, sendResponse);
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
 
       expect(zenModeModule.zenMode).toHaveBeenCalled();
     });
 
-    it('should return true for unknown message types', async () => {
+    it('should not hold the channel open for unknown message types', async () => {
       const request = {
         msg: 'unknownMessage',
       };
@@ -323,7 +323,7 @@ describe('background.js', () => {
       await import('../src/background/background.js');
       const result = messageListener(request, sender, sendResponse);
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
   });
 
@@ -744,7 +744,7 @@ describe('background.js', () => {
 
         // The message listener should not throw even if saveBookmark fails
         const result = messageListener(request, {}, vi.fn());
-        expect(result).toBe(true);
+        expect(result).toBe(false);
 
         // Badge should be set to save icon immediately
         expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
