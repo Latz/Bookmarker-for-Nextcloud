@@ -2,34 +2,77 @@
 import { createForm, hydrateForm } from './modules/hydrateForm.js';
 import { load_data, getOption } from '../lib/storage.js';
 import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
-import textFit from 'textfit';
 
-// Check if the user credentials are
-document.onreadystatechange = async () => {
-  if (document.readyState === 'complete') {
-    // Fetch credential and zen mode in parallel (independent)
-    const [apppwd, enableZen] = await Promise.all([
-      load_data('credentials', 'appPassword'),
-      getOption('cbx_enableZen'),
-    ]);
+/**
+ * Reads the credential/zen state and, when the bookmark form is the path we
+ * will take, starts the service-worker round trip straight away.
+ *
+ * This runs at module load rather than on DOM ready: none of it touches the
+ * DOM, and the getData round trip (script injection, HTML parsing, a network
+ * call to Nextcloud) is the slowest step in opening the popup. Waiting for
+ * readyState === 'complete' queued it behind the stylesheet for no reason.
+ *
+ * getData is deliberately *not* dispatched on the other two paths -- it
+ * injects a script into the active tab, which is wasted work and needless page
+ * access when we are only going to show the authorize button or fire zen mode.
+ *
+ * @returns {Promise<{apppwd: any, enableZen: any, dataPromise: Promise<Object>|null}>}
+ */
+const sessionPromise = (async () => {
+  // Fetch credential and zen mode in parallel (independent)
+  const [apppwd, enableZen] = await Promise.all([
+    load_data('credentials', 'appPassword'),
+    getOption('cbx_enableZen'),
+  ]);
 
-    if (apppwd === undefined) {
-      createAuthorizeButton();
-    } else if (enableZen) {
-      zenMode();
+  const needsForm = apppwd !== undefined && !enableZen;
+  return {
+    apppwd,
+    enableZen,
+    dataPromise: needsForm ? getDataWithRetry() : null,
+  };
+})();
+
+/** Resolves once the document has finished loading. */
+const domReady =
+  document.readyState === 'complete'
+    ? Promise.resolve()
+    : new Promise((resolve) => {
+        document.onreadystatechange = () => {
+          if (document.readyState === 'complete') resolve();
+        };
+      });
+
+const boot = (async () => {
+  const { apppwd, enableZen, dataPromise } = await sessionPromise;
+  await domReady;
+
+  if (apppwd === undefined) {
+    createAuthorizeButton();
+  } else if (enableZen) {
+    zenMode();
+  } else {
+    // createForm is async; await it so hydrateForm cannot race the elements
+    // it builds. The data round trip is already in flight either way.
+    const [data] = await Promise.all([dataPromise, createForm()]);
+    if (!data.ok) {
+      createErrorBox(data);
+      // Only needed on the error path, so keep it out of the default bundle.
+      const { default: textFit } = await import('textfit');
+      textFit(document.getElementById('errormessage'));
     } else {
-      createForm();
-      const data = await getDataWithRetry();
-      if (!data.ok) {
-        createErrorBox(data);
-        textFit(document.getElementById('errormessage'));
-      } else {
-        hydrateForm(data);
-        addSaveBookmarkButtonListener(data.bookmarked);
-      }
+      hydrateForm(data);
+      addSaveBookmarkButtonListener(data.bookmarked);
     }
   }
-};
+})();
+
+// Nothing awaits the bootstrap, so report failures rather than letting them
+// become silent unhandled rejections. (Previously these propagated out of the
+// readystatechange handler, where they were equally invisible.)
+boot.catch((error) => {
+  console.error('[popup] initialisation failed:', error);
+});
 
 // --------------------------------------------------------------------------------------------------
 /**
@@ -54,6 +97,13 @@ async function getDataWithRetry() {
 
     // If data is not ok but we have more retries, wait and try again
     lastError = data;
+
+    // Some failures can never succeed on a retry -- a chrome:// or otherwise
+    // restricted page is not going to become bookmarkable. Retrying those just
+    // re-ran the whole pipeline five times and delayed the error by ~2.5s.
+    if (data.retryable === false) {
+      return data;
+    }
 
     if (attempt < retryCount - 1) {
       // Show retry message starting from the second retry (attempt 1)

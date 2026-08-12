@@ -84,6 +84,9 @@ export default async function getData() {
     return {
       ok: false,
       error: 'URL is not bookmarkable',
+      // Permanent: this URL will never become bookmarkable, so the popup
+      // should surface the error immediately rather than retry.
+      retryable: false,
     };
   }
 
@@ -99,6 +102,9 @@ export default async function getData() {
     data = {
       ok: false,
       error: error.message,
+      // Script injection was refused (restricted page, missing host access).
+      // That will not change between attempts.
+      retryable: false,
     };
   }
   if (!data.ok) {

@@ -57,6 +57,14 @@ describe('popup.js', () => {
   let mockDocument;
   let mockElements;
 
+  // popup.js kicks off async work at import time; give it a few macrotask
+  // turns to settle before asserting.
+  const flush = async () => {
+    for (let i = 0; i < 5; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -153,14 +161,13 @@ describe('popup.js', () => {
       // Mock no credentials
       load_data.mockResolvedValue(undefined);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Verify load_data was called to check credentials
       expect(load_data).toHaveBeenCalledWith('credentials', 'appPassword');
@@ -186,14 +193,13 @@ describe('popup.js', () => {
       // Mock zen mode enabled
       getOption.mockResolvedValue(true);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Verify zen mode was triggered
       expect(getOption).toHaveBeenCalledWith('cbx_enableZen');
@@ -222,14 +228,13 @@ describe('popup.js', () => {
       };
       globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Verify form was created
       expect(createForm).toHaveBeenCalled();
@@ -260,17 +265,19 @@ describe('popup.js', () => {
       const mockData = {
         ok: false,
         error: 'Connection failed',
+        // terminal, so the retry loop does not run -- retry behaviour is
+        // covered separately in 'Retry behaviour'
+        retryable: false,
       };
       globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Verify form was created
       expect(createForm).toHaveBeenCalled();
@@ -283,14 +290,85 @@ describe('popup.js', () => {
       expect(textFit).toHaveBeenCalledWith(mockElements.errormessage);
     });
 
-    it('should not initialize when document readyState is not complete', async () => {
+    it('should read credentials before the document is ready but not touch the DOM', async () => {
+      // Contract change: reading credentials and dispatching getData no longer
+      // wait for DOM readiness -- that decoupling is the point, since neither
+      // touches the DOM and the round trip is the slowest part of opening the
+      // popup. What must still wait is any rendering.
       mockDocument.readyState = 'loading';
+      load_data.mockResolvedValue(undefined);
 
-      // Import the module
       await import('../src/popup/popup.js');
+      await flush();
 
-      // The readyState handler should not trigger initialization
-      expect(load_data).not.toHaveBeenCalled();
+      // Off-DOM work has started...
+      expect(load_data).toHaveBeenCalledWith('credentials', 'appPassword');
+      // ...but nothing has been rendered yet.
+      expect(createForm).not.toHaveBeenCalled();
+      expect(mockElements.bookmarkForm.replaceChildren).not.toHaveBeenCalled();
+    });
+
+    it('should render once the document becomes ready', async () => {
+      mockDocument.readyState = 'loading';
+      load_data.mockResolvedValue(undefined);
+
+      await import('../src/popup/popup.js');
+      await flush();
+      expect(mockElements.bookmarkForm.replaceChildren).not.toHaveBeenCalled();
+
+      // Signal readiness the way the browser would
+      mockDocument.readyState = 'complete';
+      mockDocument.onreadystatechange();
+      await flush();
+
+      expect(mockElements.bookmarkForm.replaceChildren).toHaveBeenCalled();
+    });
+  });
+
+  describe('Retry behaviour', () => {
+    const withCredentials = () => {
+      load_data.mockImplementation((store, key) =>
+        Promise.resolve(key === 'appPassword' ? 'test-password' : undefined),
+      );
+      // cbx_enableZen false; input_numberOfRetries falls back to 5
+      getOption.mockResolvedValue(false);
+    };
+
+    it('should not retry a terminal error', async () => {
+      withCredentials();
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue({
+        ok: false,
+        error: 'URL is not bookmarkable',
+        retryable: false,
+      });
+
+      await import('../src/popup/popup.js');
+      await flush();
+
+      const getDataCalls =
+        globalThis.chrome.runtime.sendMessage.mock.calls.filter(
+          ([msg]) => msg?.msg === 'getData',
+        );
+      expect(getDataCalls).toHaveLength(1);
+    });
+
+    it('should retry an error that is not marked terminal', async () => {
+      vi.useFakeTimers();
+      withCredentials();
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue({
+        ok: false,
+        error: 'Connection failed',
+      });
+
+      await import('../src/popup/popup.js');
+      await vi.runAllTimersAsync();
+
+      const getDataCalls =
+        globalThis.chrome.runtime.sendMessage.mock.calls.filter(
+          ([msg]) => msg?.msg === 'getData',
+        );
+      expect(getDataCalls.length).toBeGreaterThan(1);
+      vi.useRealTimers();
     });
   });
 
@@ -299,14 +377,13 @@ describe('popup.js', () => {
       // Mock no credentials
       load_data.mockResolvedValue(undefined);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Verify button was created with correct ID
       expect(mockDocument.createElement).toHaveBeenCalledWith('button');
@@ -324,14 +401,13 @@ describe('popup.js', () => {
       // Mock no credentials
       load_data.mockResolvedValue(undefined);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Get the click handler
       const button = mockElements.bookmarkForm.replaceChildren.mock.calls[0][0];
@@ -365,17 +441,17 @@ describe('popup.js', () => {
       const mockData = {
         ok: false,
         error: 'Test error message',
+        retryable: false,
       };
       globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Verify error box content
       expect(mockElements.body.innerHTML).toContain('errormessage');
@@ -397,17 +473,17 @@ describe('popup.js', () => {
       const mockData = {
         ok: false,
         error: 'Test error',
+        retryable: false,
       };
       globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Verify i18n was called for error label
       expect(globalThis.chrome.i18n.getMessage).toHaveBeenCalledWith('error');
@@ -425,14 +501,13 @@ describe('popup.js', () => {
       // Mock zen mode enabled
       getOption.mockResolvedValue(true);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Verify zen mode message was sent
       expect(globalThis.chrome.runtime.sendMessage).toHaveBeenCalledWith({
@@ -459,8 +534,7 @@ describe('popup.js', () => {
       globalThis.window.close = vi.fn(() => callOrder.push('close'));
 
       await import('../src/popup/popup.js');
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) await onreadystatechange();
+      await flush();
 
       expect(callOrder).toEqual(['sendMessage', 'close']);
     });
@@ -490,14 +564,13 @@ describe('popup.js', () => {
       };
       globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Verify hydrateForm was called with the data
       expect(hydrateForm).toHaveBeenCalledWith(mockData);
@@ -525,14 +598,13 @@ describe('popup.js', () => {
       };
       globalThis.chrome.runtime.sendMessage.mockResolvedValue(mockData);
 
-      // Import and trigger the onreadystatechange handler
+      // popup.js bootstraps itself on import
       await import('../src/popup/popup.js');
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await onreadystatechange();
-      }
+      // popup.js now starts its own bootstrap at module load and awaits DOM
+      // readiness internally, so there is no handler to invoke -- just let the
+      // pending microtasks/timers settle.
+      await flush();
 
       // Empty string is NOT undefined, so form is created and data is loaded
       expect(createForm).toHaveBeenCalled();
@@ -541,18 +613,22 @@ describe('popup.js', () => {
   });
 
   describe('Error handling', () => {
-    it('should handle errors during initialization gracefully', async () => {
-      // Mock load_data to throw an error
+    it('should report initialization errors instead of failing silently', async () => {
+      // The bootstrap is self-starting and nothing awaits it, so a failure can
+      // no longer be observed as a rejected handler. popup.js reports it.
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       load_data.mockRejectedValue(new Error('Storage error'));
 
-      // Import and trigger the onreadystatechange handler
       await import('../src/popup/popup.js');
+      await flush();
 
-      // Trigger the ready state handler - should not throw
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        await expect(onreadystatechange()).rejects.toThrow('Storage error');
-      }
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[popup] initialisation failed:',
+        expect.objectContaining({ message: 'Storage error' }),
+      );
+      consoleErrorSpy.mockRestore();
     });
 
     it('should handle chrome.runtime.sendMessage errors', async () => {
@@ -570,15 +646,18 @@ describe('popup.js', () => {
         new Error('Message error')
       );
 
-      // Import and trigger the onreadystatechange handler
-      await import('../src/popup/popup.js');
+      const consoleErrorSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
-      // Trigger the ready state handler
-      const onreadystatechange = mockDocument.onreadystatechange;
-      if (onreadystatechange) {
-        // The error should propagate since there's no try/catch
-        await expect(onreadystatechange()).rejects.toThrow('Message error');
-      }
+      await import('../src/popup/popup.js');
+      await flush();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[popup] initialisation failed:',
+        expect.objectContaining({ message: 'Message error' }),
+      );
+      consoleErrorSpy.mockRestore();
     });
   });
 });

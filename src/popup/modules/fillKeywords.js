@@ -1,10 +1,13 @@
 // @ts-check
 import { cacheGet } from '../../lib/cache.js';
-import Tagify from '@yaireo/tagify';
 
 export default async function fillKeywords(keywords) {
   const tagsInput = document.getElementById('keywords');
+  // Bail out before importing Tagify: when the keywords field is hidden the
+  // element does not exist, and Tagify is ~78 KB of the popup bundle.
   if (!tagsInput) return;
+
+  const { default: Tagify } = await import('@yaireo/tagify');
 
   tagsInput.classList.remove('input-sm');
   tagsInput.classList.remove('input');

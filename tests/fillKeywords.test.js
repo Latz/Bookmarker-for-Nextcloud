@@ -29,7 +29,13 @@ vi.mock('@yaireo/tagify', () => {
   };
 });
 
-// Import the module after mocking
+// Import the module after mocking.
+// The Tagify import is deliberate even though this file never references the
+// binding: fillKeywords now loads Tagify via dynamic import, so without an
+// eager import here the vi.mock factory above would not run until the first
+// fillKeywords() call -- leaving the globals it publishes undefined in
+// beforeEach.
+import '@yaireo/tagify';
 import fillKeywords from '../src/popup/modules/fillKeywords.js';
 import { cacheGet } from '../src/lib/cache.js';
 
