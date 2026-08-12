@@ -23,10 +23,10 @@
   "options_page": "src/options/options.html",
   "permissions": [
     "contextMenus",
-    "tabs",
+    "activeTab",
     "notifications",
     "scripting",
     "offscreen"
   ],
-  "host_permissions": ["*://*/*"]
+  "optional_host_permissions": ["https://*/*"]
 }

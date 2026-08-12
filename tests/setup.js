@@ -56,12 +56,13 @@ global.chrome = {
     setBadgeText: vi.fn(),
     setIcon: vi.fn(),
   },
-  scripting: {
-    executeScript: vi.fn().mockResolvedValue([
-      {
-        result: '<html><body>Test content</body></html>',
-      },
-    ]),
+  // S5 fix: host access to the user's Nextcloud server is now requested at
+  // runtime rather than granted statically. Default to granted so existing
+  // tests don't need to know about this unless they're specifically testing
+  // the permission-gate paths.
+  permissions: {
+    request: vi.fn().mockResolvedValue(true),
+    contains: vi.fn().mockResolvedValue(true),
   },
 };
 

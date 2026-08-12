@@ -57,5 +57,9 @@
   "zenDisplayNotification": {
     "message": "Show success message (Erros are always displayd.)"
   },
-  "InsecureServerUrl": { "message": "Please use a secure (https://) server address" }
+  "InsecureServerUrl": { "message": "Please use a secure (https://) server address" },
+  "PermissionRequestDenied": { "message": "Bookmarker needs permission to access this server. Please allow the permission prompt and try again." },
+  "reconnectRequired": { "message": "Access to your Nextcloud server needs to be reconfirmed after this update:" },
+  "reconnectButton": { "message": "Reconnect" },
+  "reconnectDenied": { "message": "Permission was not granted. Bookmarker cannot connect until access is allowed." }
 }

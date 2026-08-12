@@ -15,6 +15,7 @@ globalThis.chrome = {
         Loading: 'Loading',
         LoginServerError: 'Login Server Error',
         InsecureServerUrl: 'Please use a secure (https://) server address',
+        PermissionRequestDenied: 'Bookmarker needs permission to access this server. Please allow the permission prompt and try again.',
       };
       return messages[key] || `[i18n:${key}]`;
     }),
@@ -220,6 +221,68 @@ describe('login.js', () => {
       );
     });
 
+    it('should request host permission for the exact server origin before apiCall (S5)', async () => {
+      mockElements.serverName.value = 'https://example.com';
+      apiCall.mockResolvedValue({
+        login: 'https://example.com/login',
+        poll: {
+          endpoint: 'https://example.com/poll',
+          token: 'test-token',
+          value: 'https://example.com',
+        },
+      });
+      chrome.tabs.create.mockResolvedValue({ id: 123 });
+
+      await openServerPage();
+
+      expect(chrome.permissions.request).toHaveBeenCalledWith({
+        origins: ['https://example.com/*'],
+      });
+      // The permission request must happen before the first network call to
+      // the new host, not after.
+      const requestOrder = chrome.permissions.request.mock.invocationCallOrder[0];
+      const apiCallOrder = apiCall.mock.invocationCallOrder[0];
+      expect(requestOrder).toBeLessThan(apiCallOrder);
+    });
+
+    it('should not call apiCall when the permission request is denied (S5)', async () => {
+      mockElements.serverName.value = 'https://example.com';
+      chrome.permissions.request.mockResolvedValueOnce(false);
+
+      await openServerPage();
+
+      expect(apiCall).not.toHaveBeenCalled();
+      expect(mockElements.error.innerText).toBe(
+        'Bookmarker needs permission to access this server. Please allow the permission prompt and try again.!'
+      );
+      expect(mockElements.serverName.focus).toHaveBeenCalled();
+    });
+
+    it('should treat a rejected permission request the same as a denial (S5)', async () => {
+      mockElements.serverName.value = 'https://example.com';
+      chrome.permissions.request.mockRejectedValueOnce(new Error('boom'));
+
+      await openServerPage();
+
+      expect(apiCall).not.toHaveBeenCalled();
+      expect(mockElements.error.innerText).toBe(
+        'Bookmarker needs permission to access this server. Please allow the permission prompt and try again.!'
+      );
+    });
+
+    it('should not request permission for empty/unparseable input, matching prior behaviour', async () => {
+      // serverName.value defaults to '' -- normalizeServerHost turns that into
+      // 'https://', which new URL(...) cannot parse. This must fall through to
+      // apiCall unchanged rather than surface a confusing "permission denied"
+      // for input that was never about permissions.
+      apiCall.mockResolvedValue({ status: 0, statusText: 'whatever' });
+
+      await openServerPage();
+
+      expect(chrome.permissions.request).not.toHaveBeenCalled();
+      expect(apiCall).toHaveBeenCalled();
+    });
+
     it('should reject an explicit http:// server address (S4)', async () => {
       // security.md S4: the Login Flow v2 exchange returns the app password
       // in its response body, and every call afterwards sends it as a Basic
@@ -243,7 +306,10 @@ describe('login.js', () => {
       expect(apiCall).not.toHaveBeenCalled();
     });
 
-    it('should not reject a bare hostname with no scheme', async () => {
+    it('should not reject a bare hostname with no scheme, and normalizes it to https', async () => {
+      // S5: chrome.permissions.request() requires a scheme-qualified match
+      // pattern, and apiCall's fetch() needs a valid absolute URL -- a bare
+      // hostname is neither, so openServerPage now normalizes it before use.
       mockElements.serverName.value = 'example.com';
       apiCall.mockResolvedValue({
         login: 'https://example.com/login',
@@ -257,10 +323,13 @@ describe('login.js', () => {
 
       await openServerPage();
 
+      expect(chrome.permissions.request).toHaveBeenCalledWith({
+        origins: ['https://example.com/*'],
+      });
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/login/v2',
         'POST',
-        { host: 'example.com', loginflow: true }
+        { host: 'https://example.com', loginflow: true }
       );
     });
 

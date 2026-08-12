@@ -16,22 +16,45 @@ import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
  * injects a script into the active tab, which is wasted work and needless page
  * access when we are only going to show the authorize button or fire zen mode.
  *
- * @returns {Promise<{apppwd: any, enableZen: any, dataPromise: Promise<Object>|null}>}
+ * @returns {Promise<{apppwd: any, enableZen: any, server: string|undefined, needsReconnect: boolean, dataPromise: Promise<Object>|null}>}
  */
 const sessionPromise = (async () => {
   // Fetch credential and zen mode in parallel (independent)
-  const [apppwd, enableZen] = await Promise.all([
+  const [apppwd, enableZen, server] = await Promise.all([
     load_data('credentials', 'appPassword'),
     getOption('cbx_enableZen'),
+    load_data('credentials', 'server'),
   ]);
 
   const needsForm = apppwd !== undefined && !enableZen;
-  if (needsForm) prefetchFormOptions();
-  return {
-    apppwd,
-    enableZen,
-    dataPromise: needsForm ? getDataWithRetry() : null,
-  };
+  let needsReconnect = false;
+  let dataPromise = null;
+
+  if (needsForm) {
+    // Existing users lose their previously-granted broad host access on
+    // update (S5 fix: host_permissions -> optional_host_permissions). Chrome
+    // does not prompt for a permission *reduction*, so nothing re-grants
+    // this automatically -- check before dispatching getData, which would
+    // otherwise fail with no clear reason.
+    let origin = null;
+    try {
+      origin = server ? new URL(server).origin : null;
+    } catch (e) {
+      origin = null;
+    }
+    const hasPermission = origin
+      ? await chrome.permissions.contains({ origins: [`${origin}/*`] })
+      : false;
+
+    if (hasPermission) {
+      prefetchFormOptions();
+      dataPromise = getDataWithRetry();
+    } else {
+      needsReconnect = true;
+    }
+  }
+
+  return { apppwd, enableZen, server, needsReconnect, dataPromise };
 })();
 
 /**
@@ -69,27 +92,44 @@ const domReady =
         };
       });
 
+/**
+ * Runs the normal bookmark-form flow: create the form, wait for data, and
+ * render either the error box or the hydrated form.
+ *
+ * Shared by the default boot path and the reconnect banner's success path so
+ * the two don't duplicate (and drift from) the same handful of steps.
+ *
+ * @param {Promise<Object>} dataPromise - The in-flight (or about-to-start) getData result.
+ * @returns {Promise<void>}
+ */
+async function runFormFlow(dataPromise) {
+  // createForm is async; await it so hydrateForm cannot race the elements
+  // it builds. The data round trip is already in flight either way.
+  const [data] = await Promise.all([dataPromise, createForm()]);
+  if (!data.ok) {
+    createErrorBox(data);
+    // Only needed on the error path, so keep it out of the default bundle.
+    const { default: textFit } = await import('textfit');
+    textFit(document.getElementById('errormessage'));
+  } else {
+    hydrateForm(data);
+    addSaveBookmarkButtonListener(data.bookmarked);
+  }
+}
+
 const boot = (async () => {
-  const { apppwd, enableZen, dataPromise } = await sessionPromise;
+  const { apppwd, enableZen, server, needsReconnect, dataPromise } =
+    await sessionPromise;
   await domReady;
 
   if (apppwd === undefined) {
     createAuthorizeButton();
   } else if (enableZen) {
     zenMode();
+  } else if (needsReconnect) {
+    createReconnectBanner(server);
   } else {
-    // createForm is async; await it so hydrateForm cannot race the elements
-    // it builds. The data round trip is already in flight either way.
-    const [data] = await Promise.all([dataPromise, createForm()]);
-    if (!data.ok) {
-      createErrorBox(data);
-      // Only needed on the error path, so keep it out of the default bundle.
-      const { default: textFit } = await import('textfit');
-      textFit(document.getElementById('errormessage'));
-    } else {
-      hydrateForm(data);
-      addSaveBookmarkButtonListener(data.bookmarked);
-    }
+    await runFormFlow(dataPromise);
   }
 })();
 
@@ -226,4 +266,48 @@ function createAuthorizeButton() {
 function zenMode() {
   chrome.runtime.sendMessage({ msg: 'zenMode' });
   window.close();
+}
+
+/**
+ * Renders a "reconnect" prompt in place of the normal form when the stored
+ * Nextcloud server's optional host permission is missing (S5 migration:
+ * existing installs lose their previously-granted host_permissions on
+ * update, and nothing re-grants that automatically).
+ *
+ * @param {string|undefined} server - The stored server URL, for display and for deriving the origin to request.
+ * @returns {void}
+ */
+function createReconnectBanner(server) {
+  const form = document.getElementById('bookmarkForm');
+  form.setAttribute('class', 'flex flex-col justify-center items-center w-full gap-2');
+
+  const msg = document.createElement('div');
+  msg.textContent = `${chrome.i18n.getMessage('reconnectRequired')} ${server ?? ''}`;
+  msg.className = 'text-center text-sm';
+
+  const button = document.createElement('button');
+  button.setAttribute('id', 'reconnect');
+  button.textContent = chrome.i18n.getMessage('reconnectButton');
+  button.setAttribute('class', 'btn btn-primary w-full');
+
+  button.addEventListener('click', async () => {
+    let origin;
+    try {
+      origin = new URL(server).origin;
+    } catch (e) {
+      msg.textContent = chrome.i18n.getMessage('reconnectDenied');
+      return;
+    }
+
+    const granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
+    if (!granted) {
+      msg.textContent = chrome.i18n.getMessage('reconnectDenied');
+      return;
+    }
+
+    prefetchFormOptions();
+    await runFormFlow(getDataWithRetry());
+  });
+
+  form.replaceChildren(msg, button);
 }

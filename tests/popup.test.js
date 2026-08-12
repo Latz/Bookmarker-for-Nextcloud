@@ -190,6 +190,11 @@ describe('popup.js', () => {
       // Mock credentials exist
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('test-password');
+        // store_data writes appPassword and server together at login (login.js),
+        // so a real popup never sees one without the other. permissions.contains
+        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
+        // on the normal flow rather than the reconnect-banner path (S5).
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
 
@@ -216,6 +221,11 @@ describe('popup.js', () => {
       // Mock credentials exist
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('test-password');
+        // store_data writes appPassword and server together at login (login.js),
+        // so a real popup never sees one without the other. permissions.contains
+        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
+        // on the normal flow rather than the reconnect-banner path (S5).
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
 
@@ -258,6 +268,11 @@ describe('popup.js', () => {
       // Mock credentials exist
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('test-password');
+        // store_data writes appPassword and server together at login (login.js),
+        // so a real popup never sees one without the other. permissions.contains
+        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
+        // on the normal flow rather than the reconnect-banner path (S5).
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
 
@@ -330,9 +345,11 @@ describe('popup.js', () => {
 
   describe('Retry behaviour', () => {
     const withCredentials = () => {
-      load_data.mockImplementation((store, key) =>
-        Promise.resolve(key === 'appPassword' ? 'test-password' : undefined),
-      );
+      load_data.mockImplementation((store, key) => {
+        if (key === 'appPassword') return Promise.resolve('test-password');
+        if (key === 'server') return Promise.resolve('https://example.com');
+        return Promise.resolve(undefined);
+      });
       // cbx_enableZen false; input_numberOfRetries falls back to 5
       getOption.mockResolvedValue(false);
     };
@@ -434,6 +451,11 @@ describe('popup.js', () => {
       // Mock credentials exist
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('test-password');
+        // store_data writes appPassword and server together at login (login.js),
+        // so a real popup never sees one without the other. permissions.contains
+        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
+        // on the normal flow rather than the reconnect-banner path (S5).
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
 
@@ -466,6 +488,11 @@ describe('popup.js', () => {
       // Mock credentials exist
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('test-password');
+        // store_data writes appPassword and server together at login (login.js),
+        // so a real popup never sees one without the other. permissions.contains
+        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
+        // on the normal flow rather than the reconnect-banner path (S5).
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
 
@@ -498,6 +525,11 @@ describe('popup.js', () => {
       // Mock credentials exist
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('test-password');
+        // store_data writes appPassword and server together at login (login.js),
+        // so a real popup never sees one without the other. permissions.contains
+        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
+        // on the normal flow rather than the reconnect-banner path (S5).
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
 
@@ -526,6 +558,11 @@ describe('popup.js', () => {
 
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('test-password');
+        // store_data writes appPassword and server together at login (login.js),
+        // so a real popup never sees one without the other. permissions.contains
+        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
+        // on the normal flow rather than the reconnect-banner path (S5).
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
       getOption.mockResolvedValue(true);
@@ -548,6 +585,11 @@ describe('popup.js', () => {
       // Mock credentials exist
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('test-password');
+        // store_data writes appPassword and server together at login (login.js),
+        // so a real popup never sees one without the other. permissions.contains
+        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
+        // on the normal flow rather than the reconnect-banner path (S5).
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
 
@@ -586,6 +628,7 @@ describe('popup.js', () => {
       // Mock empty string credentials (empty string is NOT undefined, so form is created)
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('');
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
 
@@ -638,6 +681,11 @@ describe('popup.js', () => {
       // Mock credentials exist
       load_data.mockImplementation((store, key) => {
         if (key === 'appPassword') return Promise.resolve('test-password');
+        // store_data writes appPassword and server together at login (login.js),
+        // so a real popup never sees one without the other. permissions.contains
+        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
+        // on the normal flow rather than the reconnect-banner path (S5).
+        if (key === 'server') return Promise.resolve('https://example.com');
         return Promise.resolve(undefined);
       });
 

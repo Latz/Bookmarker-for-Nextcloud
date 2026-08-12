@@ -50,6 +50,25 @@ function isInsecureServerUrl(input) {
   const match = input.trim().match(/^([a-z][a-z0-9+.-]*):\/\//i);
   return !!match && match[1].toLowerCase() !== 'https';
 }
+
+/**
+ * Adds an https:// scheme to a bare hostname, leaving an already-schemed
+ * address untouched.
+ *
+ * chrome.permissions.request() requires a scheme-qualified match pattern, and
+ * apiCall's fetch() calls need a valid absolute URL -- a bare hostname is
+ * neither. Must run *after* isInsecureServerUrl, which checks the raw input:
+ * normalizing first could turn an explicit "http://host" into
+ * "https://http://host" if not careful, so the explicit-scheme rejection has
+ * to see the untouched string.
+ *
+ * @param {string} input - Raw or already-validated value of the #serverName field.
+ * @returns {string} A scheme-qualified server address.
+ */
+function normalizeServerHost(input) {
+  const trimmed = input.trim();
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     document.getElementById('msg').innerText = '';
@@ -77,13 +96,47 @@ async function openServerPage() {
   document.getElementById('msg').textContent = '';
 
   const testServer = document.getElementById('testServer');
-  const host = document.getElementById('serverName').value;
+  const rawHost = document.getElementById('serverName').value;
 
-  if (isInsecureServerUrl(host)) {
+  if (isInsecureServerUrl(rawHost)) {
     document.getElementById('error').innerText =
       `${chrome.i18n.getMessage('InsecureServerUrl')}!`;
     document.getElementById('serverName').focus();
     return;
+  }
+
+  const host = normalizeServerHost(rawHost);
+
+  // The extension holds no static host permission for an arbitrary
+  // self-hosted Nextcloud domain -- request access scoped to exactly this
+  // origin before the first network call to it. This must run inside the
+  // click/keydown handler's call chain (no permission-changing awaits before
+  // it) to satisfy Chrome's user-gesture requirement.
+  //
+  // Only gate on this when a real origin can be derived. Empty or otherwise
+  // unparseable input (e.g. the field left blank) is not a new case this fix
+  // needs to own: it falls through to apiCall exactly as before, which fails
+  // there with its own pre-existing error surface for invalid input.
+  let origin = null;
+  try {
+    origin = new URL(host).origin;
+  } catch (e) {
+    origin = null;
+  }
+
+  if (origin) {
+    let granted;
+    try {
+      granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
+    } catch (e) {
+      granted = false;
+    }
+    if (!granted) {
+      document.getElementById('error').innerText =
+        `${chrome.i18n.getMessage('PermissionRequestDenied')}!`;
+      document.getElementById('serverName').focus();
+      return;
+    }
   }
 
   testServer.textContent = `${chrome.i18n.getMessage('Loading')}...`;
