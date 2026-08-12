@@ -89,8 +89,8 @@ export async function load_data(storeName, ...items) {
     return result[Object.keys(result)[0]];
   }
 
-  console.log('load_data', storeName, items, result);
-
+  // Deliberately not logged: this path serves load_data('credentials',
+  // 'loginname', 'appPassword'), so any logging here prints the app password.
   return result;
 }
 
@@ -119,7 +119,7 @@ export async function load_data_all(storeName) {
  * @return {Promise<void>} - A promise that resolves when the data is successfully stored.
  */
 export async function store_data(storeName, ...items) {
-  console.log('store_data', storeName, items);
+  // Deliberately not logged: login.js writes the app password through here.
   const db = await getMainDBConnection();
   const puts = [];
   for (const item of items) {

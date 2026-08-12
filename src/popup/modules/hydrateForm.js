@@ -34,7 +34,6 @@ function addTextArea(node, id, show = true) {
 
 function addDropdown(node, id, displayFolders) {
   // The user does not want to use folders, so we return
-  console.log('🚀 ~ addDropdown ~ displayFolders:', displayFolders);
   if (!displayFolders) return;
 
   const container = document.createElement('div');

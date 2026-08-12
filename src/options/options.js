@@ -99,7 +99,6 @@ document.onreadystatechange = async () => {
 };
 
 function saveZenTags() {
-  console.log('saveZenTags');
   const tags = tagify.value.map((tag) => tag.value);
   store_data(OPTION_STORE, { input_zenKeywords: tags });
 }
@@ -158,7 +157,6 @@ function changeContent(activeTab, target) {
 async function setOptions() {
   const options = document.getElementById('content');
   const optionsData = await load_data_all(OPTION_STORE);
-  console.log('🚀 ~ setOptions ~ optionsData:', optionsData);
 
   // set all defaults
   optionsData.forEach((option) => {
@@ -196,11 +194,9 @@ async function setOptions() {
     if (event.target.type === 'checkbox') {
       const { id, checked } = event.target;
 
-      console.log('checkbox', id, checked);
       store_data(OPTION_STORE, { [id]: checked });
     }
     if (event.target.type === 'submit') {
-      console.log('submit', event.target.id);
       switch (event.target.id) {
         case 'btn_clear_all_data':
           clearData('all');
@@ -227,6 +223,5 @@ async function setOptions() {
 
 function createDB() {
   const dbVersion = document.getElementById('input_dbVersion').value;
-  console.log('createDB', dbVersion);
   createOldDatabase(dbVersion);
 }
