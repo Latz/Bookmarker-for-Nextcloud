@@ -1,0 +1,322 @@
+# Performance Review — Bookmarker for Nextcloud
+
+**Version reviewed:** 0.32.0 (branch `css-refactor`, commit `b60cc33`)
+**Date:** 2026-08-12
+
+---
+
+## 1. Scope & method
+
+**Reviewed:**
+
+- All 25 JS source files under `src/` (~4,000 LOC)
+- Build configuration: `vite.config.js`, `tailwind.config.js`, `package.json`, `manifest.json`
+- Generated stylesheets: `src/popup/css/popup.css`, `src/options/options.css`
+- Shipped artifact: `bookmarker-for-nextcloud-0.32.0.zip` (621 KB, 54 files) and the local `dist/`
+
+**Not covered:**
+
+- No runtime profiling was performed — there is no live Nextcloud instance available in this environment. All timing claims below are structural (bytes moved, round trips taken, algorithmic complexity), not measured wall-clock.
+- No cross-browser behaviour (Vivaldi, Edge) was verified.
+
+**Prior context:** three optimisation passes already landed (2026-02-23 perf pass, 2026-02-24 session cache, 2026-03-01 SW warm-up). Those tuned *within* the existing architecture. Most of what follows is architectural or was missed by those passes — see §5 for what is already working well, including one prior optimisation that turns out to be inert.
+
+---
+
+## 2. The critical path
+
+What happens between the user clicking the toolbar icon and seeing a filled-in form:
+
+| # | Step | Where | Cost |
+|---|------|-------|------|
+| 1 | Chrome opens `popup.html`, blocks on two stylesheets | `popup.html:9-10` | **84 KB** render-blocking CSS (`popup.css` 71 KB + `tagify.css` 13 KB) |
+| 2 | `popup.js` module graph loads | `popup.js:1-5` | Tagify (**78 KB**) + textfit pulled in eagerly |
+| 3 | Script waits for `readyState === 'complete'` | `popup.js:8` | **Everything below is blocked until all of the above finishes** |
+| 4 | Read `appPassword` + `cbx_enableZen` | `popup.js:11-14` | IndexedDB open (popup context, cold) + 2 gets — correctly parallelised |
+| 5 | `createForm()` | `hydrateForm.js:62` | One batched `getOptions` of 5 keys |
+| 6 | `sendMessage({msg:'getData'})` → SW | `popup.js:48` | SW may be cold-starting here |
+| 7 | SW: query active tab, inject content script | `getData.js:58,167` | Returns **entire page HTML** to the SW |
+| 8 | SW: ensure offscreen doc, forward HTML to it | `getData.js:93,114` | HTML structured-cloned a **second** time |
+| 9 | Offscreen: `DOMParser` + extract | `offscreen.js:29-91` | Extracts all inline script sources + all h1–h6; cloned back — **third** copy |
+| 10 | Parallel: description, keywords, bookmark check, folders | `getData.js:127-133` | Correctly parallelised; keyword/folder fetch may hit the network |
+| 11 | `hydrateForm()` → `fillKeywords` | `hydrateForm.js:97` | `cacheGet('keywords')` — another IndexedDB round, possibly a network fetch; then Tagify instantiation |
+
+Steps 7–9 dominate on content-heavy pages, and step 3 needlessly serialises steps 1–2 in front of steps 6–10 — the only part that touches the network.
+
+---
+
+## 3. P0 findings — popup critical path
+
+### P0-1. The page HTML crosses process boundaries three times
+
+`src/background/modules/getData.js:165-174`
+
+```js
+const injectionResults = await chrome.scripting.executeScript({
+  target: { tabId },
+  func: () => document.documentElement.innerHTML,
+});
+return injectionResults[0].result;
+```
+
+That string is the **complete serialised DOM** of the active tab — commonly 500 KB to several MB on news sites, social feeds, or documentation portals. It is then handed to the offscreen document (`getBrowserTheme.js:199-208`), which structured-clones it again.
+
+The response is not small either. `offscreen.js:53`:
+
+```js
+scripts: Array.from(doc.querySelectorAll('script')).map(script => script.text),
+```
+
+Every inline script's full source is copied into the response object and cloned back to the SW — on an ad-heavy page that alone can exceed the original HTML. `offscreen.js:76-83` unconditionally extracts h1 through h6 even though `input_headings_slider` defaults to 3 and `cbx_extendedKeywords` is often off.
+
+Structured cloning is synchronous on both sides and scales linearly with payload size. Three passes over multiple megabytes, per popup open.
+
+**Fix direction:** move extraction into the injected function so it runs against the live DOM in the tab and returns only the small `parsedData` object. The offscreen document is then needed only for `matchMedia` theme detection, not `DOM_PARSER`. Independently: `scripts` feeds a single `script.includes('dataLayer.push')` test (`getKeywords.js:229`) — pre-filter to matching scripts before serialising. Extract only the heading levels actually requested.
+
+**Expected win:** the largest single win available. Eliminates two full-payload clones and the offscreen HTML-parse hop entirely.
+
+---
+
+### P0-2. The network round trip waits for the stylesheet
+
+`src/popup/popup.js:8-9`
+
+```js
+document.onreadystatechange = async () => {
+  if (document.readyState === 'complete') {
+```
+
+`complete` fires only after every subresource — including the 71 KB stylesheet and 78 KB of Tagify — has loaded and been parsed. The `getData` message (step 6), which triggers script injection, HTML parsing, *and* an HTTP call to the Nextcloud server, cannot start until then. These are entirely independent: nothing about the SW round trip needs the DOM.
+
+**Fix direction:** fire `chrome.runtime.sendMessage({ msg: 'getData' })` at module top level, store the promise, and `await` it after the form is built. The credential check (`load_data('credentials','appPassword')`) can start early too. This overlaps the slowest link with the render work instead of queueing behind it.
+
+**Expected win:** shaves roughly the full CSS+JS load time off perceived latency — the two costs run concurrently instead of back to back.
+
+---
+
+### P0-3. The popup ships the options page's stylesheet
+
+`tailwind.config.js`
+
+```js
+content: ['./src/popup/**/*.{html,js}', './src/options/**/*.{html,js}'],
+```
+
+Both `build:css:popup` and `build:css:options` load this same config via `@config`, so both outputs are generated against the union of both pages' markup. The result: `popup.css` is 71,462 bytes and `options.css` is 70,633 bytes — essentially the same file.
+
+Verified by inspecting the generated CSS: `popup.css` contains rules for `.tab`, `.tab-content`, `.menu`, `.menu-dropdown-toggle`, and `.diff` — daisyUI components that appear only in `options.html`. The `@layer utilities` block alone is 60 KB of the 71 KB.
+
+The popup's actual markup (`popup.html` plus the classes assigned in `hydrateForm.js`, `popup.js`) uses roughly 15 distinct classes: `btn`, `btn-info`, `input`, `input-bordered`, `input-info`, `input-sm`, `textarea` variants, `select` variants, `loader`, `parent`/`div1`/`div2`/`div3`, plus a handful of flex and text utilities.
+
+**Fix direction:** give each entry point its own content glob — either two config files, or Tailwind 4's `@source` directive inside each `input.css` scoped to that page's directory. Also consider daisyUI 5's component `exclude` list.
+
+**Expected win:** an estimated ~50 KB off a render-blocking stylesheet, on a 350 px popup that is expected to paint instantly.
+
+---
+
+## 4. P1 findings — wasted work and dead optimisations
+
+### P1-4. `warmupConnection()` has never run — **bug, not just slowness**
+
+`src/background/background.js:178-185`
+
+```js
+const credentials = await load_data('credentials', 'server');
+if (!credentials?.server) return;
+```
+
+`load_data` unwraps single-item requests (`storage.js:87-90`):
+
+```js
+// if there's only 1 item in the object return the value instead of the object
+if (Object.keys(result).length === 1) {
+  return result[Object.keys(result)[0]];
+}
+```
+
+So `credentials` is the server URL **string**, and `credentials.server` is always `undefined`. The guard always returns early. The entire SW connection warm-up shipped on 2026-03-01 — TCP/TLS priming, auth-header cache, network-timeout cache — has never executed in production.
+
+Note that the 2026-03-22 SonarCloud S6582 fix rewrote this exact line (`!credentials || !credentials.server` → `!credentials?.server`). It changed the null-check style but preserved the shape bug.
+
+The tests do not catch it because they mock the wrong shape. `tests/background.test.js:499`:
+
+```js
+load_data.mockResolvedValueOnce({ server: 'https://nextcloud.example.com' });
+```
+
+The real `load_data('credentials', 'server')` returns `'https://nextcloud.example.com'` — a string, never `{ server: … }`. The mock asserts against a contract the implementation does not have, so the suite stays green while production always takes the early return.
+
+**Fix:** `if (!credentials) return;` — `credentials` *is* the server. Then correct the three warm-up tests (`tests/background.test.js:496-530`) to mock `load_data`'s real single-item return shape, or the same class of bug can recur.
+
+---
+
+### P1-5. Tagify and textfit are eager in the popup bundle
+
+`src/popup/modules/fillKeywords.js:3` — `import Tagify from '@yaireo/tagify'`
+`src/popup/popup.js:5` — `import textFit from 'textfit'`
+
+The built chunk `fillFolders-*.js` is **78 KB**, dominated by Tagify, plus `tagify.css` at 13 KB linked from `popup.html`. Tagify is only needed when `cbx_showKeywords` is enabled, and only after the form has painted. `textfit` is used in exactly one place — `popup.js:25`, the connection-error path — yet is parsed on every successful open.
+
+**Fix direction:** `await import('@yaireo/tagify')` inside `fillKeywords` after the show-keywords check; `await import('textfit')` inside the error branch. Load `tagify.css` dynamically alongside, or fold its handful of needed rules into `popup.css`.
+
+**Expected win:** ~78 KB of parse/compile off the default path.
+
+---
+
+### P1-6. Retry loop burns 2.5 s on non-bookmarkable pages
+
+`src/popup/popup.js:46-65`
+
+```js
+for (let attempt = 0; attempt < retryCount; attempt++) {
+  const data = await chrome.runtime.sendMessage({ msg: 'getData' });
+  if (data.ok) return data;
+  lastError = data;
+  if (attempt < retryCount - 1) { /* ... */ await sleep(500); }
+}
+```
+
+Every non-`ok` response is treated as retryable. But `getData.js:83-88` returns `{ ok: false, error: 'URL is not bookmarkable' }` for `chrome://`, `about:`, `data:`, and extension pages — a permanent condition. The default `input_numberOfRetries` is 5, so opening the popup on any such page costs 5 SW round trips and 4 × 500 ms of sleeping (~2.5 s) before showing an error it knew about immediately.
+
+Each retry also re-runs the whole SW pipeline, including script injection.
+
+**Fix direction:** have `getData` mark terminal failures (`retryable: false`) and break out of the loop on those.
+
+---
+
+### P1-7. `reduceKeywords` is O(words × tags) and re-normalises per call
+
+`src/background/modules/getKeywords.js:48-52`
+
+```js
+const allKeywords = allKeywordsRaw.map((keyword) => keyword.toLowerCase());
+let reducedKeywords = keywords.filter((keyword) =>
+  allKeywords.includes(keyword.toLowerCase()),
+);
+```
+
+`Array.prototype.includes` is a linear scan, executed once per candidate word. The lowercased array is rebuilt from scratch on every invocation.
+
+This matters because of the caller. `getKeywords.js:393-408`:
+
+```js
+while (level <= maxLevel) {
+  const headlines = document.querySelectorAll(`h${level}`);
+  for (const headline of headlines) {
+    const words = headline.innerText.split(/[\W_]+/g);
+    const reducedKw = await reduceKeywords(words, true, allKeywords);
+```
+
+In extended-keyword mode, `reduceKeywords` runs once **per headline** across h1–h6 — sequentially awaited. For a user with 3,000 stored tags and a page with 80 headlines averaging 8 words, that is 80 rebuilds of a 3,000-element lowercased array plus ~1.9 M string comparisons, all on the SW's single thread, inside the popup's critical path.
+
+Each call also re-reads `cbx_reduceKeywords` via `getOption` (`getKeywords.js:28`) — cache-backed, but still an async hop per headline.
+
+**Fix direction:** build a lowercased `Set` once at the top of the extended-keywords block and pass it down; `Set.has()` makes each lookup O(1). Hoist the `cbx_reduceKeywords` read out of the loop.
+
+**Expected win:** turns a quadratic hot spot into a linear one — orders of magnitude on large tag collections.
+
+---
+
+### P1-8. Folder sort comparator returns a boolean — **bug, not just slowness**
+
+`src/background/modules/getFolders.js:34`
+
+```js
+folders.sort((a, b) => a.title.localeCompare(b.title, userLang) > 0);
+```
+
+`Array.prototype.sort` expects a negative / zero / positive number. This returns `true` or `false`, coerced to 1 or 0 — it can never express "a before b". The resulting order is engine-dependent and effectively unsorted, so the folder dropdown is not reliably alphabetical.
+
+The performance angle: `localeCompare` allocates a collator on every comparison. For an *n*-node folder tree that is O(n log n) collator constructions, repeated at every level of the recursive `json2tree` walk.
+
+**Fix:**
+
+```js
+const collator = new Intl.Collator(userLang);   // hoist out of json2tree
+folders.sort((a, b) => collator.compare(a.title, b.title));
+```
+
+Fixes correctness and removes the per-comparison allocation in one change.
+
+---
+
+## 5. What is already working well
+
+The prior optimisation passes left real infrastructure in place, and it should not be undone by any of the above:
+
+- **Options cache** with per-key TTL and a batched `getOptions()` (`storage.js:203-243`) that issues parallel gets rather than sequential ones.
+- **Connection pooling** for both IndexedDB databases (`storage.js:36-63`, `cache.js:103-150`), with an idle-close timer on the cache DB.
+- **Request deduplication** for in-flight bookmark checks (`getData.js:19,257-307`) and offscreen document creation (`getBrowserTheme.js:20-73`).
+- **Per-tab AbortControllers** so a popup re-open cancels the previous tab's outstanding request.
+- **Session-storage caches** for `browserTheme` and `errorIconsAvailable` (`getBrowserTheme.js:88-98`, `notification.js:22-53`), which survive MV3 service-worker termination — a genuinely good fit for the ~30 s idle-kill behaviour.
+- **LRU memoisation** in `stringSimilarity.js`, `urlNormalizer.js`, and `cache.js`'s `hashUrl`.
+- **Parallel fan-out** in `getData.js:127-133` and `apiCall.js:62-65`.
+
+The exception is the SW connection warm-up (P1-4), which is present in the source but inert.
+
+---
+
+## 6. P2 findings — smaller items
+
+| # | Finding | Location |
+|---|---------|----------|
+| 9 | Unconditional `console.log` on every read and write. `load_data` logs its full result object; `store_data` logs every item. These fire in SW hot paths and serialise objects each time. Same pattern in `options.js` (`setOptions`, `saveZenTags`, checkbox handler) and `hydrateForm.js:37`. Everything else in the codebase uses the `log(DEBUG, …)` helper — these were missed. | `storage.js:92`, `storage.js:122` |
+| 10 | `initDefaults()` issues 20 separate `store_data` calls — 20 IndexedDB transactions and 20 console logs where one batched call would do. Runs on fresh install and on "reset options". | `storage.js:332-359` |
+| 11 | `checkBookmark` splits its option reads into two sequential `getOptions` calls. The split is deliberate (the cache check sits between them), but on a cold SW it costs two IndexedDB round trips for five booleans. Worth measuring whether one call is faster in the common cache-miss case. | `getData.js:232`, `getData.js:247` |
+| 12 | `timeoutFetch` registers an `abort` listener on the caller's signal and never removes it, so listeners accumulate on a long-lived signal. `clearTimeout(id)` is not in a `finally`, so a rejected fetch leaves the abort timer armed. | `apiCall.js:44-52` |
+| 13 | The message listener returns `true` unconditionally, holding the response channel open for fire-and-forget messages (`saveBookmark`, `zenMode`, `authorize`) that never call `sendResponse`. Only the `getData` case needs it. | `background.js:43` |
+| 14 | A 60 s `setTimeout` cleans up AbortControllers, but an MV3 service worker is killed at ~30 s idle, so it usually never fires. Harmless in practice (the map dies with the worker) but the code implies a guarantee it does not provide. | `getData.js:76-80` |
+| 15 | Asset weight in the 621 KB shipped zip: `background.webp` 101 KB (login page only), `icon-512x512-light.png` 50 KB, `logo.png` 34 KB, `favicon.ico` 14 KB. The 512 px icons are referenced by `chrome.action.setIcon` but Chrome only renders at 16/32/48 — the large variants are decoded for nothing. | `dist/assets/`, `dist/images/` |
+| 16 | `vite.config.js` sets `sourcemap: true` and `dist/` accumulates ~350 KB of `.map` files. Verified they are **not** present in the 0.32.0 zip, so nothing ships today — but that exclusion is incidental to how the zip was made, not enforced by config. Worth pinning to `sourcemap: false` (or `'hidden'`) for the release build so it cannot regress. | `vite.config.js:35` |
+
+---
+
+## 7. Prioritised recommendations
+
+| # | Change | Effort | Expected win |
+|---|--------|--------|--------------|
+| P0-1 | Extract in the injected content script; drop the offscreen HTML round trip | High | Largest available — removes MB-scale clones from every popup open |
+| P0-2 | Start the `getData` round trip at module load, not on `readyState==='complete'` | Low | Overlaps the network with rendering; large perceived win for ~10 lines |
+| P0-3 | Per-entry Tailwind content globs | Low | ~50 KB off render-blocking CSS |
+| P1-4 | Fix the `warmupConnection` guard | Trivial | Activates an already-written optimisation |
+| P1-5 | Dynamic-import Tagify and textfit | Low | ~78 KB off the default popup path |
+| P1-7 | `Set`-based `reduceKeywords`, hoist the option read | Low | Removes a quadratic hot spot |
+| P1-6 | Don't retry terminal errors | Low | −2.5 s on `chrome://` and extension pages |
+| P1-8 | `Intl.Collator` for folder sorting | Trivial | Fixes ordering + removes per-comparison allocation |
+| P2-9/10 | Route stray `console.log` through `log(DEBUG, …)`; batch `initDefaults` | Trivial | Small but free |
+| P2-15/16 | Optimise images; pin `sourcemap: false` for release | Low | Smaller package, no accidental map leak |
+
+Suggested sequencing: the four Trivial/Low items in the P1 block (4, 5, 6, 7, 8) are independent, individually testable, and together address most of the non-architectural waste. P0-2 and P0-3 are also low-effort and high-yield. P0-1 is the one that needs a design pass — it changes where parsing happens and touches `getKeywords`'s use of the raw `content` string for regex scanning (`getKeywords.js:306,327`), which would also need to move into the injected function.
+
+---
+
+## 8. How to measure
+
+**Popup critical path.** Wrap the pipeline in `performance.mark` / `performance.measure`:
+
+```js
+performance.mark('popup-start');            // top of popup.js
+performance.mark('form-created');           // after createForm()
+performance.mark('data-received');          // after getDataWithRetry()
+performance.mark('form-hydrated');          // after hydrateForm()
+performance.measure('popup-total', 'popup-start', 'form-hydrated');
+```
+
+Read the entries from the popup's DevTools console (right-click the popup → Inspect). Capture a baseline on three page classes before changing anything: a light page, a heavy news page, and a `chrome://` page (for P1-6).
+
+**Service worker.** `chrome://extensions` → Inspect the service worker → Performance tab. Record while opening the popup. Look specifically for long synchronous blocks around the `sendMessage` boundaries — that is the structured-clone cost from P0-1.
+
+**Payload sizes.** For P0-1, log `content.length` in `getData.js` and `JSON.stringify(result).length` in `offscreen.js` before and after. That directly quantifies the bytes removed.
+
+**Bundle and CSS.** `npm run build` then `ls -laS dist/assets` — compare `popup-*.css` and the Tagify chunk before and after P0-3 and P1-5.
+
+**Algorithmic.** For P1-7, seed the keyword cache with a few thousand tags, enable `cbx_extendedKeywords`, and time `getKeywords` on a heading-dense page (a long documentation page works well).
+
+**Regression safety.** The suite should stay green throughout. On WSL2, pre-warm the disk cache first:
+
+```
+node --input-type=module --eval "import 'vitest'; import 'jsdom'; import 'vite'; console.log('all warmed')"
+npx vitest run --pool=threads
+```
+
+Note that P1-4's fix will likely require updating the warm-up tests, since they currently mock `load_data` with a return shape the real function does not produce.
