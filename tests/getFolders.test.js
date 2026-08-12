@@ -38,12 +38,12 @@ describe('getFolders', () => {
     vi.restoreAllMocks();
   });
 
-  it('should return empty string when user does not use folders and not forced', async () => {
+  it('should return an empty list when user does not use folders and not forced', async () => {
     getOption.mockResolvedValue(false);
 
     const result = await getFolders(false);
 
-    expect(result).toBe('');
+    expect(result).toEqual([]);
     expect(getOption).toHaveBeenCalledWith('cbx_displayFolders');
     expect(apiCall).not.toHaveBeenCalled();
   });
@@ -61,7 +61,7 @@ describe('getFolders', () => {
 
   it('should return cached folders when available', async () => {
     getOption.mockResolvedValue(true);
-    const cachedFolders = '<option value="1">Folder 1</option>';
+    const cachedFolders = [{ value: '1', name: 'Folder 1' }];
     cacheGet.mockResolvedValue(cachedFolders);
 
     const result = await getFolders();
@@ -108,9 +108,9 @@ describe('getFolders', () => {
 
     const result = await getFolders();
 
-    expect(cacheAdd).toHaveBeenCalledWith('folders', expect.any(String));
-    expect(result).toContain('<option value="1">Folder 1</option>');
-    expect(result).toContain('<option value="2">Folder 2</option>');
+    expect(cacheAdd).toHaveBeenCalledWith('folders', expect.any(Array));
+    expect(result).toContainEqual({ value: '1', name: 'Folder 1' });
+    expect(result).toContainEqual({ value: '2', name: 'Folder 2' });
   });
 
   it('should handle nested folder structures', async () => {
@@ -131,9 +131,9 @@ describe('getFolders', () => {
 
     const result = await getFolders();
 
-    expect(result).toContain('<option value="1">Parent</option>');
-    expect(result).toContain('<option value="2">  Child 1</option>');
-    expect(result).toContain('<option value="3">  Child 2</option>');
+    expect(result).toContainEqual({ value: '1', name: 'Parent' });
+    expect(result).toContainEqual({ value: '2', name: '  Child 1' });
+    expect(result).toContainEqual({ value: '3', name: '  Child 2' });
   });
 
   it('should handle empty folder response', async () => {
@@ -143,7 +143,7 @@ describe('getFolders', () => {
 
     const result = await getFolders();
 
-    expect(result).toBe('<option value="-1">Root</option>');
+    expect(result).toEqual([{ value: '-1', name: 'Root' }]);
   });
 
   it('should handle undefined folder data', async () => {
@@ -153,7 +153,7 @@ describe('getFolders', () => {
 
     const result = await getFolders();
 
-    expect(result).toBe('<option value="-1">Root</option>');
+    expect(result).toEqual([{ value: '-1', name: 'Root' }]);
   });
 });
 
@@ -170,13 +170,13 @@ describe('preRenderFolders', () => {
   it('should return root folder when no folders provided', () => {
     const result = preRenderFolders(undefined);
 
-    expect(result).toBe('<option value="-1">Root</option>');
+    expect(result).toEqual([{ value: '-1', name: 'Root' }]);
   });
 
   it('should return root folder when empty array is provided', () => {
     const result = preRenderFolders([]);
 
-    expect(result).toBe('<option value="-1">Root</option>');
+    expect(result).toEqual([{ value: '-1', name: 'Root' }]);
   });
 
   it('should render single folder', () => {
@@ -184,8 +184,8 @@ describe('preRenderFolders', () => {
 
     const result = preRenderFolders(folders);
 
-    expect(result).toContain('<option value="-1">Root</option>');
-    expect(result).toContain('<option value="1">My Folder</option>');
+    expect(result).toContainEqual({ value: '-1', name: 'Root' });
+    expect(result).toContainEqual({ value: '1', name: 'My Folder' });
   });
 
   it('should render multiple folders sorted by title', () => {
@@ -200,12 +200,12 @@ describe('preRenderFolders', () => {
     // Assert the actual ordering, not just presence: the previous comparator
     // returned a boolean and never sorted, and per-option `toContain` checks
     // passed regardless.
-    expect(result).toBe(
-      '<option value="-1">Root</option>' +
-        '<option value="1">A Folder</option>' +
-        '<option value="2">B Folder</option>' +
-        '<option value="3">C Folder</option>',
-    );
+    expect(result).toEqual([
+      { value: '-1', name: 'Root' },
+      { value: '1', name: 'A Folder' },
+      { value: '2', name: 'B Folder' },
+      { value: '3', name: 'C Folder' },
+    ]);
   });
 
   it('should render nested folders with proper indentation', () => {
@@ -222,10 +222,26 @@ describe('preRenderFolders', () => {
 
     const result = preRenderFolders(folders);
 
-    expect(result).toContain('<option value="1">Parent</option>');
+    expect(result).toContainEqual({ value: '1', name: 'Parent' });
     // Uses \u2007\u2007 for indentation (two figure spaces)
-    expect(result).toContain('<option value="2">  Child 1</option>');
-    expect(result).toContain('<option value="3">  Child 2</option>');
+    expect(result).toContainEqual({ value: '2', name: '  Child 1' });
+    expect(result).toContainEqual({ value: '3', name: '  Child 2' });
+  });
+
+  it('should return hostile folder titles as data, never as markup (S1)', () => {
+    // preRenderFolders used to build an <option> string with the title
+    // interpolated unescaped, which consumers assigned to innerHTML. Titles
+    // come from the server and can be set by anyone sharing a folder.
+    const hostile = 'Recipes"><img src=x onerror=alert(1)>';
+    const result = preRenderFolders([{ id: '9', title: hostile }]);
+
+    expect(result).toContainEqual({ value: '9', name: hostile });
+    // No element in the result is a markup string
+    for (const entry of result) {
+      expect(typeof entry).toBe('object');
+      expect(entry).toHaveProperty('value');
+      expect(entry).toHaveProperty('name');
+    }
   });
 
   it('should handle deeply nested folders', () => {
@@ -247,9 +263,9 @@ describe('preRenderFolders', () => {
 
     const result = preRenderFolders(folders);
 
-    expect(result).toContain('<option value="1">Level 1</option>');
-    expect(result).toContain('<option value="2">  Level 2</option>');
-    expect(result).toContain('<option value="3">    Level 3</option>');
+    expect(result).toContainEqual({ value: '1', name: 'Level 1' });
+    expect(result).toContainEqual({ value: '2', name: '  Level 2' });
+    expect(result).toContainEqual({ value: '3', name: '    Level 3' });
   });
 
   it('should handle folders with special characters in title', () => {
@@ -260,7 +276,7 @@ describe('preRenderFolders', () => {
     const result = preRenderFolders(folders);
 
     // Note: The implementation does NOT HTML-escape the title
-    expect(result).toContain('<option value="1">Folder & "Special" <Test></option>');
+    expect(result).toContainEqual({ value: '1', name: 'Folder & "Special" <Test>' });
   });
 
   it('should handle folders with unicode characters', () => {
@@ -270,7 +286,7 @@ describe('preRenderFolders', () => {
 
     const result = preRenderFolders(folders);
 
-    expect(result).toContain('<option value="1">📁 中文文件夹</option>');
+    expect(result).toContainEqual({ value: '1', name: '📁 中文文件夹' });
   });
 
   it('should handle multiple top-level folders', () => {
@@ -282,10 +298,10 @@ describe('preRenderFolders', () => {
 
     const result = preRenderFolders(folders);
 
-    expect(result).toContain('<option value="-1">Root</option>');
-    expect(result).toContain('<option value="1">Folder 1</option>');
-    expect(result).toContain('<option value="2">Folder 2</option>');
-    expect(result).toContain('<option value="3">Folder 3</option>');
+    expect(result).toContainEqual({ value: '-1', name: 'Root' });
+    expect(result).toContainEqual({ value: '1', name: 'Folder 1' });
+    expect(result).toContainEqual({ value: '2', name: 'Folder 2' });
+    expect(result).toContainEqual({ value: '3', name: 'Folder 3' });
   });
 
   it('should handle mixed nested and non-nested folders', () => {
@@ -302,9 +318,9 @@ describe('preRenderFolders', () => {
 
     const result = preRenderFolders(folders);
 
-    expect(result).toContain('<option value="1">Standalone</option>');
-    expect(result).toContain('<option value="2">Parent</option>');
-    expect(result).toContain('<option value="3">  Child</option>');
+    expect(result).toContainEqual({ value: '1', name: 'Standalone' });
+    expect(result).toContainEqual({ value: '2', name: 'Parent' });
+    expect(result).toContainEqual({ value: '3', name: '  Child' });
   });
 
   it('should handle folders with empty title', () => {
@@ -314,7 +330,7 @@ describe('preRenderFolders', () => {
 
     const result = preRenderFolders(folders);
 
-    expect(result).toContain('<option value="1"></option>');
+    expect(result).toContainEqual({ value: '1', name: '' });
   });
 
   it('should handle folders with whitespace-only title', () => {
@@ -324,6 +340,6 @@ describe('preRenderFolders', () => {
 
     const result = preRenderFolders(folders);
 
-    expect(result).toContain('<option value="1">   </option>');
+    expect(result).toContainEqual({ value: '1', name: '   ' });
   });
 });

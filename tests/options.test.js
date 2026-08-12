@@ -44,6 +44,11 @@ vi.mock('../src/background/modules/getFolders.js', () => ({
 
 vi.mock('../src/popup/modules/fillFolders.js', () => ({
   default: vi.fn(),
+  // options.js builds the zen-folder <option> elements with this rather than
+  // assigning a server-built HTML string to innerHTML. Returns a plain
+  // sentinel: this file's mock document has no createDocumentFragment, and
+  // the value is only handed to a mocked appendChild.
+  buildFolderOptions: vi.fn(() => ({ __fragment: true })),
 }));
 
 // Import after mocking

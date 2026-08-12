@@ -133,6 +133,33 @@ describe('addSaveBookmarkButtonListener', () => {
       expect(mockEvent.preventDefault).toHaveBeenCalled();
     });
 
+    it('should not let a tag inject extra API parameters (S3)', async () => {
+      // Tag values and descriptions were interpolated into the query string
+      // raw, so a value containing & or = injected parameters of its own.
+      getOption.mockResolvedValue(true);
+      cacheGet.mockResolvedValue([]);
+      cacheTempAdd.mockResolvedValue();
+      mockKeywordsInput.value = JSON.stringify([
+        { value: 'x&folders[]=42&public=1' },
+      ]);
+      mockDescriptionInput.value = 'note & more=stuff';
+
+      addSaveBookmarkButtonListener();
+      clickHandler(mockEvent);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const sent = chrome.runtime.sendMessage.mock.calls.at(-1)[0];
+      const parsed = new URLSearchParams(sent.parameters);
+      // Only the folder the user actually selected
+      expect(parsed.getAll('folders[]')).not.toContain('42');
+      // No smuggled parameter
+      expect(parsed.getAll('public')).toEqual([]);
+      // Description survives intact rather than being truncated at the &
+      expect(parsed.get('description')).toBe('note & more=stuff');
+      // The hostile value is carried as one opaque tag
+      expect(parsed.getAll('tags[]')).toContain('x&folders[]=42&public=1');
+    });
+
     it('should send message to background script with correct parameters', async () => {
       getOption.mockResolvedValue(true);
       cacheGet.mockResolvedValue(['cached1', 'cached2']);
@@ -144,7 +171,7 @@ describe('addSaveBookmarkButtonListener', () => {
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
         msg: 'saveBookmark',
-        parameters: expect.stringContaining('title=Test%20Page'),
+        parameters: expect.stringContaining('title=Test+Page'),
         folderIDs: ['2', '3'],
         bookmarkID: -1,
       });
@@ -184,7 +211,7 @@ describe('addSaveBookmarkButtonListener', () => {
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: expect.stringContaining('description=Test description'),
+          parameters: expect.stringContaining('description=Test+description'),
         })
       );
     });
@@ -254,12 +281,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: expect.stringContaining('tags[]=keyword1'),
+          parameters: expect.stringContaining('tags%5B%5D=keyword1'),
         })
       );
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: expect.stringContaining('tags[]=keyword2'),
+          parameters: expect.stringContaining('tags%5B%5D=keyword2'),
         })
       );
     });
@@ -282,7 +309,7 @@ describe('addSaveBookmarkButtonListener', () => {
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: expect.stringContaining('tags[]='),
+          parameters: expect.stringContaining('tags%5B%5D='),
         })
       );
     });
@@ -305,12 +332,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: expect.stringContaining('folders[]=2'),
+          parameters: expect.stringContaining('folders%5B%5D=2'),
         })
       );
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: expect.stringContaining('folders[]=3'),
+          parameters: expect.stringContaining('folders%5B%5D=3'),
         })
       );
     });
@@ -333,7 +360,7 @@ describe('addSaveBookmarkButtonListener', () => {
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
-          parameters: expect.stringContaining('folders[]=-1'),
+          parameters: expect.stringContaining('folders%5B%5D=-1'),
         })
       );
     });
@@ -706,17 +733,14 @@ describe('addSaveBookmarkButtonListener', () => {
       clickHandler(mockEvent);
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          parameters: expect.stringContaining('title=Test%20%26%20%22Special%22%20%3CPage%3E'),
-        })
-      );
-      // Note: description is NOT encoded with encodeURIComponent
-      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          parameters: expect.stringContaining('description=Description with & and < and >'),
-        })
-      );
+      // Assert on decoded values rather than a specific encoding: every field
+      // is encoded now, where previously only title and url were. The old
+      // assertion here pinned the bug in place, expecting the description to
+      // appear raw in the query string.
+      const sent = chrome.runtime.sendMessage.mock.calls.at(-1)[0];
+      const parsed = new URLSearchParams(sent.parameters);
+      expect(parsed.get('title')).toBe('Test & "Special" <Page>');
+      expect(parsed.get('description')).toBe('Description with & and < and >');
     });
 
     it('should handle updating existing bookmark', async () => {

@@ -26,10 +26,18 @@ export async function cacheGet(type, forceServer = false) {
     db.get(type, `${type}_created`),
   ]);
 
+  // Folders used to be cached as a pre-rendered HTML string. That format is
+  // gone (the titles inside it were never escaped), so any surviving string
+  // entry is discarded and refetched rather than handed to callers that now
+  // expect option descriptors. Entries live for 24h, so this matters for
+  // anyone upgrading mid-cache.
+  const staleFormat = type === 'folders' && element && !Array.isArray(element.value);
+
   // data was not found in cache -> load from server
   if (
     typeof element === 'undefined' ||
     Object.keys(element).length === 0 ||
+    staleFormat ||
     elementExpired(db, type, created, forceServer)
   ) {
     // We call it "keywords" Nextcloud calls it "tags" -> convert

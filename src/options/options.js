@@ -10,7 +10,7 @@ import {
 } from '../lib/storage.js';
 import Tagify from '@yaireo/tagify';
 import { getFolders } from '../background/modules/getFolders.js';
-import fillFolders from '../popup/modules/fillFolders.js';
+import fillFolders, { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
 const OPTION_STORE = 'options';
 let tagify;
@@ -63,9 +63,9 @@ document.onreadystatechange = async () => {
     // fill zen folders selection box
     const folders = await getFolders(true);
     const input_zenFolders = document.getElementById('zen_folders');
-    const zenTemplate = document.createElement('template');
-    zenTemplate.innerHTML = folders;
-    input_zenFolders.appendChild(zenTemplate.content);
+    // Built as elements rather than assigned as an HTML string: folder titles
+    // come from the server and were previously interpolated unescaped.
+    input_zenFolders.appendChild(buildFolderOptions(folders));
 
     // load previously selected folders from database
     let zenFolderIDs = await load_data(OPTION_STORE, 'zenFolderIDs');

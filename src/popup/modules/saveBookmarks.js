@@ -23,33 +23,49 @@ function saveBookmark(event) {
     ]);
 
     const rawDescription = /** @type {HTMLTextAreaElement} */ (document.getElementById('description')).value;
-    const description = showDescription && rawDescription.length > 0
-      ? `&description=${rawDescription}`
-      : '';
 
     let keywords = /** @type {Array<{value: string}>} */ ([]);
-    let tags = '&tags[]=';
     try {
       if (showKeywords) {
         keywords = JSON.parse(/** @type {HTMLInputElement} */ (document.getElementById('keywords')).value);
-        tags += keywords.map((kw) => `&tags[]=${kw.value}`).join('');
       }
     } catch {
-      tags = '&tags[]=';
+      keywords = [];
     }
 
     let folderIDs = /** @type {string[]} */ ([]);
-    let selectedFolders;
     if (displayFolders) {
       folderIDs = Array.from(/** @type {HTMLSelectElement} */ (document.getElementById('folders')).options)
         .filter((opt) => opt.selected)
         .map((opt) => opt.value);
-      selectedFolders = folderIDs.map((id) => `&folders[]=${id}`).join('');
-    } else {
-      selectedFolders = '&folders[]=-1';
     }
 
-    const parameters = `title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}${description}${tags}${selectedFolders}&page=-1`;
+    // Built with URLSearchParams rather than string concatenation. Previously
+    // description, tag values and folder IDs were interpolated raw, so a value
+    // containing "&" or "=" injected extra parameters into the API call -- a
+    // tag named `x&folders[]=42` filed the bookmark into folder 42 regardless
+    // of what the user selected. Only title and url were ever encoded.
+    // zenMode.js already builds its payload this way.
+    const params = new URLSearchParams();
+    params.set('title', title);
+    params.set('url', url);
+    if (showDescription && rawDescription.length > 0) {
+      params.set('description', rawDescription);
+    }
+    // The leading empty tags[] entry is preserved from the original payload:
+    // the parameter has to be present for the API to clear existing tags.
+    params.append('tags[]', '');
+    for (const keyword of keywords) {
+      params.append('tags[]', keyword.value);
+    }
+    if (displayFolders) {
+      for (const id of folderIDs) params.append('folders[]', id);
+    } else {
+      params.append('folders[]', '-1');
+    }
+    params.set('page', '-1');
+
+    const parameters = params.toString();
 
     chrome.runtime.sendMessage({ msg: 'saveBookmark', parameters, folderIDs, bookmarkID });
 

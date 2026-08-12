@@ -8,10 +8,13 @@ const DEBUG = false;
 
 export async function getFolders(force = false) {
   // User does not use folders, so we returns
-  if (!(await getOption('cbx_displayFolders')) && !force) return '';
+  // Empty list, not '' -- the return type is a descriptor array now.
+  if (!(await getOption('cbx_displayFolders')) && !force) return [];
 
   let folders = await cacheGet('folders');
-  if (typeof folders === 'undefined' || folders.length === 0) {
+  // Array check also rejects the pre-0.33 HTML-string cache format, in case a
+  // stale entry reaches this far.
+  if (!Array.isArray(folders) || folders.length === 0) {
     const serverFolders = await apiCall(
       'index.php/apps/bookmarks/public/rest/v2/folder',
       'GET',
@@ -25,11 +28,16 @@ export async function getFolders(force = false) {
 
 // ---------------------------------------------------------------------------------------------------
 /**
- * Renders a folder tree into a flat string of <option> elements, indenting
- * nested folders and sorting each level alphabetically.
+ * Flattens a folder tree into option descriptors, indenting nested folders and
+ * sorting each level alphabetically.
+ *
+ * Returns data, not markup. It used to build an <option> string that consumers
+ * assigned to innerHTML, with folder titles interpolated unescaped -- so a
+ * server-supplied (or shared) folder title could inject arbitrary HTML into the
+ * popup and options pages, and the payload persisted in the 24h folder cache.
  *
  * @param {Array<{id: string, title: string, children?: Array}>} folders - Folder tree from the server.
- * @returns {string} The concatenated <option> markup, always led by the Root option.
+ * @returns {Array<{value: string, name: string}>} Flat list, always led by Root.
  */
 export function preRenderFolders(folders) {
   const userLang = navigator.language || navigator.userLanguage;
@@ -51,7 +59,5 @@ export function preRenderFolders(folders) {
   }
   json2tree(folders);
 
-  return folderStructure
-    .map(({ value, name }) => `<option value="${value}">${name}</option>`)
-    .join('');
+  return folderStructure;
 }
