@@ -89,6 +89,13 @@ global.console = {
 // ---------------------------------------------------------------------------
 // navigator is included because hydrateForm.test.js deletes it outright, which
 // otherwise breaks any later suite reaching navigator.language (getFolders).
+//
+// console is deliberately NOT restored here. It was tried, because a stacked
+// console spy leaking between files made log.test.js briefly see
+// toHaveBeenCalledTimes(1) as 2 -- but replacing globalThis.console breaks
+// Vitest's own console interception and crashes the worker outright. That
+// leak has not reproduced since; if it returns, restore console.log's
+// individual property rather than the whole object.
 const pristineDocument = globalThis.document;
 const pristineWindow = globalThis.window;
 const pristineNavigator = globalThis.navigator;

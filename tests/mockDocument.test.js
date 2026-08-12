@@ -5,93 +5,14 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
-// Import the function we need to test - we'll need to extract it or test via getData
-// For now, let's create a standalone test by importing the getData module and testing the mock document behavior
-
-// We need to mock the createMockDocument function behavior
-// Since it's a private function, we'll test it indirectly through integration tests
-// But let's create a test that validates the mock document interface
+// Tests the real createMockDocument. This file previously inlined a copy of the
+// function, so it verified a duplicate that silently drifted from the original
+// (it had never picked up the 2025 GitHub topic selectors, and did not cover
+// the indexed meta lookup at all). The function now lives in its own module so
+// it can be imported directly without getData.js's dependency graph.
+import { createMockDocument } from '../src/background/modules/mockDocument.js';
 
 describe('Mock Document Interface', () => {
-  // Helper to create mock document (replicating the function from getData.js)
-  function createMockDocument(parsedData) {
-    const mockDoc = {
-      // querySelectorAll implementation - handles both simple and complex selectors
-      querySelectorAll: function(selector) {
-        // Handle specific selectors used in getKeywords.js
-        if (selector === 'a[rel=tag]') {
-          return parsedData.aRelTag.map(text => ({ textContent: text }));
-        }
-        if (selector === 'a[rel=category]') {
-          return parsedData.aRelCategory.map(text => ({ text: text, textContent: text }));
-        }
-        if (selector === 'script[type="application/ld+json"]') {
-          return parsedData.jsonLdScripts.map(text => ({ innerText: text }));
-        }
-        if (selector === 'script') {
-          return parsedData.scripts.map(text => ({ text: text }));
-        }
-        if (selector === 'a[data-ga-click="Topic, repository page"]') {
-          return parsedData.githubTopics.map(text => ({ textContent: text, trim: () => text.trim() }));
-        }
-        // For headlines
-        if (selector.startsWith('h') && selector.length === 2) {
-          const headlines = parsedData.headlines[selector] || [];
-          return headlines.map(text => ({
-            textContent: text,
-            innerText: text,
-            split: (regex) => text.split(regex)
-          }));
-        }
-
-        // Handle meta tag selectors used by getMeta.js
-        // Format examples: [property=\"og:description\" i], [name=\"description\"], [name=\"description\" i]
-        if (selector.includes('[') && selector.includes(']')) {
-          // Extract attribute selector - handle both quoted and unquoted values
-          // Match patterns like: [name=\"description\"], [property=\"og:description\" i], [name=description]
-          const attrMatch = selector.match(/\[([^\]=]+)=(?:"([^"]+)"|([^\s\]]+))(\s+i)?\]/);
-          if (attrMatch) {
-            const attrName = attrMatch[1];
-            const attrValue = attrMatch[2] || attrMatch[3]; // Either quoted or unquoted
-            const isCaseInsensitive = !!attrMatch[4]; // Has " i" suffix
-
-            const filtered = parsedData.metaTags.filter(meta => {
-              const actualValue = meta[attrName];
-              if (!actualValue || !attrValue) return false;
-
-              if (isCaseInsensitive) {
-                return actualValue.toLowerCase() === attrValue.toLowerCase();
-              }
-              return actualValue === attrValue;
-            });
-
-            return filtered.map(meta => ({
-              getAttribute: (attr) => meta[attr],
-              content: meta.content
-            }));
-          }
-        }
-
-        return [];
-      },
-
-      // getElementById implementation
-      getElementById: function(id) {
-        if (id === '__NEXT_DATA__') {
-          return parsedData.nextData ? { innerText: parsedData.nextData, textContent: parsedData.nextData } : null;
-        }
-        return null;
-      },
-
-      // querySelector implementation (for single element)
-      querySelector: function(selector) {
-        const results = this.querySelectorAll(selector);
-        return results.length > 0 ? results[0] : null;
-      }
-    };
-
-    return mockDoc;
-  }
 
   describe('querySelectorAll', () => {
     it('should handle a[rel=tag] selector', () => {
