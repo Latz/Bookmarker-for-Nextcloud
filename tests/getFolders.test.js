@@ -197,12 +197,15 @@ describe('preRenderFolders', () => {
 
     const result = preRenderFolders(folders);
 
-    expect(result).toContain('<option value="-1">Root</option>');
-    // The sort function uses localeCompare with > 0 check, which is unusual
-    // Let's check what actually gets rendered
-    expect(result).toContain('<option value="3">C Folder</option>');
-    expect(result).toContain('<option value="1">A Folder</option>');
-    expect(result).toContain('<option value="2">B Folder</option>');
+    // Assert the actual ordering, not just presence: the previous comparator
+    // returned a boolean and never sorted, and per-option `toContain` checks
+    // passed regardless.
+    expect(result).toBe(
+      '<option value="-1">Root</option>' +
+        '<option value="1">A Folder</option>' +
+        '<option value="2">B Folder</option>' +
+        '<option value="3">C Folder</option>',
+    );
   });
 
   it('should render nested folders with proper indentation', () => {

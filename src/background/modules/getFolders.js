@@ -24,14 +24,25 @@ export async function getFolders(force = false) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+/**
+ * Renders a folder tree into a flat string of <option> elements, indenting
+ * nested folders and sorting each level alphabetically.
+ *
+ * @param {Array<{id: string, title: string, children?: Array}>} folders - Folder tree from the server.
+ * @returns {string} The concatenated <option> markup, always led by the Root option.
+ */
 export function preRenderFolders(folders) {
-  let userLang = navigator.language || navigator.userLanguage;
-  let folderStructure = [{ name: 'Root', value: '-1' }]; // root folder
+  const userLang = navigator.language || navigator.userLanguage;
+  const folderStructure = [{ name: 'Root', value: '-1' }]; // root folder
+  // One collator for the whole tree. `localeCompare` allocates a collator per
+  // comparison, and the previous `> 0` comparator returned a boolean — which
+  // coerces to 1/0 and so could never express "a sorts before b".
+  const collator = new Intl.Collator(userLang);
 
   // recursively create folder structure
   function json2tree(folders, x = '') {
     if (folders !== undefined) {
-      folders.sort((a, b) => a.title.localeCompare(b.title, userLang) > 0);
+      folders.sort((a, b) => collator.compare(a.title, b.title));
       for (let f of folders) {
         folderStructure.push({ name: `${x}${f.title}`, value: f.id });
         if (f.children) json2tree(f.children, `${x}\u2007\u2007`);

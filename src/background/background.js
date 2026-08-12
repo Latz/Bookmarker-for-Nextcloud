@@ -176,8 +176,10 @@ async function init() {
  * Fire-and-forget — errors are silently ignored.
  */
 async function warmupConnection() {
-  const credentials = await load_data('credentials', 'server');
-  if (!credentials?.server) return;
+  // `load_data` unwraps single-item reads (storage.js), so this resolves to the
+  // server URL string itself — not an object with a `server` property.
+  const server = await load_data('credentials', 'server');
+  if (!server) return;
 
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const data = new URLSearchParams({ page: 0, limit: 1 }).toString();

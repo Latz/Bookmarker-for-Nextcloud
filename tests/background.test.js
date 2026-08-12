@@ -71,7 +71,11 @@ vi.mock('../src/lib/storage.js', () => ({
     };
     return Promise.resolve(options[key]);
   }),
-  load_data: vi.fn(() => Promise.resolve({})),
+  // Default to "not found", which is what the real load_data returns for a
+  // missing item. The previous `{}` default was truthy, so once
+  // warmupConnection was fixed it fired an apiCall on every background.js
+  // import and consumed mock values queued for other assertions.
+  load_data: vi.fn(() => Promise.resolve(undefined)),
 }));
 
 vi.mock('../src/background/modules/notification.js', () => ({
@@ -494,9 +498,13 @@ describe('background.js', () => {
   });
 
   describe('warmupConnection', () => {
+    // `load_data` unwraps single-item reads, so `load_data('credentials', 'server')`
+    // resolves to the URL string itself. These mocks previously returned
+    // `{ server: … }`, a shape the real function never produces — which is why
+    // the suite stayed green while warmupConnection always bailed out early.
     it('should call apiCall with bookmark endpoint when server is configured', async () => {
       const { load_data } = await import('../src/lib/storage.js');
-      load_data.mockResolvedValueOnce({ server: 'https://nextcloud.example.com' });
+      load_data.mockResolvedValueOnce('https://nextcloud.example.com');
 
       await import('../src/background/background.js');
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -510,7 +518,7 @@ describe('background.js', () => {
 
     it('should not call apiCall when server is not configured', async () => {
       const { load_data } = await import('../src/lib/storage.js');
-      load_data.mockResolvedValueOnce({});
+      load_data.mockResolvedValueOnce(undefined);
 
       await import('../src/background/background.js');
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -521,7 +529,7 @@ describe('background.js', () => {
 
     it('should silently ignore errors from the API call', async () => {
       const { load_data } = await import('../src/lib/storage.js');
-      load_data.mockResolvedValueOnce({ server: 'https://nextcloud.example.com' });
+      load_data.mockResolvedValueOnce('https://nextcloud.example.com');
       apiCall.mockRejectedValueOnce(new Error('Network error'));
 
       // Should not throw
