@@ -41,16 +41,20 @@ async function timeoutFetch(resource, options = {}) {
   const id = setTimeout(() => controller.abort(), timeout);
 
   // If external signal provided, abort internal controller when external aborts
-  if (externalSignal) {
-    externalSignal.addEventListener('abort', () => controller.abort());
-  }
+  const onExternalAbort = () => controller.abort();
+  externalSignal?.addEventListener('abort', onExternalAbort);
 
-  const response = await fetch(resource, {
-    ...options,
-    signal: controller.signal,
-  });
-  clearTimeout(id);
-  return response;
+  try {
+    return await fetch(resource, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    // Both must run even when fetch rejects: otherwise the timer stays armed
+    // and the listener accumulates on a reused external signal.
+    clearTimeout(id);
+    externalSignal?.removeEventListener('abort', onExternalAbort);
+  }
 }
 async function resolveServerAndAuth(data) {
   if (typeof data === 'object' && 'host' in data) {

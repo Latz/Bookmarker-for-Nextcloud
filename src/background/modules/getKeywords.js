@@ -18,43 +18,65 @@ const DEBUG = false;
  */
 
 /**
+ * Builds a lookup Set of lowercased stored keywords.
+ *
+ * Returns null when there is nothing to match against, which callers treat as
+ * "no keywords survive reduction".
+ *
+ * @param {Array<string>|{ok: boolean}|undefined} allKeywordsRaw - Stored keyword list, or an API error object.
+ * @returns {Set<string>|null} Lowercased lookup set, or null if unusable.
+ */
+function buildKeywordLookup(allKeywordsRaw) {
+  if (
+    allKeywordsRaw === undefined ||
+    Object.keys(allKeywordsRaw).length === 0 ||
+    // no keywords on server, api returns an error
+    allKeywordsRaw?.ok === false
+  ) {
+    return null;
+  }
+  return new Set(allKeywordsRaw.map((keyword) => keyword.toLowerCase()));
+}
+
+/**
  * Reduces an array of keywords by removing duplicates and filtering out
  * any keywords that are not present in the cache.
  *
  * @param {Array} keywords - An array of keywords to be reduced.
- * @return {Array} - An array of reduced keywords.
+ * @param {boolean} [force] - Reduce even when the user disabled reduction.
+ * @param {Set<string>|Array<string>|null} [cachedAllKeywords] - Pre-built lookup Set (preferred) or raw keyword array. Omit to read from the cache.
+ * @param {boolean} [reduceEnabled] - Pre-fetched cbx_reduceKeywords, to avoid re-reading it in a loop.
+ * @return {Promise<Array>} - An array of reduced keywords.
  */
-async function reduceKeywords(keywords, force = false, cachedAllKeywords = null) {
-  const cbx_reduceKeywords = await getOption('cbx_reduceKeywords');
+async function reduceKeywords(
+  keywords,
+  force = false,
+  cachedAllKeywords = null,
+  reduceEnabled = null,
+) {
+  const cbx_reduceKeywords =
+    reduceEnabled ?? (await getOption('cbx_reduceKeywords'));
 
   if (force === false && cbx_reduceKeywords === false) {
     // if the user does not want to reduce the keywords, we return
     return keywords;
   }
 
-  keywords = [...new Set(keywords)];
-
-  // Use pre-fetched list if provided, otherwise fetch from DB
-  const allKeywordsRaw = cachedAllKeywords ?? await cacheGet('keywords');
-  if (allKeywordsRaw === undefined || Object.keys(allKeywordsRaw).length === 0) {
-    return [];
+  // A Set turns the per-word membership test below from a linear scan of the
+  // whole stored keyword list into a hash lookup. Callers in a loop pass a
+  // prebuilt Set so it is not rebuilt for every headline.
+  let lookup;
+  if (cachedAllKeywords instanceof Set) {
+    lookup = cachedAllKeywords;
+  } else {
+    lookup = buildKeywordLookup(cachedAllKeywords ?? (await cacheGet('keywords')));
   }
+  if (lookup === null) return [];
 
-  // no keywords on server, api returns an error
-  if (allKeywordsRaw?.ok === false) {
-    return [];
-  }
+  // dedupe first so the lookup runs once per distinct keyword
+  const unique = [...new Set(keywords)];
 
-  const allKeywords = allKeywordsRaw.map((keyword) => keyword.toLowerCase());
-
-  let reducedKeywords = keywords.filter((keyword) =>
-    allKeywords.includes(keyword.toLowerCase()),
-  );
-
-  // make keywords unique
-  reducedKeywords = [...new Set(reducedKeywords)];
-
-  return reducedKeywords;
+  return unique.filter((keyword) => lookup.has(keyword.toLowerCase()));
 }
 
 // ----------------------------------------------------------------------------------------
@@ -373,15 +395,19 @@ export default async function getKeywords(content, document) {
   if (!options.cbx_extendedKeywords) return [];
   log(DEBUG, 'Extended Keywords!');
 
-  // Fetch keyword list once for all extended-mode reduce calls below
-  const allKeywords = await cacheGet('keywords');
+  // Build the lookup once for all extended-mode reduce calls below. Previously
+  // the raw list was re-lowercased on every call, once per headline.
+  const keywordLookup = buildKeywordLookup(await cacheGet('keywords'));
+  // force === true below, so cbx_reduceKeywords never gates these calls; pass
+  // it explicitly anyway so reduceKeywords does not re-read it per headline.
+  const reduceEnabled = await getOption('cbx_reduceKeywords');
 
   // --- description ---
   log(DEBUG, 'Description');
   let description = getDescription(document);
   if (description.length > 0) {
     const words = description.split(/[\W_]+/g);
-    keywords = await reduceKeywords(words, true, allKeywords);
+    keywords = await reduceKeywords(words, true, keywordLookup, reduceEnabled);
     if (keywords.length > 0) {
       return keywords;
     }
@@ -395,7 +421,12 @@ export default async function getKeywords(content, document) {
 
     for (const headline of headlines) {
       const words = headline.innerText.split(/[\W_]+/g);
-      const reducedKw = await reduceKeywords(words, true, allKeywords);
+      const reducedKw = await reduceKeywords(
+        words,
+        true,
+        keywordLookup,
+        reduceEnabled,
+      );
       if (reducedKw && reducedKw.length > 0) {
         keywords = reducedKw;
         break;

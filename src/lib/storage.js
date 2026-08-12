@@ -330,32 +330,37 @@ export async function initDatabase(db, oldVersion) {
 
 // -----------------------------------------------------------------------
 export function initDefaults() {
-  store_data('options', { cbx_showUrl: true });
-  store_data('options', { cbx_showDescription: true });
-  store_data('options', { cbx_autoDescription: true });
-  store_data('options', { cbx_showKeywords: true });
-  store_data('options', { cbx_successMessage: true });
-  store_data('options', { cbx_alreadyStored: true });
-  store_data('options', { cbx_autoTags: true });
-  store_data('options', { input_headings_slider: 3 });
-  store_data('options', { input_networkTimeout: 10 });
-  store_data('options', { input_numberOfRetries: 5 });
-  store_data('options', { cbx_reduceKeywords: true });
-  store_data('options', { folderIDs: ['-1'] }); // Default to root folder
-  store_data('options', { zenFolderIDs: ['-1'] }); // Default to root folder
+  // One store_data call: it already iterates Object.entries internally and
+  // issues the puts in parallel, so this is a single pass over one connection
+  // instead of 20 sequential round trips.
+  return store_data('options', {
+    cbx_showUrl: true,
+    cbx_showDescription: true,
+    cbx_autoDescription: true,
+    cbx_showKeywords: true,
+    cbx_successMessage: true,
+    cbx_alreadyStored: true,
+    cbx_autoTags: true,
+    input_headings_slider: 3,
+    input_networkTimeout: 10,
+    input_numberOfRetries: 5,
+    cbx_reduceKeywords: true,
+    folderIDs: ['-1'], // Default to root folder
+    zenFolderIDs: ['-1'], // Default to root folder
 
-  // Zen mode options
-  store_data('options', { cbx_enableZen: false }); // Zen mode disabled by default
-  store_data('options', { cbx_zenDisplayNotification: true }); // Show notifications in zen mode by default
+    // Zen mode options
+    cbx_enableZen: false, // Zen mode disabled by default
+    cbx_zenDisplayNotification: true, // Show notifications in zen mode by default
 
-  // Enhanced duplicate checking options
-  store_data('options', { cbx_fuzzyUrlMatch: true }); // Normalize URLs to catch variants
-  store_data('options', { cbx_cacheBookmarkChecks: true }); // Cache bookmark duplicate checks
-  store_data('options', { input_bookmarkCacheTTL: 10 }); // Cache TTL in minutes
-  store_data('options', { select_duplicateStrategy: 'update_existing' }); // Default duplicate handling
-  store_data('options', { cbx_titleSimilarityCheck: false }); // Title similarity check (off by default)
-  store_data('options', { input_titleSimilarityThreshold: 75 }); // Title similarity threshold (0-100)
-  store_data('options', { input_titleCheckLimit: 20 }); // Limit bookmarks fetched for title check (performance)
+    // Enhanced duplicate checking options
+    cbx_fuzzyUrlMatch: true, // Normalize URLs to catch variants
+    cbx_cacheBookmarkChecks: true, // Cache bookmark duplicate checks
+    input_bookmarkCacheTTL: 10, // Cache TTL in minutes
+    select_duplicateStrategy: 'update_existing', // Default duplicate handling
+    cbx_titleSimilarityCheck: false, // Title similarity check (off by default)
+    input_titleSimilarityThreshold: 75, // Title similarity threshold (0-100)
+    input_titleCheckLimit: 20, // Limit bookmarks fetched for title check (performance)
+  });
 }
 
 // -----------------------------------------------------------------------

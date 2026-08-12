@@ -229,28 +229,24 @@ async function checkCache(url, cacheBookmarkChecks) {
 }
 
 async function checkBookmark(url, title, signal = null) {
-  const essentialOptions = await getOptions([
+  // One batched read: getOptions fetches in parallel off a single connection
+  // and is Map-cached, so splitting this saved nothing and cost a second
+  // IndexedDB round trip on a cold service worker.
+  const allOptions = await getOptions([
     'cbx_alreadyStored',
     'cbx_cacheBookmarkChecks',
-  ]);
-
-  if (!essentialOptions.cbx_alreadyStored) {
-    return { ok: true, found: false, matches: [], count: 0 };
-  }
-
-  const cached = await checkCache(
-    url,
-    essentialOptions.cbx_cacheBookmarkChecks,
-  );
-  if (cached) return cached;
-
-  const remainingOptions = await getOptions([
     'cbx_fuzzyUrlMatch',
     'input_bookmarkCacheTTL',
     'cbx_titleSimilarityCheck',
   ]);
 
-  const allOptions = { ...essentialOptions, ...remainingOptions };
+  if (!allOptions.cbx_alreadyStored) {
+    return { ok: true, found: false, matches: [], count: 0 };
+  }
+
+  const cached = await checkCache(url, allOptions.cbx_cacheBookmarkChecks);
+  if (cached) return cached;
+
   const normalizedUrl = normalizeUrl(url);
   const cacheKey = allOptions.cbx_fuzzyUrlMatch ? normalizedUrl : url;
 

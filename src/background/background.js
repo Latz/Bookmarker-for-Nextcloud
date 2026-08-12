@@ -27,7 +27,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       break;
     case 'getData':
       (async () => sendResponse(await getData(request.data)))();
-      break;
+      // Only this branch answers asynchronously, so only this branch needs the
+      // message channel held open.
+      return true;
     case 'authorize':
       chrome.tabs.create({
         url: 'login/login.html',
@@ -40,7 +42,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       zenMode();
       break;
   }
-  return true;
+  return false;
 });
 
 // ------------------------------------------------------------------------------------------------
