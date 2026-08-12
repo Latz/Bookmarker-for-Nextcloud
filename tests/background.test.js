@@ -408,12 +408,15 @@ describe('background.js', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       expect(getBrowserTheme).toHaveBeenCalled();
+      // Chrome renders the action icon at 16px (32px at 2x DPR) and downsamples
+      // whatever it is handed, so only 16/32/64/128 are supplied now. Passing
+      // the 256/512 assets meant decoding 50 KB per worker start for nothing.
       expect(chrome.action.setIcon).toHaveBeenCalledWith({
         path: {
+          16: '/images/icon-16x16-dark.png',
+          32: '/images/icon-32x32-dark.png',
           64: '/images/icon-64x64-dark.png',
-          256: '/images/icon-256x256-dark.png',
           128: '/images/icon-128x128-dark.png',
-          512: '/images/icon-512x512-dark.png',
         },
       });
     });

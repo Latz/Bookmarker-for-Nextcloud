@@ -1,6 +1,6 @@
 // @ts-check
 import { createForm, hydrateForm } from './modules/hydrateForm.js';
-import { load_data, getOption } from '../lib/storage.js';
+import { load_data, getOption, getOptions } from '../lib/storage.js';
 import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
 
 /**
@@ -26,12 +26,38 @@ const sessionPromise = (async () => {
   ]);
 
   const needsForm = apppwd !== undefined && !enableZen;
+  if (needsForm) prefetchFormOptions();
   return {
     apppwd,
     enableZen,
     dataPromise: needsForm ? getDataWithRetry() : null,
   };
 })();
+
+/**
+ * Warms the options cache with every key the render path reads.
+ *
+ * createForm, hydrateForm and fillFolders each read options *after* the data
+ * arrives, serialising storage round trips behind the network round trip.
+ * These reads depend on neither the DOM nor getData, so they can run inside
+ * the window the round trip already occupies. getOption and getOptions share
+ * one module-level Map (storage.js), so a single batched fetch here means the
+ * later calls are cache hits.
+ *
+ * Fire-and-forget: a failure here just means the later read does its own work.
+ * @returns {void}
+ */
+function prefetchFormOptions() {
+  getOptions([
+    'cbx_showUrl',
+    'cbx_displayFolders',
+    'cbx_showKeywords',
+    'cbx_showDescription',
+    'cbx_alreadyStored',
+    'cbx_autoDescription',
+    'folderIDs',
+  ]).catch(() => {});
+}
 
 /** Resolves once the document has finished loading. */
 const domReady =
@@ -81,6 +107,15 @@ boot.catch((error) => {
  * @returns {Promise<Object>} The data from the background or error object
  */
 async function getDataWithRetry() {
+  // Dispatch first, read the retry count alongside it. Awaiting the option
+  // before the first sendMessage would put a storage read in front of the
+  // round trip this whole module is arranged to start as early as possible --
+  // the count is not needed until the first attempt has already failed.
+  let pending = chrome.runtime.sendMessage({ msg: 'getData' });
+  // Mark it handled: if the option read below rejects first we never reach the
+  // await, and an in-flight rejection would surface as an unhandled one. The
+  // await still observes the real rejection.
+  pending.catch(() => {});
   const maxRetries = await getOption('input_numberOfRetries');
   const retryCount = Number.isFinite(maxRetries) && maxRetries > 0 ? Math.round(maxRetries) : 5;
 
@@ -88,7 +123,8 @@ async function getDataWithRetry() {
 
   for (let attempt = 0; attempt < retryCount; attempt++) {
     // Exceptions from sendMessage propagate immediately (no retry on throws)
-    const data = await chrome.runtime.sendMessage({ msg: 'getData' });
+    const data = await (pending ?? chrome.runtime.sendMessage({ msg: 'getData' }));
+    pending = null;
 
     // If the data is ok, return it immediately
     if (data.ok) {

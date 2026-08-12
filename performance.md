@@ -320,3 +320,188 @@ npx vitest run --pool=threads
 ```
 
 Note that P1-4's fix will likely require updating the warm-up tests, since they currently mock `load_data` with a return shape the real function does not produce.
+
+---
+---
+
+# Second Pass — 2026-08-12
+
+Written after the first pass was applied. Its purpose is to catch what the first
+review missed, so it deliberately does **not** restate the original 16 findings.
+
+## 8. Status of the first pass
+
+15 of 16 findings applied across six commits. P0-1 deferred by decision.
+
+| # | Finding | Status | Commit |
+|---|---------|--------|--------|
+| P0-1 | MB-scale HTML round trips | **deferred** | — |
+| P0-2 | Popup gated on `readyState` | applied | `235dae9` |
+| P0-3 | Per-entry Tailwind scoping | applied | `dfcd3c6` |
+| P1-4 | `warmupConnection()` inert | applied | `01f8322` |
+| P1-5 | Tagify/textfit eager | applied | `235dae9` |
+| P1-6 | Retrying terminal errors | applied | `235dae9` |
+| P1-7 | Quadratic `reduceKeywords` | applied | `49e31d3` |
+| P1-8 | Folder sort comparator | applied | `01f8322` |
+| P2-9 | Credential logging | applied | `79a99ba` |
+| P2-10 | `initDefaults` batching | applied | `49e31d3` |
+| P2-11 | Split `getOptions` | applied | `49e31d3` |
+| P2-12 | `timeoutFetch` cleanup | applied | `49e31d3` |
+| P2-13 | Message listener `return true` | applied | `49e31d3` |
+| P2-14 | AbortController timer | no change needed (informational) | — |
+| P2-15 | Image weight | partly superseded by **N3** below | — |
+| P2-16 | Release sourcemaps | applied | `dfcd3c6` |
+
+Measured outcomes:
+
+| | before | after |
+|---|---|---|
+| Eager popup JS | ~103 KB | 25 KB |
+| Popup CSS (`dist`) | 81 KB | 44 KB |
+| **Eager popup payload** | **~165 KB** | **~69 KB** |
+| Sourcemaps in `dist` | ~350 KB | 0 |
+| Full test run | 540 s, 15 files never started | ~75 s, 26 files run |
+
+## 9. What the first pass missed, and why
+
+The first review traced the **popup** critical path in detail and treated the
+**service worker's own startup** as a black box — `init()` was never examined.
+That is where most of the findings below live, and in MV3 it matters more than
+the framing implied: the worker is killed after ~30 s idle, so `init()` runs on
+every cold start, plausibly more often than any single popup path.
+
+Stating the blind spot explicitly so the reader can judge what else may be
+unexamined: this pass covered SW startup, notification/icon handling, the
+post-data popup render path, and dead code. It did **not** cover the options
+page or login flow in depth, and still involved no runtime profiling.
+
+## 10. New findings
+
+### N1 — HIGH — `init()` is a fully sequential chain on every cold start
+
+`src/background/background.js:117-172`
+
+Five awaits in a row, each blocking the next:
+
+```
+await getBrowserTheme()           → offscreen round trip, or session cache
+await chrome.action.setIcon()     → decodes 4 PNGs, incl. a 50 KB 512×512
+await initializeErrorIconCache()  → 2 sequential fetches (see N2)
+await getOption('cbx_enableZen')  → IndexedDB
+    then contextMenus.removeAll() + 2 creates
+    then warmupConnection()
+```
+
+Almost none of this is ordered by a real dependency. The icon work, the
+error-icon cache and the zen option read are mutually independent; only
+`setIcon` genuinely depends on `getBrowserTheme`, and only the context-menu
+creation depends on the zen option. While `init()` grinds, the worker is busy
+rather than answering the popup's `getData` message.
+
+**Interaction with P1-4 worth noting:** `warmupConnection()` — which exists
+purely to prime the connection *early* — fires **last**, behind everything
+above. Now that it actually runs (it never did before `01f8322`), hoisting it
+to the top of `init()` is probably the single highest-value line change
+available here.
+
+**Fix:** start `warmupConnection()` first, then `Promise.all` the independent
+groups.
+
+### N2 — MEDIUM — `initializeErrorIconCache` fetches sequentially
+
+`src/background/modules/notification.js:38-45`
+
+```js
+for (const theme of ['light', 'dark']) {
+  const response = await fetch(chrome.runtime.getURL(`/images/icon-128x128-${theme}-error.png`));
+```
+
+Two serial round trips where one `Promise.all` suffices. Runs on cold start
+whenever the session cache is empty.
+
+### N3 — MEDIUM — Oversized action icons, while correctly-sized ones sit unused
+
+`src/background/background.js:122-129`
+
+`setIcon` is given 64/128/256/512. Chrome renders the toolbar icon at 16 px
+(32 px at 2× DPR), so it downsamples a **50 KB 512×512 PNG** on every cold
+start — slower *and* visually worse than supplying the intended size.
+
+`public/images/icon-16x16-light.png` (2.4 KB) and `icon-32x32-light.png`
+(3.1 KB) **already exist in the repo** and are referenced by neither `setIcon`
+nor `manifest.json`'s `icons`. This is a free win using assets already present,
+and it supersedes most of P2-15.
+
+### N4 — MEDIUM — Storage waterfall on the popup render path
+
+`hydrateForm.js:65`, `hydrateForm.js:101`, `fillFolders.js:20`, `fillKeywords.js:17`
+
+After the data arrives: `getOptions`(5) → `getOptions`(2) → `getOption('folderIDs')`
+→ `cacheGet('keywords')`. The two `getOptions` are Map-cached and nearly free,
+but `folderIDs` and the keyword list are separate reads on the render path, and
+`cacheGet('keywords')` can escalate to a **network call** on a cold cache.
+
+P0-2 now starts the `getData` round trip much earlier, which leaves that window
+idle. These reads are prefetchable in parallel with it instead of serialised
+behind it.
+
+### N5 — LOW — `saveBookmarks.js` uses three `getOption` calls
+
+`src/popup/modules/saveBookmarks.js:19-23`. Three separate reads where
+`getOptions` (`storage.js:203`) does one batched fetch — the pattern the rest of
+the codebase follows and that `49e31d3` applied elsewhere. Runs on every save.
+
+### N6 — LOW — `getMeta` rescans the meta list per selector
+
+`src/background/modules/getMeta.js:16`, filtering `getData.js:503`
+
+Called with 7 selectors from `getDescription` and 9 from `getKeywords`. Each
+call re-parses a selector string with a regex and linearly filters
+`parsedData.metaTags` — up to 16 scans per page. Indexing the meta tags once by
+`name`/`property` makes each lookup O(1). Bounded by page meta count, hence LOW.
+
+### N7 — LOW — `spinner.js` is dead code
+
+`src/background/modules/spinner.js` is imported by nothing (the only other
+`spinner` reference in the tree is `login.css` pointing at `spinner.gif`). It
+also carries a bug — `next()` increments `this.index`, then unconditionally
+returns `this.elements[0]` — and an `intervalId` that is never used. Delete it.
+
+### N8 — LOW — regression introduced by P0-2
+
+`src/popup/popup.js:84`
+
+P0-2 moved the `getData` dispatch to module load, but `getDataWithRetry` still
+does `await getOption('input_numberOfRetries')` **before** its first
+`sendMessage`. A storage read therefore sits in front of the round trip the
+change exists to start early.
+
+Recorded as a defect in the applied work, not a pre-existing miss. Fix by
+fetching the retry count in parallel with the first attempt.
+
+## 11. Correction to the first pass
+
+**`performance.md`'s P0-3 fix sketch was wrong.** It proposed per-entry
+`tailwind.config.js` files with narrowed `content` globs. Tailwind 4 **ignores
+the legacy `content` key** and scans automatically, so that approach is a no-op
+— when tried, the generated CSS grew by ~640 bytes and the options-only daisyUI
+components were still present in `popup.css`.
+
+The working fix, in `dfcd3c6`, is `@import "tailwindcss" source(none)` plus an
+explicit `@source` per entry point. Anyone reading section 3 in isolation would
+otherwise repeat the mistake.
+
+## 12. Remaining work, in priority order
+
+1. **P0-1** — in-page extraction, eliminating the MB-scale HTML clones. Still
+   the largest single item in the codebase, and it also resolves **S5** in
+   `security.md` (whole-DOM capture). Deferred by decision, not by analysis.
+2. **N1** — parallelise `init()`; hoist `warmupConnection()` to the front.
+3. **N3** — use the 16/32 px icons that already exist.
+4. **N2**, **N4** — parallelise the two remaining serial groups.
+5. **N5**–**N8** — small, independent, individually trivial.
+
+Also still open from `security.md`, and cheap: **S2** is closed (`79a99ba`), but
+**S1** (folder-title HTML injection) and **S3** (parameter injection on save)
+remain. S3 in particular overlaps N5 — both are in `saveBookmarks.js` and would
+naturally be fixed in one pass.

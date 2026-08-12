@@ -34,15 +34,25 @@ export async function initializeErrorIconCache() {
     }
   }
 
-  // Full check via fetch (runs once per browser session when SW first cold-starts)
-  for (const theme of ['light', 'dark']) {
-    try {
-      const response = await fetch(chrome.runtime.getURL(`/images/icon-128x128-${theme}-error.png`));
-      errorIconsAvailable[theme] = response.ok;
-    } catch (e) {
-      errorIconsAvailable[theme] = false;
-    }
-  }
+  // Full check via fetch (runs once per browser session when SW first cold-starts).
+  // Both themes are probed in parallel -- they are independent, and this sits on
+  // the cold-start path.
+  const themes = ['light', 'dark'];
+  const results = await Promise.all(
+    themes.map(async (theme) => {
+      try {
+        const response = await fetch(
+          chrome.runtime.getURL(`/images/icon-128x128-${theme}-error.png`),
+        );
+        return response.ok;
+      } catch (e) {
+        return false;
+      }
+    }),
+  );
+  themes.forEach((theme, i) => {
+    errorIconsAvailable[theme] = results[i];
+  });
 
   // Persist result to session storage
   if (chrome.storage?.session) {

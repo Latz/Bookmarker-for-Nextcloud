@@ -37,6 +37,9 @@ vi.mock('../src/popup/modules/hydrateForm.js', () => ({
 vi.mock('../src/lib/storage.js', () => ({
   load_data: vi.fn(),
   getOption: vi.fn(),
+  // popup.js prefetches the render-path options in parallel with the getData
+  // round trip; resolve to an empty object so the fire-and-forget call settles.
+  getOptions: vi.fn(() => Promise.resolve({})),
 }));
 
 vi.mock('../src/popup/modules/saveBookmarks.js', () => ({

@@ -434,6 +434,35 @@ function mergeMatches(urlMatches, titleMatches) {
  * @returns {Object} Mock document object with DOM-like methods
  */
 function createMockDocument(parsedData) {
+  // Lazily built index: attribute name -> lowercased value -> matching metas.
+  // getMeta is called with 7 selectors from getDescription and 9 from
+  // getKeywords, and each one used to scan the whole metaTags array. Building
+  // one bucket per attribute name turns the repeats into hash lookups.
+  const metaIndex = new Map();
+
+  /**
+   * @param {string} attrName - Meta attribute to match on (name, property, ...).
+   * @param {string} attrValue - Value to look up; matched case-insensitively.
+   * @returns {Array<Object>} Matching raw meta entries, or an empty array.
+   */
+  function metaBucket(attrName, attrValue) {
+    if (!attrValue) return [];
+    let byValue = metaIndex.get(attrName);
+    if (!byValue) {
+      byValue = new Map();
+      for (const meta of parsedData.metaTags) {
+        const actual = meta[attrName];
+        if (!actual) continue;
+        const key = actual.toLowerCase();
+        const bucket = byValue.get(key);
+        if (bucket) bucket.push(meta);
+        else byValue.set(key, [meta]);
+      }
+      metaIndex.set(attrName, byValue);
+    }
+    return byValue.get(attrValue.toLowerCase()) ?? [];
+  }
+
   const mockDoc = {
     // querySelectorAll implementation - handles both simple and complex selectors
     querySelectorAll: function (selector) {
@@ -500,15 +529,12 @@ function createMockDocument(parsedData) {
           const attrValue = attrMatch[2] || attrMatch[3]; // Either quoted or unquoted
           const isCaseInsensitive = !!attrMatch[4]; // Has " i" suffix
 
-          const filtered = parsedData.metaTags.filter((meta) => {
-            const actualValue = meta[attrName];
-            if (!actualValue || !attrValue) return false;
-
-            if (isCaseInsensitive) {
-              return actualValue.toLowerCase() === attrValue.toLowerCase();
-            }
-            return actualValue === attrValue;
-          });
+          // The index is keyed case-insensitively; a case-sensitive selector
+          // just filters the (small) bucket down to exact matches.
+          const bucket = metaBucket(attrName, attrValue);
+          const filtered = isCaseInsensitive
+            ? bucket
+            : bucket.filter((meta) => meta[attrName] === attrValue);
 
           return filtered.map((meta) => ({
             getAttribute: (attr) => meta[attr],

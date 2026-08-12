@@ -114,29 +114,49 @@ async function saveBookmark(data, folderIDs, bookmarkID) {
 // initialize extension
 // ------------------------------------------------------------------------------------------------
 
-async function init() {
-  // Set icon based on browser theme with proper error handling
-  // Fallback to light theme if detection fails
+/**
+ * Sets the toolbar icon to match the browser theme.
+ *
+ * Only 16/32/64/128 are supplied: Chrome renders the action icon at 16px
+ * (32px at 2x DPR) and downsamples whatever it is given, so handing it the
+ * 512x512 asset meant decoding 50 KB on every worker start for a 16px slot --
+ * slower and blurrier than providing the intended size.
+ *
+ * Falls back to the manifest default (light) if theme detection fails.
+ * @returns {Promise<void>}
+ */
+async function applyThemedIcon() {
   try {
     const browserTheme = await getBrowserTheme();
     await chrome.action.setIcon({
       path: {
+        16: `/images/icon-16x16-${browserTheme}.png`,
+        32: `/images/icon-32x32-${browserTheme}.png`,
         64: `/images/icon-64x64-${browserTheme}.png`,
-        256: `/images/icon-256x256-${browserTheme}.png`,
         128: `/images/icon-128x128-${browserTheme}.png`,
-        512: `/images/icon-512x512-${browserTheme}.png`,
       },
     });
   } catch (error) {
     console.error('Failed to detect browser theme, using default:', error);
-    // Icon will remain as manifest default (light)
   }
+}
 
-  // Initialize error icon availability cache (checked once at startup)
-  await initializeErrorIconCache();
+async function init() {
+  // Kick the connection warm-up off first. It is fire-and-forget, and
+  // everything below is local work that would otherwise delay the very thing
+  // this call exists to do early.
+  warmupConnection().catch(() => {});
+
+  // These three are mutually independent -- running them in sequence just made
+  // the worker slower to reach the point where it can answer a getData
+  // message, on every cold start.
+  const [, , zenModeEnabled] = await Promise.all([
+    applyThemedIcon(),
+    initializeErrorIconCache(),
+    getOption('cbx_enableZen'),
+  ]);
 
   chrome.contextMenus.removeAll();
-  const zenModeEnabled = await getOption('cbx_enableZen');
   try {
     chrome.contextMenus.create({
       id: 'menuEnableZen',
@@ -166,9 +186,6 @@ async function init() {
   //   title: 'Create old database',
   //   contexts: ['action'],
   // });
-
-  // Fire-and-forget: warm up TCP/TLS and auth cache on every SW startup
-  warmupConnection().catch(() => {});
 }
 
 
