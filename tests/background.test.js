@@ -487,6 +487,33 @@ describe('background.js', () => {
       expect(cacheTempAdd).not.toHaveBeenCalled();
     });
 
+    it('should not touch the keyword cache on a network failure (status -1)', async () => {
+      apiCall.mockResolvedValueOnce({ status: -1, statusText: 'Failed to fetch' });
+
+      const params = new URLSearchParams();
+      params.append('tags[]', 'newKeyword1');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(cacheGet).not.toHaveBeenCalled();
+      expect(cacheTempAdd).not.toHaveBeenCalled();
+    });
+
     it('should not throw when the keyword cache lookup fails', async () => {
       apiCall.mockResolvedValueOnce({ status: 'success', data: { id: 123 } });
       cacheGet.mockRejectedValueOnce(new Error('Cache error'));

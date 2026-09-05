@@ -89,7 +89,8 @@ chrome.contextMenus.onClicked.addListener((info) => {
 // ------------------------------------------------------------------------------------------------
 /**
  * Saves a bookmark by making an API call to create a new bookmark or update an existing one.
- * It also stores the last selected folders and displays a notification to the user based on the response from the API call.
+ * It also stores the last selected folders, displays a notification to the user based on the response from the API call,
+ * and, on success, adds any newly-used tags to the keyword-suggestion cache.
  * @param {object} data - The data of the bookmark to be saved.
  * @param {array} folderIDs - The IDs of the folders where the bookmark should be saved.
  * @param {number} bookmarkID - The ID of the bookmark to be updated, if it exists.
@@ -109,15 +110,20 @@ async function saveBookmark(data, folderIDs, bookmarkID) {
   chrome.action.setBadgeText({ text: '' });
   notifyUser(response);
 
-  if (response.status !== 'error') {
+  if (response.status === 'success') {
     updateKeywordCache(data).catch((error) => {
       console.error('Error updating cache:', error);
     });
   }
 }
 
-// Runs in the service worker (not the popup) so it isn't cut off by
-// `window.close()` -- the popup's own attempt at this raced its teardown.
+/**
+ * Adds any newly-used tags from a save to the keyword-suggestion cache.
+ * Runs in the service worker (not the popup) so it isn't cut off by
+ * `window.close()` -- the popup's own attempt at this raced its teardown.
+ * @param {object} data - The saved bookmark's form data (URLSearchParams-compatible).
+ * @returns {Promise<void>}
+ */
 async function updateKeywordCache(data) {
   const keywords = new URLSearchParams(data)
     .getAll('tags[]')
