@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Moved the keyword-suggestion cache update from the popup to the background script, fixing a race with `window.close()` that could drop newly-used tags.
+- Tightened the save-success check for the keyword cache so a failed or timed-out save no longer pollutes it with tags that were never actually saved.
+
 ## JS Modernization (ES2025/ES2026) — 2026-06-26
 
 ### Syntax Upgrades
