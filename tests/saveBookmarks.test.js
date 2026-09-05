@@ -6,17 +6,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock dependencies
-vi.mock('../src/lib/cache.js', () => ({
-  cacheGet: vi.fn(),
-  cacheTempAdd: vi.fn(),
-}));
-
 vi.mock('../src/lib/storage.js', () => ({
   getOption: vi.fn(),
 }));
 
 // Import the module after mocking
-import { cacheGet, cacheTempAdd } from '../src/lib/cache.js';
 import { getOption } from '../src/lib/storage.js';
 import addSaveBookmarkButtonListener from '../src/popup/modules/saveBookmarks.js';
 
@@ -121,8 +115,6 @@ describe('addSaveBookmarkButtonListener', () => {
 
     it('should prevent default form submission', async () => {
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -137,8 +129,6 @@ describe('addSaveBookmarkButtonListener', () => {
       // Tag values and descriptions were interpolated into the query string
       // raw, so a value containing & or = injected parameters of its own.
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue([]);
-      cacheTempAdd.mockResolvedValue();
       mockKeywordsInput.value = JSON.stringify([
         { value: 'x&folders[]=42&public=1' },
       ]);
@@ -162,8 +152,6 @@ describe('addSaveBookmarkButtonListener', () => {
 
     it('should send message to background script with correct parameters', async () => {
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -179,8 +167,6 @@ describe('addSaveBookmarkButtonListener', () => {
 
     it('should include URL in parameters', async () => {
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -202,8 +188,6 @@ describe('addSaveBookmarkButtonListener', () => {
         };
         return Promise.resolve(options[key]);
       });
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -225,8 +209,6 @@ describe('addSaveBookmarkButtonListener', () => {
         };
         return Promise.resolve(options[key]);
       });
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -249,8 +231,6 @@ describe('addSaveBookmarkButtonListener', () => {
         };
         return Promise.resolve(options[key]);
       });
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -272,8 +252,6 @@ describe('addSaveBookmarkButtonListener', () => {
         };
         return Promise.resolve(options[key]);
       });
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -300,8 +278,6 @@ describe('addSaveBookmarkButtonListener', () => {
         };
         return Promise.resolve(options[key]);
       });
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -323,8 +299,6 @@ describe('addSaveBookmarkButtonListener', () => {
         };
         return Promise.resolve(options[key]);
       });
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -351,8 +325,6 @@ describe('addSaveBookmarkButtonListener', () => {
         };
         return Promise.resolve(options[key]);
       });
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -367,8 +339,6 @@ describe('addSaveBookmarkButtonListener', () => {
 
     it('should include page=-1 parameter', async () => {
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -383,160 +353,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
     it('should close window after saving', async () => {
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
       await new Promise(resolve => setTimeout(resolve, 10));
 
       expect(window.close).toHaveBeenCalled();
-    });
-  });
-
-  describe('Cache update for new keywords', () => {
-    let clickHandler;
-    let mockUrlInput;
-    let mockTitleInput;
-    let mockBookmarkIdInput;
-    let mockDescriptionInput;
-    let mockKeywordsInput;
-    let mockFoldersSelect;
-    let mockButton;
-
-    beforeEach(() => {
-      mockUrlInput = { value: 'https://example.com' };
-      mockTitleInput = { value: 'Test Page' };
-      mockBookmarkIdInput = { value: '-1' };
-      mockDescriptionInput = { value: 'Test description' };
-      mockKeywordsInput = { value: '[{"value":"newKeyword1"},{"value":"newKeyword2"}]' };
-      mockFoldersSelect = {
-        options: [{ value: '1', selected: true }],
-      };
-      mockButton = { addEventListener: vi.fn() };
-
-      globalThis.document = {
-        getElementById: vi.fn((id) => {
-          switch (id) {
-            case 'saveBookmark': return mockButton;
-            case 'url': return mockUrlInput;
-            case 'title': return mockTitleInput;
-            case 'bookmarkID': return mockBookmarkIdInput;
-            case 'description': return mockDescriptionInput;
-            case 'keywords': return mockKeywordsInput;
-            case 'folders': return mockFoldersSelect;
-            default: return null;
-          }
-        }),
-      };
-
-      mockButton.addEventListener.mockImplementation((event, handler) => {
-        if (event === 'click') {
-          clickHandler = handler;
-        }
-      });
-    });
-
-    it('should update cache with new keywords', async () => {
-      getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
-
-      addSaveBookmarkButtonListener();
-      clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(cacheGet).toHaveBeenCalledWith('keywords');
-      expect(cacheTempAdd).toHaveBeenCalledWith('keywords', ['newKeyword1', 'newKeyword2']);
-    });
-
-    it('should not add keywords that already exist in cache', async () => {
-      getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1', 'newKeyword1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
-
-      addSaveBookmarkButtonListener();
-      clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(cacheTempAdd).toHaveBeenCalledWith('keywords', ['newKeyword2']);
-    });
-
-    it('should handle empty cached keywords', async () => {
-      getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue([]);
-      cacheTempAdd.mockResolvedValue();
-
-      addSaveBookmarkButtonListener();
-      clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(cacheTempAdd).toHaveBeenCalledWith('keywords', ['newKeyword1', 'newKeyword2']);
-    });
-
-    it('should handle cacheGet returning undefined', async () => {
-      getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(undefined);
-      cacheTempAdd.mockResolvedValue();
-      
-      // Suppress console.error to avoid unhandled error detection
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      addSaveBookmarkButtonListener();
-      clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      // When cacheGet returns undefined, the code logs an error but doesn't add to cache
-      expect(cacheTempAdd).not.toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith('Error updating cache:', expect.any(TypeError));
-      
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle cacheGet error gracefully', async () => {
-      getOption.mockResolvedValue(true);
-      cacheGet.mockRejectedValue(new Error('Cache error'));
-      cacheTempAdd.mockResolvedValue();
-      
-      // Suppress console.error to avoid unhandled error detection
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      addSaveBookmarkButtonListener();
-      clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      // Should not throw, cacheTempAdd should not be called
-      expect(cacheTempAdd).not.toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith('Error updating cache:', expect.any(Error));
-      
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle invalid keywords JSON', async () => {
-      mockKeywordsInput.value = 'invalid json';
-      getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
-
-      addSaveBookmarkButtonListener();
-      clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      // Should handle the error and not crash
-      expect(cacheTempAdd).not.toHaveBeenCalled();
-    });
-
-    it('should handle empty keywords array', async () => {
-      mockKeywordsInput.value = '[]';
-      getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1', 'cached2']);
-      cacheTempAdd.mockResolvedValue();
-
-      addSaveBookmarkButtonListener();
-      clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(cacheTempAdd).not.toHaveBeenCalled();
     });
   });
 
@@ -585,8 +407,6 @@ describe('addSaveBookmarkButtonListener', () => {
 
     it('should handle getOption error gracefully', async () => {
       getOption.mockRejectedValue(new Error('Storage error'));
-      cacheGet.mockResolvedValue(['cached1']);
-      cacheTempAdd.mockResolvedValue();
       
       // Suppress unhandled rejection since the implementation doesn't catch it
       const unhandledRejectionHandler = () => {};
@@ -622,8 +442,6 @@ describe('addSaveBookmarkButtonListener', () => {
       };
 
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1']);
-      cacheTempAdd.mockResolvedValue();
       
       // Suppress unhandled rejection since the implementation doesn't catch it
       const unhandledRejectionHandler = () => {};
@@ -657,8 +475,6 @@ describe('addSaveBookmarkButtonListener', () => {
       };
 
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['cached1']);
-      cacheTempAdd.mockResolvedValue();
       
       // Suppress unhandled rejection since the implementation doesn't catch it
       const unhandledRejectionHandler = () => {};
@@ -726,8 +542,6 @@ describe('addSaveBookmarkButtonListener', () => {
 
     it('should handle special characters in all fields', async () => {
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['existing1', 'existing2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -746,8 +560,6 @@ describe('addSaveBookmarkButtonListener', () => {
     it('should handle updating existing bookmark', async () => {
       mockBookmarkIdInput.value = '456';
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['existing1', 'existing2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
@@ -766,8 +578,6 @@ describe('addSaveBookmarkButtonListener', () => {
         { value: '100', selected: false },
       ];
       getOption.mockResolvedValue(true);
-      cacheGet.mockResolvedValue(['existing1', 'existing2']);
-      cacheTempAdd.mockResolvedValue();
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);

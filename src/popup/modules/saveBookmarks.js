@@ -1,5 +1,4 @@
 // @ts-check
-import { cacheGet, cacheTempAdd } from '../../lib/cache.js';
 import { getOption } from '../../lib/storage.js';
 
 export default function addSaveBookmarkButtonListener() {
@@ -68,17 +67,6 @@ function saveBookmark(event) {
     const parameters = params.toString();
 
     chrome.runtime.sendMessage({ msg: 'saveBookmark', parameters, folderIDs, bookmarkID });
-
-    try {
-      let cachedTags = await cacheGet('keywords');
-      cachedTags = cachedTags.map((/** @type {string} */ tag) => tag.toLowerCase());
-      const tempTags = keywords
-        .filter((kw) => !cachedTags.includes(kw.value.toLowerCase()))
-        .map((kw) => kw.value);
-      if (tempTags.length > 0) cacheTempAdd('keywords', tempTags);
-    } catch (error) {
-      console.error('Error updating cache:', error);
-    }
   })();
 
   // Close popup immediately

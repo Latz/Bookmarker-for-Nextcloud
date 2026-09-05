@@ -89,6 +89,7 @@ vi.mock('../src/background/modules/getBrowserTheme.js', () => ({
 
 vi.mock('../src/lib/cache.js', () => ({
   cacheGet: vi.fn(() => Promise.resolve()),
+  cacheTempAdd: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../src/background/modules/zenMode.js', () => ({
@@ -102,7 +103,7 @@ import getData from '../src/background/modules/getData.js';
 import { store_data, getOption, createOldDatabase } from '../src/lib/storage.js';
 import { notifyUser } from '../src/background/modules/notification.js';
 import getBrowserTheme from '../src/background/modules/getBrowserTheme.js';
-import { cacheGet } from '../src/lib/cache.js';
+import { cacheGet, cacheTempAdd } from '../src/lib/cache.js';
 import { zenMode } from '../src/background/modules/zenMode.js';
 
 describe('background.js', () => {
@@ -395,6 +396,129 @@ describe('background.js', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       expect(notifyUser).toHaveBeenCalledWith(mockResponse);
+    });
+
+    it('should add newly-used tags to the keyword cache after a successful save', async () => {
+      apiCall.mockResolvedValueOnce({ status: 'success', data: { id: 123 } });
+      cacheGet.mockResolvedValueOnce(['cached1', 'cached2']);
+
+      const params = new URLSearchParams();
+      params.append('tags[]', '');
+      params.append('tags[]', 'newKeyword1');
+      params.append('tags[]', 'newKeyword2');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(cacheGet).toHaveBeenCalledWith('keywords');
+      expect(cacheTempAdd).toHaveBeenCalledWith('keywords', [
+        'newKeyword1',
+        'newKeyword2',
+      ]);
+    });
+
+    it('should not add tags that already exist in the cache (case-insensitive)', async () => {
+      apiCall.mockResolvedValueOnce({ status: 'success', data: { id: 123 } });
+      cacheGet.mockResolvedValueOnce(['Cached1', 'newkeyword1']);
+
+      const params = new URLSearchParams();
+      params.append('tags[]', 'cached1');
+      params.append('tags[]', 'NewKeyword1');
+      params.append('tags[]', 'newKeyword2');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(cacheTempAdd).toHaveBeenCalledWith('keywords', ['newKeyword2']);
+    });
+
+    it('should not touch the keyword cache when the save fails', async () => {
+      apiCall.mockResolvedValueOnce({ status: 'error', statusText: 'nope' });
+
+      const params = new URLSearchParams();
+      params.append('tags[]', 'newKeyword1');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(cacheGet).not.toHaveBeenCalled();
+      expect(cacheTempAdd).not.toHaveBeenCalled();
+    });
+
+    it('should not throw when the keyword cache lookup fails', async () => {
+      apiCall.mockResolvedValueOnce({ status: 'success', data: { id: 123 } });
+      cacheGet.mockRejectedValueOnce(new Error('Cache error'));
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const params = new URLSearchParams();
+      params.append('tags[]', 'newKeyword1');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(cacheTempAdd).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error updating cache:',
+        expect.any(Error),
+      );
+
+      consoleSpy.mockRestore();
     });
   });
 

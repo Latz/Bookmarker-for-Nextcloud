@@ -9,7 +9,7 @@ import {
 } from '../lib/storage.js';
 import { notifyUser, initializeErrorIconCache } from './modules/notification.js';
 import getBrowserTheme from './modules/getBrowserTheme.js';
-import { cacheGet } from '../lib/cache.js';
+import { cacheGet, cacheTempAdd } from '../lib/cache.js';
 import { zenMode } from './modules/zenMode.js';
 
 const DEBUG = false;
@@ -108,6 +108,29 @@ async function saveBookmark(data, folderIDs, bookmarkID) {
   await store_data('options', { folderIDs });
   chrome.action.setBadgeText({ text: '' });
   notifyUser(response);
+
+  if (response.status !== 'error') {
+    updateKeywordCache(data).catch((error) => {
+      console.error('Error updating cache:', error);
+    });
+  }
+}
+
+// Runs in the service worker (not the popup) so it isn't cut off by
+// `window.close()` -- the popup's own attempt at this raced its teardown.
+async function updateKeywordCache(data) {
+  const keywords = new URLSearchParams(data)
+    .getAll('tags[]')
+    .filter((tag) => tag.length > 0);
+  if (keywords.length === 0) return;
+
+  const cachedTags = (await cacheGet('keywords')).map((tag) =>
+    tag.toLowerCase(),
+  );
+  const newTags = keywords.filter(
+    (tag) => !cachedTags.includes(tag.toLowerCase()),
+  );
+  if (newTags.length > 0) await cacheTempAdd('keywords', newTags);
 }
 
 // ------------------------------------------------------------------------------------------------
