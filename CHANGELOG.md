@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed "Clear Cache" in options throwing a `VersionError` and silently doing nothing, caused by an out-of-date DB version number left over from an unrelated schema bump.
 - Moved the keyword-suggestion cache update from the popup to the background script, fixing a race with `window.close()` that could drop newly-used tags.
 - Tightened the save-success check for the keyword cache so a failed or timed-out save no longer pollutes it with tags that were never actually saved.
 
