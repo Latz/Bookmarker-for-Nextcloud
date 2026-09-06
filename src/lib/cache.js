@@ -4,9 +4,9 @@ import apiCall from './apiCall.js';
 import { preRenderFolders } from '../background/modules/getFolders.js';
 import { cacheRefreshNotification } from '../background/modules/notification.js';
 import { getOption } from './storage.js';
+import { cacheDbVersion, initCacheStores } from './cacheSchema.js';
 
 const dbName = 'BookmarkerCache';
-const dbVersion = 3; // Incremented for bookmarkChecks store
 
 // Connection pool for IndexedDB to avoid repeated open/close
 let dbConnectionPool = null;
@@ -138,16 +138,8 @@ async function getDBConnection() {
   }
 
   // Create new connection
-  dbConnectionPromise = openDB(dbName, dbVersion, {
-    upgrade(db) {
-      try {
-        db.createObjectStore('keywords', { keyPath: 'item' });
-        db.createObjectStore('folders', { keyPath: 'item' });
-        db.createObjectStore('bookmarkChecks', { keyPath: 'item' });
-      } catch (e) {
-        console.log(e);
-      }
-    },
+  dbConnectionPromise = openDB(dbName, cacheDbVersion, {
+    upgrade: initCacheStores,
   }).then((db) => {
     dbConnectionPool = db;
     dbConnectionPromise = null;

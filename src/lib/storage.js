@@ -3,6 +3,7 @@ const database = 'Bookmarker';
 const dbVersion = 2; // since v0.3
 
 import { openDB, deleteDB } from 'idb';
+import { cacheDbVersion, initCacheStores } from './cacheSchema.js';
 
 // -----------------------------------------------------------------------
 // Options caching for performance (reduce IndexedDB access)
@@ -288,7 +289,9 @@ export async function clearData(subject) {
   }
 
   if (subject === 'cache') {
-    const cache_db = await openDB('BookmarkerCache');
+    const cache_db = await openDB('BookmarkerCache', cacheDbVersion, {
+      upgrade: initCacheStores,
+    });
     cache_db.clear('folders');
     cache_db.clear('keywords');
   }
