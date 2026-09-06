@@ -288,11 +288,7 @@ export async function clearData(subject) {
   }
 
   if (subject === 'cache') {
-    const cache_db = await openDB('BookmarkerCache', dbVersion, {
-      upgrade(cache_db, dbVersion) {
-        InitializeStores(cache_db, dbVersion);
-      },
-    });
+    const cache_db = await openDB('BookmarkerCache');
     cache_db.clear('folders');
     cache_db.clear('keywords');
   }
