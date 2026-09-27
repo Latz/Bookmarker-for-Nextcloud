@@ -175,7 +175,6 @@ async function loginPoll(request) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          Origin: request.poll.value,
         },
         body: `token=${request.poll.token}`,
       });

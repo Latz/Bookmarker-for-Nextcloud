@@ -320,8 +320,13 @@ export default async function getKeywords(parsedData, document) {
       while (i < nodeList.length && keywords.length === 0) {
         const script = nodeList[i].text;
         if (script?.includes('dataLayer.push')) {
+          // Bound the scan: an untrusted page with many unclosed "push("
+          // occurrences would otherwise make the lazy quantifier retry from
+          // every one of them, an O(n^2) cost on attacker-controlled input.
+          const boundedScript =
+            script.length > 5000 ? script.slice(0, 5000) : script;
           const regex = /push\((.*?)\)/g;
-          const match = regex.exec(script);
+          const match = regex.exec(boundedScript);
           try {
             // JSON might be broken, so be carful
             const json = JSON.parse(match[1].replaceAll('undefined', '"x"'));

@@ -47,6 +47,7 @@
   "clearall": { "message": "Clear all data" },
   "resetoptions": { "message": "Reset options" },
   "clearcache": { "message": "Clear cache" },
+  "forgetcredentials": { "message": "Forget credentials" },
   "reduceKeywords": { "message": "Reduce Keywords" },
   "showCache": { "message": "Show cache" },
   "showoptions": { "message": "Show options" },

@@ -35,7 +35,7 @@
     "watch": "npm run build:css && vite",
     "prebuild:dev": "npm run clean && npm run clean:dist",
     "build:dev": "npm run build:css && vite build --mode development",
-    "pred deploy": "npm run clean && npm run clean:dist",
+    "predeploy": "npm run clean && npm run clean:dist",
     "deploy": "npm run build:css && vite build --mode production",
     "preview": "vite preview",
     "test": "vitest run",

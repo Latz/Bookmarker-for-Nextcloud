@@ -19,6 +19,10 @@ console.log('init background');
 // ------------------------------------------------------------------------------------------------
 // Message center
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // No externally_connectable and no content scripts are declared, so only
+  // this extension's own pages can reach this listener today -- this check
+  // just pins that invariant rather than relying on it implicitly.
+  if (sender.id !== chrome.runtime.id) return false;
   switch (request.msg) {
     case 'saveBookmark':
       saveBookmark(request.parameters, request.folderIDs, request.bookmarkID);

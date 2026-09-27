@@ -219,6 +219,9 @@ async function setOptions() {
         case 'btn_clear_cache':
           clearData('cache');
           break;
+        case 'btn_forget_credentials':
+          clearData('credentials');
+          break;
         case 'btn_create_db':
           createDB();
       }

@@ -21,6 +21,9 @@
     "type": "module"
   },
   "options_page": "src/options/options.html",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; form-action 'none'; img-src 'self'"
+  },
   "permissions": [
     "contextMenus",
     "activeTab",
