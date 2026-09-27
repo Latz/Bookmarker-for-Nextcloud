@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Unit tests for storage.js
  * Tests IndexedDB operations, caching, and storage utilities

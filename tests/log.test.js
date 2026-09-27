@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Unit tests for log.js
  * Tests the logging utility function
@@ -12,6 +13,9 @@ describe('log.js', () => {
   beforeEach(() => {
     // Spy on console.log
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    // console.log is a shared vi.fn() from setup.js, so spyOn returns it with
+    // call history from earlier files (isolate: false); start from zero.
+    consoleLogSpy.mockClear();
   });
 
   afterEach(() => {

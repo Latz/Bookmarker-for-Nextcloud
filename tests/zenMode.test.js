@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Unit tests for zenMode module
  * Tests the zen mode functionality for quick bookmarking

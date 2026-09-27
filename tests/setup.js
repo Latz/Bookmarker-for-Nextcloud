@@ -101,7 +101,10 @@ const pristineDocument = globalThis.document;
 const pristineWindow = globalThis.window;
 const pristineNavigator = globalThis.navigator;
 
+// Files running under `@vitest-environment node` have no DOM to restore, and
+// navigator is a getter-only global there (assigning to it throws).
 afterEach(() => {
+  if (!pristineDocument) return;
   globalThis.document = pristineDocument;
   globalThis.window = pristineWindow;
   globalThis.navigator = pristineNavigator;

@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Unit tests for notification module
  * Tests the notification functions for user feedback

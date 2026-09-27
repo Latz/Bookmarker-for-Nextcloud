@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Unit tests for urlNormalizer.js
  * Tests URL normalization functionality and LRU cache behavior

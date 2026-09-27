@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Unit tests for apiCall.js
  * Tests the API call functionality with timeout, authentication, and error handling
@@ -121,7 +122,7 @@ describe('apiCall.js', () => {
       expect(abortSignal).toBeDefined();
 
       // Wait for timeout to trigger (10ms + buffer)
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Signal should now be aborted
       expect(abortSignal.aborted).toBe(true);

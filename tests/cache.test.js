@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Unit tests for cache.js
  * Tests caching functionality, connection pooling, and bookmark check caching

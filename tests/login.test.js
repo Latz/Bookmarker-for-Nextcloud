@@ -361,7 +361,7 @@ describe('login.js', () => {
       expect(mockEvent.preventDefault).toHaveBeenCalled();
 
       // Verify apiCall was triggered
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
       expect(apiCall).toHaveBeenCalled();
     });
 
@@ -526,7 +526,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Verify error message was displayed
       expect(mockElements.error.innerText).toBe('Login Server Error!');
@@ -559,7 +559,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Verify statusText message was displayed
       expect(mockElements.msg.innerText).toBe(' Connection Error');
@@ -585,7 +585,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Verify error message
       expect(mockElements.error.innerText).toBe('Login Server Error!');
@@ -612,7 +612,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Verify status with reason phrase
       expect(mockElements.msg.innerText).toBe('500  - Internal Server Error');
@@ -636,7 +636,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Verify unknown status handling
       expect(mockElements.msg.innerText).toBe('999  - Unknown Status');
@@ -735,7 +735,7 @@ describe('login.js', () => {
         clickHandler();
 
         // Wait for async operations
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         // Verify reason phrase
         expect(mockElements.msg.innerText).toContain(expected);
@@ -760,7 +760,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Verify unknown status handling
       expect(mockElements.msg.innerText).toContain('Unknown Status');

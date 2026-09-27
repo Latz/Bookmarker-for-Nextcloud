@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Unit tests for stringSimilarity.js
  * Tests Jaro-Winkler similarity algorithm, caching, and batch operations

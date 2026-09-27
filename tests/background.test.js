@@ -161,7 +161,7 @@ describe('background.js', () => {
       expect(result).toBe(false);
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Verify apiCall was called with correct parameters
       expect(apiCall).toHaveBeenCalledWith(
@@ -199,7 +199,7 @@ describe('background.js', () => {
       await import('../src/background/background.js');
       messageListener(request, sender, sendResponse);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Verify PUT method and bookmark ID in endpoint
       expect(apiCall).toHaveBeenCalledWith(
@@ -230,7 +230,7 @@ describe('background.js', () => {
       expect(result).toBe(true);
 
       // Wait for async operation
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(getData).toHaveBeenCalledWith({ url: 'https://example.com' });
       expect(sendResponse).toHaveBeenCalledWith({ ok: true, url: 'https://example.com' });
@@ -278,7 +278,7 @@ describe('background.js', () => {
 
       expect(result).toBe(false);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(chrome.scripting.executeScript).toHaveBeenCalledWith({
         target: { tabId: 123 },
@@ -345,7 +345,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // First call sets the save icon
       expect(chrome.action.setBadgeText).toHaveBeenNthCalledWith(1, { text: '💾' });
@@ -369,7 +369,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(store_data).toHaveBeenCalledWith('options', { folderIDs: [5, 10, 15] });
     });
@@ -393,7 +393,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(notifyUser).toHaveBeenCalledWith(mockResponse);
     });
@@ -422,7 +422,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cacheGet).toHaveBeenCalledWith('keywords');
       expect(cacheTempAdd).toHaveBeenCalledWith('keywords', [
@@ -455,7 +455,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cacheTempAdd).toHaveBeenCalledWith('keywords', ['newKeyword2']);
     });
@@ -481,7 +481,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cacheGet).not.toHaveBeenCalled();
       expect(cacheTempAdd).not.toHaveBeenCalled();
@@ -508,7 +508,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cacheGet).not.toHaveBeenCalled();
       expect(cacheTempAdd).not.toHaveBeenCalled();
@@ -537,7 +537,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cacheTempAdd).not.toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -556,7 +556,7 @@ describe('background.js', () => {
       // Import triggers init()
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(getBrowserTheme).toHaveBeenCalled();
       // Chrome renders the action icon at 16px (32px at 2x DPR) and downsamples
@@ -577,7 +577,7 @@ describe('background.js', () => {
 
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Should not throw, icon will use default
       expect(chrome.action.setIcon).not.toHaveBeenCalled();
@@ -586,7 +586,7 @@ describe('background.js', () => {
     it('should remove all context menus before creating new ones', async () => {
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(chrome.contextMenus.removeAll).toHaveBeenCalled();
     });
@@ -596,7 +596,7 @@ describe('background.js', () => {
 
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(chrome.contextMenus.create).toHaveBeenCalledWith({
         id: 'menuEnableZen',
@@ -610,7 +610,7 @@ describe('background.js', () => {
     it('should create Refresh Cache context menu', async () => {
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(chrome.contextMenus.create).toHaveBeenCalledWith({
         id: 'menuRefreshCache',
@@ -624,7 +624,7 @@ describe('background.js', () => {
 
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // The setZenModeMenu function should update the menu
       expect(chrome.contextMenus.update).toHaveBeenCalledWith('menuEnableZen', {
@@ -642,7 +642,7 @@ describe('background.js', () => {
 
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Should not throw, error is caught and logged
       expect(consoleLogSpy).toHaveBeenCalled();
@@ -661,7 +661,7 @@ describe('background.js', () => {
       load_data.mockResolvedValueOnce('https://nextcloud.example.com');
 
       await import('../src/background/background.js');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
@@ -675,7 +675,7 @@ describe('background.js', () => {
       load_data.mockResolvedValueOnce(undefined);
 
       await import('../src/background/background.js');
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // apiCall should not have been called (no server = skip warmup)
       expect(apiCall).not.toHaveBeenCalled();
@@ -688,7 +688,7 @@ describe('background.js', () => {
 
       // Should not throw
       await expect(import('../src/background/background.js')).resolves.not.toThrow();
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
     });
   });
 
@@ -709,7 +709,7 @@ describe('background.js', () => {
 
       contextMenuListener(info);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(cacheGet).toHaveBeenCalledWith('keywords', true);
       expect(cacheGet).toHaveBeenCalledWith('folders', true);
@@ -720,7 +720,7 @@ describe('background.js', () => {
 
       contextMenuListener(info);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(createOldDatabase).toHaveBeenCalled();
     });
@@ -733,7 +733,7 @@ describe('background.js', () => {
 
       contextMenuListener(info);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(store_data).toHaveBeenCalledWith('options', { cbx_enableZen: true });
       expect(chrome.contextMenus.update).toHaveBeenCalledWith('menuEnableZen', {
@@ -750,7 +750,7 @@ describe('background.js', () => {
 
       contextMenuListener(info);
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(store_data).toHaveBeenCalledWith('options', { cbx_enableZen: false });
       expect(chrome.contextMenus.update).toHaveBeenCalledWith('menuEnableZen', {
@@ -815,7 +815,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(chrome.scripting.executeScript).toHaveBeenCalled();
     });
@@ -838,7 +838,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       expect(chrome.scripting.executeScript).toHaveBeenCalledWith({
         target: { tabId: 456 },
@@ -862,7 +862,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 0));
 
       // Should log the error but not throw
       expect(console.log).toHaveBeenCalled();
@@ -904,7 +904,7 @@ describe('background.js', () => {
         expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
 
         // Wait for the async operation to complete (and fail)
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         // Note: The badge is NOT cleared because the error happens during apiCall
         // before store_data is called. This is expected behavior - the badge
@@ -956,7 +956,7 @@ describe('background.js', () => {
 
         messageListener(request, {}, vi.fn());
 
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 0));
 
         // notifyUser is called AFTER store_data in the code, so it will NOT be called
         // if store_data fails
