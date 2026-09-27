@@ -21,6 +21,7 @@
   --tags-border-color: var(--color-info);
   --tags-hover-border-color: var(--color-info);
   --tags-focus-border-color: var(--color-info);
+  border-radius: var(--radius-field);
 }
 
 /* tagify.css only recolors the border on focus, which is invisible here

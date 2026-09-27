@@ -17,6 +17,11 @@
   color: var(--tagify-dd-text-color);
 }
 
+/* tagify.css is unlayered and wins over daisyUI's .input radius -- match it directly */
+.tagify {
+  border-radius: var(--radius-field);
+}
+
 .heading_selector {
   cursor: pointer;
 }
