@@ -82,10 +82,11 @@ async function reduceKeywords(
 // ----------------------------------------------------------------------------------------
 
 /**
- * Extracts keywords from JSON-LD structured data
+ * Finds keywords on a JSON-LD `@graph`-wrapped Article node.
+ * https://harpers.org/archive/2024/07/art-and-artifice-donna-tartt/
+ * @returns {Array|null} Keywords, or null if this shape doesn't apply.
  */
-function extractKeywordsFromJsonLd(jsonld) {
-  // https://harpers.org/archive/2024/07/art-and-artifice-donna-tartt/
+function extractKeywordsFromGraphArticle(jsonld) {
   if (jsonld['@graph'] && Array.isArray(jsonld['@graph'])) {
     for (const element of jsonld['@graph']) {
       if (element['@type'] === 'Article') {
@@ -93,63 +94,166 @@ function extractKeywordsFromJsonLd(jsonld) {
       }
     }
   }
-  if (jsonld['@graph'] && jsonld['@graph']['@type'] === 'Article') {
+  if (jsonld['@graph']?.['@type'] === 'Article') {
     return jsonld['@graph']['keywords'] || [];
   }
+  return null;
+}
 
-  if (jsonld.keywords) {
-    if (jsonld.keywords.length > 0) {
-      if (Array.isArray(jsonld.keywords)) {
-        return jsonld.keywords;
-      }
-      if (
-        typeof jsonld.keywords === 'string' ||
-        jsonld.keywords instanceof String
-      ) {
-        return jsonld.keywords.split(',');
-      }
-    }
-    //https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
-    // `Object.prototype.hasOwn` does not exist (the static method is
-    // `Object.hasOwn`), and `keywords[0]` can be undefined when `keywords` is
-    // an object with a truthy `length` but no index 0 -- both previously threw
-    // a TypeError that propagated out of getKeywords, crashing the whole
-    // extraction pipeline for any page with such JSON-LD.
-    if (jsonld.keywords[0] && Object.hasOwn(jsonld.keywords[0], 'termCode')) {
-      const terms = [];
-      jsonld.keywords.forEach((term) => {
-        if (term.termCode.label) terms.push(term.termCode.label);
-      });
-      return terms;
-    }
-    const keywords = jsonld.keywords
-      .split(',')
-      .map((keyword) => keyword.trim());
-    if (Array.isArray(keywords)) {
-      return keywords;
-    }
-    const tags = [];
-    jsonld.keywords?.forEach((keyword) => {
-      const [id, value] = keyword.split(':');
-      if (id.toLowerCase() === 'tag') tags.push(value);
-    });
-    if (tags.length > 0) {
-      return tags;
-    }
-    // keywords are only comma separated Array
-    // https://www.vox.com/platform/amp/down-to-earth/22679378/tree-planting-forest-restoration-climate-solutions
-    if (jsonld.keywords) {
+/**
+ * Extracts keywords from the various shapes a JSON-LD `keywords` field
+ * appears in across sites: array, plain string, CNN's termCode objects,
+ * comma-separated string, or `tag:value` prefixed entries.
+ * @returns {Array|null} Keywords, or null when `jsonld.keywords` is absent.
+ */
+function extractKeywordsFromKeywordsField(jsonld) {
+  if (!jsonld.keywords) return null;
+
+  if (jsonld.keywords.length > 0) {
+    if (Array.isArray(jsonld.keywords)) {
       return jsonld.keywords;
     }
+    if (typeof jsonld.keywords === 'string') {
+      return jsonld.keywords.split(',');
+    }
   }
-  // https://www.nature.com/articles/d41586-024-00169-7
+  //https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
+  // `Object.prototype.hasOwn` does not exist (the static method is
+  // `Object.hasOwn`), and `keywords[0]` can be undefined when `keywords` is
+  // an object with a truthy `length` but no index 0 -- both previously threw
+  // a TypeError that propagated out of getKeywords, crashing the whole
+  // extraction pipeline for any page with such JSON-LD.
+  if (jsonld.keywords[0] && Object.hasOwn(jsonld.keywords[0], 'termCode')) {
+    const terms = [];
+    jsonld.keywords.forEach((term) => {
+      if (term.termCode.label) terms.push(term.termCode.label);
+    });
+    return terms;
+  }
+  const keywords = jsonld.keywords.split(',').map((keyword) => keyword.trim());
+  if (Array.isArray(keywords)) {
+    return keywords;
+  }
+  const tags = [];
+  jsonld.keywords?.forEach((keyword) => {
+    const [id, value] = keyword.split(':');
+    if (id.toLowerCase() === 'tag') tags.push(value);
+  });
+  if (tags.length > 0) {
+    return tags;
+  }
+  // keywords are only comma separated Array
+  // https://www.vox.com/platform/amp/down-to-earth/22679378/tree-planting-forest-restoration-climate-solutions
+  return jsonld.keywords;
+}
+
+/**
+ * Finds keywords on `mainEntity.keywords` (schema.org's alternate location).
+ * https://www.nature.com/articles/d41586-024-00169-7
+ * @returns {Array|null} Keywords, or null if this shape doesn't apply.
+ */
+function extractKeywordsFromMainEntity(jsonld) {
   if (
     jsonld?.mainEntity?.keywords?.length > 0 &&
     Array.isArray(jsonld.mainEntity.keywords)
   ) {
     return jsonld.mainEntity.keywords;
   }
+  return null;
+}
 
+/**
+ * Extracts keywords from JSON-LD structured data
+ */
+function extractKeywordsFromJsonLd(jsonld) {
+  return (
+    extractKeywordsFromGraphArticle(jsonld) ??
+    extractKeywordsFromKeywordsField(jsonld) ??
+    extractKeywordsFromMainEntity(jsonld) ??
+    []
+  );
+}
+
+/**
+ * Extracts keywords from a page's meta tags (keywords, news_keywords,
+ * article:tag, etc.), splitting a single divider-separated string when only
+ * one meta value was found.
+ * @returns {Array<string>} Keywords found in meta tags, or [] if none.
+ */
+function extractMetaKeywords(document) {
+  const metaKeywords = getMeta(
+    document,
+    { type: 'name', id: 'keywords' },
+    { type: 'property', id: 'keywords' },
+    { type: 'name', id: 'news_keywords' },
+    { type: 'property', id: 'article:tag' },
+    { type: 'property', id: 'og:article:tag' },
+    { type: 'itemprop', id: 'keywords' },
+    { type: 'name', id: 'sailthru.tags' },
+    { type: 'name', id: 'parsely-tags' },
+    { type: 'http-equiv', id: 'keywords' },
+  );
+
+  if (metaKeywords.length === 0) {
+    return [];
+  }
+
+  let keywords;
+  // If there is exactly one keywords string it might be a collection of keywords devided by comma, semicolo, or spaces
+  // Try these possibilities otherwise return given keyword string
+  // TODO: Vielleicht erst Wörter zwischen Anführungszeichen raus suchen
+  if (metaKeywords.length === 1 && metaKeywords[0]) {
+    const dividers = [',', ';', '&amp;', ' '];
+    if (dividers.some((v) => metaKeywords[0].includes(v))) {
+      // https://www.heise.de
+      if (metaKeywords[0].includes(','))
+        keywords = metaKeywords[0].split(',');
+      else if (metaKeywords[0].includes(';'))
+        keywords = metaKeywords[0].split(';');
+      else if (metaKeywords[0].includes(' '))
+        keywords = metaKeywords[0].split(' ');
+      else if (metaKeywords[0].includes('&amp;'))
+        // https://www.epa.gov/mold/mold-course-introduction
+        keywords = metaKeywords[0].split(/&amp;/g);
+    }
+  } else keywords = metaKeywords;
+  if (keywords) {
+    keywords = keywords
+      .map((keyword) => keyword.replaceAll('"', ''))
+      .map((keyword) => keyword.trim());
+  } else keywords = [];
+  return keywords;
+}
+
+/**
+ * Scans headlines from h1 up to hMaxLevel for words matching stored
+ * keywords, level by level, stopping at the first headline that matches.
+ * @returns {Promise<Array<string>>} Reduced keywords, or [] if none matched.
+ */
+async function findKeywordsInHeadlines(
+  document,
+  maxLevel,
+  keywordLookup,
+  reduceEnabled,
+) {
+  let level = 1;
+  while (level <= maxLevel) {
+    const headlines = document.querySelectorAll(`h${level}`);
+
+    for (const headline of headlines) {
+      const words = headline.innerText.split(/[\W_]+/g);
+      const reducedKw = await reduceKeywords(
+        words,
+        true,
+        keywordLookup,
+        reduceEnabled,
+      );
+      if (reducedKw && reducedKw.length > 0) {
+        return reducedKw;
+      }
+    }
+    level++;
+  }
   return [];
 }
 
@@ -161,49 +265,7 @@ export default async function getKeywords(parsedData, document) {
   const fs = [
     // -----------------------------------------------------------------------------------------
     // get Meta data
-    () => {
-      let metaKeywords = getMeta(
-        document,
-        { type: 'name', id: 'keywords' },
-        { type: 'property', id: 'keywords' },
-        { type: 'name', id: 'news_keywords' },
-        { type: 'property', id: 'article:tag' },
-        { type: 'property', id: 'og:article:tag' },
-        { type: 'itemprop', id: 'keywords' },
-        { type: 'name', id: 'sailthru.tags' },
-        { type: 'name', id: 'parsely-tags' },
-        { type: 'http-equiv', id: 'keywords' },
-      );
-
-      if (metaKeywords.length === 0) {
-        return [];
-      }
-
-      // If there is exactly one keywords string it might be a collection of keywords devided by comma, semicolo, or spaces
-      // Try these possibilities otherwise return given keyword string
-      // TODO: Vielleicht erst Wörter zwischen Anführungszeichen raus suchen
-      if (metaKeywords.length === 1 && metaKeywords[0]) {
-        const dividers = [',', ';', '&amp;', ' '];
-        if (dividers.some((v) => metaKeywords[0].includes(v))) {
-          // https://www.heise.de
-          if (metaKeywords[0].includes(','))
-            keywords = metaKeywords[0].split(',');
-          else if (metaKeywords[0].includes(';'))
-            keywords = metaKeywords[0].split(';');
-          else if (metaKeywords[0].includes(' '))
-            keywords = metaKeywords[0].split(' ');
-          else if (metaKeywords[0].includes('&amp;'))
-            // https://www.epa.gov/mold/mold-course-introduction
-            keywords = metaKeywords[0].split(/&amp;/g);
-        }
-      } else keywords = metaKeywords;
-      if (keywords) {
-        keywords = keywords
-          .map((keyword) => keyword.replace(/"/g, ''))
-          .map((keyword) => keyword.trim());
-      } else keywords = [];
-      return keywords;
-    },
+    () => extractMetaKeywords(document),
     // ------------------------------------------------------------------------------
     // try <a href="" rel="tag">
     // (https://www.lenfestinstitute.org/solution-set/i-canceled-22-digital-newspaper-subscriptions-heres-what-i-learned-about-digital-retention-strategies/)
@@ -257,14 +319,15 @@ export default async function getKeywords(parsedData, document) {
       let i = 0;
       while (i < nodeList.length && keywords.length === 0) {
         const script = nodeList[i].text;
-        if (script && script.includes('dataLayer.push')) {
+        if (script?.includes('dataLayer.push')) {
           const regex = /push\((.*?)\)/g;
           const match = regex.exec(script);
           try {
             // JSON might be broken, so be carful
-            const json = JSON.parse(match[1].replace(/undefined/g, '"x"'));
+            const json = JSON.parse(match[1].replaceAll('undefined', '"x"'));
             keywords = json.content.keywords.split('|');
           } catch (e) {
+            log(DEBUG, 'GTM dataLayer JSON was malformed, skipping:', e);
             return [];
           }
         }
@@ -325,6 +388,8 @@ export default async function getKeywords(parsedData, document) {
           keywords = tags.split(',');
         }
       } catch (e) {
+        // __NEXT_DATA__ may legitimately lack a post.tags field on this page
+        log(DEBUG, 'No post.tags in __NEXT_DATA__, skipping:', e);
         return [];
       }
 
@@ -399,29 +464,14 @@ export default async function getKeywords(parsedData, document) {
     }
   } // --- headlines ---
   log(DEBUG, 'Headlines');
-  const maxLevel = options.input_headings_slider;
-  let level = 1;
-  keywords = [];
-  while (level <= maxLevel) {
-    const headlines = document.querySelectorAll(`h${level}`);
-
-    for (const headline of headlines) {
-      const words = headline.innerText.split(/[\W_]+/g);
-      const reducedKw = await reduceKeywords(
-        words,
-        true,
-        keywordLookup,
-        reduceEnabled,
-      );
-      if (reducedKw && reducedKw.length > 0) {
-        keywords = reducedKw;
-        break;
-      }
-    }
-    if (keywords.length > 0) {
-      return keywords;
-    }
-    level++;
+  keywords = await findKeywordsInHeadlines(
+    document,
+    options.input_headings_slider,
+    keywordLookup,
+    reduceEnabled,
+  );
+  if (keywords.length > 0) {
+    return keywords;
   }
 
   // The functions have found no keywords return an empty array

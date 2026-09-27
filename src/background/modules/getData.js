@@ -7,10 +7,7 @@ import { getOptions } from '../../lib/storage.js';
 import log from '../../lib/log.js';
 import { normalizeUrl } from '../../lib/urlNormalizer.js';
 import { getCachedBookmarkCheck, cacheBookmarkCheck } from '../../lib/cache.js';
-import {
-  calculateSimilarity,
-  batchSimilarityCheck,
-} from '../../lib/stringSimilarity.js';
+import { batchSimilarityCheck } from '../../lib/stringSimilarity.js';
 import { createMockDocument } from './mockDocument.js';
 import { extractPageData } from './extractPageData.js';
 
@@ -270,7 +267,7 @@ async function checkBookmark(url, title, signal = null) {
     try {
       let urlMatches = await checkByUrl(cacheKey, signal);
 
-      if (signal && signal.aborted) {
+      if (signal?.aborted) {
         throw new DOMException('Request aborted', 'AbortError');
       }
 

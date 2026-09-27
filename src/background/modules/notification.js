@@ -46,6 +46,7 @@ export async function initializeErrorIconCache() {
         );
         return response.ok;
       } catch (e) {
+        console.warn('[notification] error icon probe failed:', e);
         return false;
       }
     }),

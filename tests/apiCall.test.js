@@ -186,10 +186,10 @@ describe('apiCall.js', () => {
       const data = { host: 'https://custom-server.com', param: 'value' };
       await apiCall('test/endpoint', 'POST', data);
 
-      // The code uses `${data}` which converts object to [object Object]
-      // This is the actual behavior of the apiCall function
+      // Object `data` (the login-flow host/param case) is not a query string,
+      // so it must not be interpolated into the URL as "[object Object]".
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://custom-server.com/test/endpoint?[object Object]',
+        'https://custom-server.com/test/endpoint?',
         expect.any(Object),
       );
     });

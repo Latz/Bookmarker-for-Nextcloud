@@ -47,7 +47,7 @@ function getReasonPhrase(statusCode) {
  * @returns {boolean} True if the address names a scheme other than https.
  */
 function isInsecureServerUrl(input) {
-  const match = input.trim().match(/^([a-z][a-z0-9+.-]*):\/\//i);
+  const match = /^([a-z][a-z0-9+.-]*):\/\//i.exec(input.trim());
   return !!match && match[1].toLowerCase() !== 'https';
 }
 

@@ -42,7 +42,7 @@
   "showKeywords": { "message": "Show Keywords" },
   "extendedKeywords": { "message": "User extended keyword detection" },
   "searchDepth": { "message": "Search depth" },
-  "networkTImeout": { "message": "Nework timeout secs" },
+  "networkTimeout": { "message": "Network Timeout" },
   "networkTimeoutNote": { "message": "defaults to 10 seconds if not set" },
   "clearall": { "message": "Clear all data" },
   "resetoptions": { "message": "Reset options" },

@@ -12,7 +12,7 @@ function saveBookmark(event) {
 
   const url = /** @type {HTMLInputElement} */ (document.getElementById('url')).value;
   const title = /** @type {HTMLInputElement} */ (document.getElementById('title')).value;
-  const bookmarkID = parseInt(/** @type {HTMLInputElement} */ (document.getElementById('bookmarkID')).value);
+  const bookmarkID = Number.parseInt(/** @type {HTMLInputElement} */ (document.getElementById('bookmarkID')).value);
 
   (async () => {
     const [showDescription, showKeywords, displayFolders] = await Promise.all([

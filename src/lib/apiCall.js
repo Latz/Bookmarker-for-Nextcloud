@@ -31,7 +31,7 @@ async function timeoutFetch(resource, options = {}) {
   let networkTimeout = cachedNetworkTimeout;
 
   // default networkTimeout to 10 seconds if not set
-  if (isNaN(networkTimeout) || networkTimeout === 0) {
+  if (Number.isNaN(networkTimeout) || networkTimeout === 0) {
     networkTimeout = 10000;
   }
 
@@ -58,7 +58,8 @@ async function timeoutFetch(resource, options = {}) {
 }
 async function resolveServerAndAuth(data) {
   if (typeof data === 'object' && 'host' in data) {
-    const authHeader = data.loginflow ? null : await authentication();
+    let authHeader = null;
+    if (!data.loginflow) authHeader = await authentication();
     return { server: data.host, authHeader };
   }
   // OPTIMIZATION: Fetch server and auth in parallel
@@ -116,7 +117,7 @@ export default async function apiCall(
   }
 
   // Construct the API call URL
-  const url = `${server}${endpoint}?${data}`;
+  const url = `${server}${endpoint}?${typeof data === 'string' ? data : ''}`;
 
   let result = {};
   try {
@@ -148,7 +149,7 @@ const AUTH_CACHE_TTL = 60000; // 1 minute
 /**
  * Generates an authentication token for the API.
  *
- * @returns {string} The generated authentication token.
+ * @returns {Promise<string>} The generated authentication token.
  */
 async function authentication() {
   // OPTIMIZATION: Use cached auth header if available and not expired
@@ -159,7 +160,8 @@ async function authentication() {
 
     // Generate the authentication token using the loginname and appPassword
     // OPTIMIZATION: Removed unnecessary Promise.resolve
-    cachedAuthHeader = `Basic ${btoa(`${data.loginname}:${data.appPassword}`)}`;
+    const credentials = `${data.loginname}:${data.appPassword}`;
+    cachedAuthHeader = `Basic ${btoa(credentials)}`;
     authCacheExpiry = now + AUTH_CACHE_TTL;
   }
 

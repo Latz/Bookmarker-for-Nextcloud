@@ -117,6 +117,10 @@ async function runFormFlow(dataPromise) {
   }
 }
 
+// Not top-level awaited: awaiting here would make `await import('popup.js')`
+// (used throughout tests/popup.test.js) block until the whole bootstrap
+// chain -- including the getData network round trip -- settles, instead of
+// returning once the module body finishes executing as the tests expect.
 const boot = (async () => {
   const { apppwd, enableZen, server, needsReconnect, dataPromise } =
     await sessionPromise;

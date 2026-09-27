@@ -14,7 +14,9 @@
       <h1
         class="z-0 mb-10 mt-0 pt-[40px] text-center text-5xl font-medium leading-tight text-sky-400 text-wrap-balance"
         i18n-data="optionsheader"
-      ></h1>
+      >
+        Options - Bookmarker for Nextcloud
+      </h1>
     </div>
 
     <div id="container" class="z-10 ps-[80px] pe-[80px]">
@@ -27,19 +29,23 @@
             id="tab_basic"
             class="tab-border tab-lg tab hover:bg-sky-400"
             i18n-data="basic"
-          ></a
-          >s
-          <a id="tab_zen" class="tab-border tab-lg tab" i18n-data="zen"></a>
+            >Basic</a
+          >
+          <a id="tab_zen" class="tab-border tab-lg tab" i18n-data="zen"
+            >Zen</a
+          >
           <a
             id="tab_advanced"
             class="tab-border tab-lg tab"
             i18n-data="advanced"
-          ></a>
+            >Advanced</a
+          >
           <a
             id="tab_dev"
             class="tab-border tab-lg tab"
             i18n-data="development"
-          ></a>
+            >Development</a
+          >
         </div>
         <div id="content" class="p-2 text-lg">
           <!--- ---------------------------------------------------------------- -->
@@ -50,10 +56,9 @@
                 id="cbx_displayFolders"
                 class="toggle toggle-info toggle-xs"
               />
-              <label
-                for="cbx_displayFolders"
-                i18n-data="displayFolders"
-              ></label>
+              <label for="cbx_displayFolders" i18n-data="displayFolders"
+                >Display Folders</label
+              >
             </div>
             <div>
               <input
@@ -61,7 +66,7 @@
                 id="cbx_autoTags"
                 class="toggle toggle-info toggle-xs"
               />
-              <label i18n-data="autotags" for="cbx_autoTags"></label>
+              <label i18n-data="autotags" for="cbx_autoTags">Auto tags</label>
             </div>
             <div>
               <input
@@ -69,10 +74,9 @@
                 id="cbx_autoDescription"
                 class="toggle toggle-info toggle-xs"
               />
-              <label
-                i18n-data="autodescription"
-                for="cbx_autoDescription"
-              ></label>
+              <label i18n-data="autodescription" for="cbx_autoDescription"
+                >Auto description</label
+              >
             </div>
             <div>
               <input
@@ -81,71 +85,63 @@
                 class="toggle toggle-info toggle-xs"
               />
               <label i18n-data="successnotification" for="cbx_successMessage">
+                Display success notification
               </label>
             </div>
           </div>
           <!--- --------------------------------------------------------------- -->
           <div id="content_tab_zen" class="hidden delay-100">
-            <table class="">
-              <tbody>
-                <tr>
-                  <td>
-                    <input
-                      type="checkbox"
-                      id="cbx_enableZen"
-                      class="toggle toggle-info toggle-xs"
-                      aria-label="Enable Zen Mode"
-                    />
-                  </td>
-                  <td>
-                    <label for="cbx_enableZen" i18n-data="enableZen">Enable Zen Mode</label>
-                  </td>
-                </tr>
-                <tr>
-                  <td>
-                    <input
-                      type="checkbox"
-                      id="cbx_zenDisplayNotification"
-                      class="toggle toggle-info toggle-xs"
-                      aria-label="Display notification in Zen Mode"
-                    />
-                  </td>
-                  <td>
-                    <label
-                      for="cbx_zenDisplayNotification"
-                      i18n-data="zenDisplayNotification"
-                    >Display notification in Zen Mode</label>
-                  </td>
-                </tr>
-                <tr>
-                  <td class="mt-2 p-1 align-middle">
-                    <label for="input_zenKeywords" i18n-data="zenkeywords">Zen Keywords</label>
-                  </td>
-                  <td class="p-1 align-middle">
-                    <input
-                      type="text"
-                      class="input input-sm input-info w-[350px]"
-                      id="input_zenKeywords"
-                      aria-label="Zen keywords"
-                    />
-                  </td>
-                </tr>
-                <tr>
-                  <td class="mt-2 p-1 align-top">Zen Folders</td>
-                  <td class="p-1 align-top">
-                    <select
-                      size="5"
-                      multiple="true"
-                      class="select select-info w-full"
-                      id="zen_folders"
-                    >
-                      <option>Root</option>
-                    </select>
-                  </td>
-                </tr>
-                <tr></tr>
-              </tbody>
-            </table>
+            <div class="grid grid-cols-2 gap-y-1">
+              <div>
+                <input
+                  type="checkbox"
+                  id="cbx_enableZen"
+                  class="toggle toggle-info toggle-xs"
+                  aria-label="Enable Zen Mode"
+                />
+              </div>
+              <div>
+                <label for="cbx_enableZen" i18n-data="enableZen">Enable Zen Mode</label>
+              </div>
+              <div>
+                <input
+                  type="checkbox"
+                  id="cbx_zenDisplayNotification"
+                  class="toggle toggle-info toggle-xs"
+                  aria-label="Display notification in Zen Mode"
+                />
+              </div>
+              <div>
+                <label
+                  for="cbx_zenDisplayNotification"
+                  i18n-data="zenDisplayNotification"
+                >Display notification in Zen Mode</label>
+              </div>
+              <div class="mt-2 self-center p-1">
+                <label for="input_zenKeywords" i18n-data="zenkeywords">Zen Keywords</label>
+              </div>
+              <div class="self-center p-1">
+                <input
+                  type="text"
+                  class="input input-sm input-info w-[350px]"
+                  id="input_zenKeywords"
+                  aria-label="Zen keywords"
+                />
+              </div>
+              <div class="mt-2 self-start p-1">
+                <label for="zen_folders">Zen Folders</label>
+              </div>
+              <div class="self-start p-1">
+                <select
+                  size="5"
+                  multiple="true"
+                  class="select select-info w-full"
+                  id="zen_folders"
+                >
+                  <option>Root</option>
+                </select>
+              </div>
+            </div>
           </div>
           <!--- ---------------------------------------------------------------- -->
           <div id="content_tab_advanced" class="content hidden">
@@ -155,7 +151,7 @@
                 id="cbx_alreadyStored"
                 class="toggle toggle-info toggle-xs"
               />
-              <label i18n-data="alreadyStored" for="cbx_alreadyStored"></label>
+              <label i18n-data="alreadyStored" for="cbx_alreadyStored">Check for stored bookmarks</label>
             </div>
             <div>
               <input
@@ -171,10 +167,9 @@
                 id="cbx_showDescription"
                 class="toggle toggle-info toggle-xs"
               />
-              <label
-                i18n-data="showDescription"
-                for="cbx_showDescription"
-              ></label>
+              <label i18n-data="showDescription" for="cbx_showDescription"
+                >Show Description</label
+              >
             </div>
             <div>
               <input
@@ -182,7 +177,7 @@
                 id="cbx_showKeywords"
                 class="toggle toggle-info toggle-xs"
               />
-              <label i18n-data="showKeywords" for="cbx_showKeywords"></label>
+              <label i18n-data="showKeywords" for="cbx_showKeywords">Show Keywords</label>
             </div>
             <div>
               <input
@@ -193,10 +188,15 @@
               <label
                 i18n-data="extendedKeywords"
                 for="cbx_extendedKeywords"
-              ></label
+              >User extended keyword detection</label
               ><br />
               <div class="flex flex-row">
-                <div i18n-data="searchDepth" class="ps-8"></div>
+                <label
+                  for="input_headings_slider"
+                  i18n-data="searchDepth"
+                  class="ps-8"
+                  >Search depth</label
+                >
                 <div class="ps-2">
                   <input
                     type="range"
@@ -220,21 +220,17 @@
                   </div>
                 </div>
               </div>
-              <div>
-                <table>
-                  <tr>
-                    <td i18n-data="networkTimeout"></td>
-                    <td class="ps-2">
-                      <input type="number" id="input_networkTimeout" />
-                    </td>
-                  </tr>
-                  <tr>
-                    <td></td>
-                    <td i18n-data="networkTimeoutNote" class="ps-2 text-xs">
-                      (defaults to 10 seconds if not set)
-                    </td>
-                  </tr>
-                </table>
+              <div class="grid grid-cols-2 gap-y-1">
+                <label for="input_networkTimeout" i18n-data="networkTimeout"
+                  >Network Timeout</label
+                >
+                <div class="ps-2">
+                  <input type="number" id="input_networkTimeout" />
+                </div>
+                <div></div>
+                <div i18n-data="networkTimeoutNote" class="ps-2 text-xs">
+                  (defaults to 10 seconds if not set)
+                </div>
               </div>
               <br />
             </div>
@@ -273,7 +269,7 @@
             ></button>
 
             <div class="mt-[20px]">
-              Create old database:
+              <label for="input_dbVersion">Create old database:</label>
               <input type="number" id="input_dbVersion" class="ms-1 w-24" />
               <button id="btn_create_db" class="btn btn-info btn-xs ms-1">
                 Create
@@ -286,10 +282,9 @@
                 id="cbx_reduceKeywords"
                 class="toggle toggle-info toggle-xs"
               />
-              <label
-                for="cbx_reduceKeywords"
-                i18n-data="reduceKeywords"
-              ></label>
+              <label for="cbx_reduceKeywords" i18n-data="reduceKeywords"
+                >Reduce Keywords</label
+              >
             </div>
           </div>
         </div>

@@ -38,7 +38,7 @@ export async function cacheGet(type, forceServer = false) {
 
   // data was not found in cache -> load from server
   if (
-    typeof element === 'undefined' ||
+    element === undefined ||
     Object.keys(element).length === 0 ||
     staleFormat ||
     elementExpired(db, type, created, forceServer)
@@ -93,7 +93,7 @@ export async function cacheTempAdd(type, newTags) {
 function elementExpired(db, type, created, forceServer) {
   // if the refresh is forced or no entry has been created, return true
   // fetch can be forced by setting forceServer to true
-  if (forceServer || typeof created === 'undefined') return true;
+  if (forceServer || created === undefined) return true;
 
   const one_day = 60 * 60 * 24 * 1000; // one day in milliseconds
   const diff = Date.now() - created.value;
@@ -126,10 +126,7 @@ async function getDBConnection() {
   if (dbConnectionPool) {
     try {
       // Validate connection is still valid by checking for expected object stores
-      if (
-        dbConnectionPool.objectStoreNames &&
-        dbConnectionPool.objectStoreNames.contains('bookmarkChecks')
-      ) {
+      if (dbConnectionPool.objectStoreNames?.contains('bookmarkChecks')) {
         return dbConnectionPool;
       }
     } catch (e) {
@@ -183,7 +180,7 @@ function hashUrl(url) {
   // Fast hash using simple string hash algorithm
   let hash = 0;
   for (let i = 0; i < url.length; i++) {
-    const char = url.charCodeAt(i);
+    const char = url.codePointAt(i);
     hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }

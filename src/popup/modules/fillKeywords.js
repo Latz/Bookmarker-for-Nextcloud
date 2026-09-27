@@ -10,8 +10,7 @@ export default async function fillKeywords(keywords) {
 
   const { default: Tagify } = await import('@yaireo/tagify');
 
-  tagsInput.classList.remove('input-sm');
-  tagsInput.classList.remove('input');
+  tagsInput.classList.remove('input-sm', 'input');
 
   let tags = [];
   try {

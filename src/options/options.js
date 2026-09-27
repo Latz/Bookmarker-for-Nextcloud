@@ -11,7 +11,7 @@ import {
 import Tagify from '@yaireo/tagify';
 import '@yaireo/tagify/dist/tagify.css';
 import { getFolders } from '../background/modules/getFolders.js';
-import fillFolders, { buildFolderOptions } from '../popup/modules/fillFolders.js';
+import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
 const OPTION_STORE = 'options';
 let tagify;
@@ -128,7 +128,9 @@ document
     document
       .getElementById(`${event.target.id}`)
       .classList.add('selected_heading');
-    store_data(OPTION_STORE, { input_headings_slider: parseInt(slider.value) });
+    store_data(OPTION_STORE, {
+      input_headings_slider: Number.parseInt(slider.value),
+    });
   });
 
 // color numbers id sets slider
@@ -141,7 +143,9 @@ slider.addEventListener('input', () => {
     .classList.remove('selected_heading');
   document.getElementById(`${slider.value}`).classList.add('selected_heading');
   slider.setAttribute('data', slider.value);
-  store_data(OPTION_STORE, { input_headings_slider: parseInt(slider.value) });
+  store_data(OPTION_STORE, {
+    input_headings_slider: Number.parseInt(slider.value),
+  });
 });
 
 /**
@@ -194,7 +198,7 @@ async function setOptions() {
   const input_networkTimeout = document.getElementById('input_networkTimeout');
   input_networkTimeout.addEventListener('input', () => {
     store_data(OPTION_STORE, {
-      input_networkTimeout: parseInt(input_networkTimeout.value),
+      input_networkTimeout: Number.parseInt(input_networkTimeout.value),
     });
   });
 

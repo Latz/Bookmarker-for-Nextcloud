@@ -79,7 +79,7 @@ describe('fillKeywords', () => {
       expect(document.getElementById).toHaveBeenCalledWith('keywords');
     });
 
-    it('should remove input-sm class from input', async () => {
+    it('should remove input-sm and input classes from input', async () => {
       globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
@@ -88,19 +88,10 @@ describe('fillKeywords', () => {
 
       await fillKeywords(['keyword1']);
 
-      expect(mockTagsInput.classList.remove).toHaveBeenCalledWith('input-sm');
-    });
-
-    it('should remove input class from input', async () => {
-      globalThis.document = {
-        getElementById: vi.fn().mockReturnValue(mockTagsInput),
-      };
-
-      cacheGet.mockResolvedValue([]);
-
-      await fillKeywords(['keyword1']);
-
-      expect(mockTagsInput.classList.remove).toHaveBeenCalledWith('input');
+      expect(mockTagsInput.classList.remove).toHaveBeenCalledWith(
+        'input-sm',
+        'input',
+      );
     });
   });
 
@@ -413,7 +404,7 @@ describe('fillKeywords', () => {
   });
 
   describe('Class manipulation', () => {
-    it('should remove both classes from input', async () => {
+    it('should remove both classes from input in a single call', async () => {
       globalThis.document = {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
@@ -422,21 +413,11 @@ describe('fillKeywords', () => {
 
       await fillKeywords(['keyword1']);
 
-      expect(mockTagsInput.classList.remove).toHaveBeenCalledWith('input-sm');
-      expect(mockTagsInput.classList.remove).toHaveBeenCalledWith('input');
-    });
-
-    it('should call remove in correct order', async () => {
-      globalThis.document = {
-        getElementById: vi.fn().mockReturnValue(mockTagsInput),
-      };
-
-      cacheGet.mockResolvedValue([]);
-
-      await fillKeywords(['keyword1']);
-
-      expect(mockTagsInput.classList.remove).toHaveBeenNthCalledWith(1, 'input-sm');
-      expect(mockTagsInput.classList.remove).toHaveBeenNthCalledWith(2, 'input');
+      expect(mockTagsInput.classList.remove).toHaveBeenCalledTimes(1);
+      expect(mockTagsInput.classList.remove).toHaveBeenCalledWith(
+        'input-sm',
+        'input',
+      );
     });
   });
 });

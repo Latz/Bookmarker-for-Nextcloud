@@ -14,9 +14,7 @@ import { zenMode } from './modules/zenMode.js';
 
 const DEBUG = false;
 // -----------------------------------------------------------------------------------------------
-// Initialize extension
 console.log('init background');
-init();
 
 // ------------------------------------------------------------------------------------------------
 // Message center
@@ -87,6 +85,15 @@ chrome.contextMenus.onClicked.addListener((info) => {
 });
 
 // ------------------------------------------------------------------------------------------------
+// Initialize extension -- awaited at top level now that both listeners above
+// are registered synchronously first (MV3 requires that on SW cold start).
+try {
+  await init();
+} catch (error) {
+  console.error('[background] init failed:', error);
+}
+
+// ------------------------------------------------------------------------------------------------
 /**
  * Saves a bookmark by making an API call to create a new bookmark or update an existing one.
  * It also stores the last selected folders, displays a notification to the user based on the response from the API call,
@@ -130,12 +137,10 @@ async function updateKeywordCache(data) {
     .filter((tag) => tag.length > 0);
   if (keywords.length === 0) return;
 
-  const cachedTags = (await cacheGet('keywords')).map((tag) =>
-    tag.toLowerCase(),
+  const cachedTags = new Set(
+    (await cacheGet('keywords')).map((tag) => tag.toLowerCase()),
   );
-  const newTags = keywords.filter(
-    (tag) => !cachedTags.includes(tag.toLowerCase()),
-  );
+  const newTags = keywords.filter((tag) => !cachedTags.has(tag.toLowerCase()));
   if (newTags.length > 0) await cacheTempAdd('keywords', newTags);
 }
 

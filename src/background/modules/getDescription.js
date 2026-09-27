@@ -13,6 +13,6 @@ export default function getDescription(document) {
   );
   if (description.length === 0) return '';
 
-  description = description[0].replace(/(^\n+)|(\n+$)/g, ''); // trim "\n" from start and end
-  return description.trim(); // Remove leading and trailing blanks
+  // trim() already strips "\n" along with other leading/trailing whitespace.
+  return description[0].trim();
 }
