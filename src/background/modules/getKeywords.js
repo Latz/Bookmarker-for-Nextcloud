@@ -182,7 +182,7 @@ export default async function getKeywords(parsedData, document) {
       // If there is exactly one keywords string it might be a collection of keywords devided by comma, semicolo, or spaces
       // Try these possibilities otherwise return given keyword string
       // TODO: Vielleicht erst Wörter zwischen Anführungszeichen raus suchen
-      if (metaKeywords.length === 1) {
+      if (metaKeywords.length === 1 && metaKeywords[0]) {
         const dividers = [',', ';', '&amp;', ' '];
         if (dividers.some((v) => metaKeywords[0].includes(v))) {
           // https://www.heise.de
@@ -257,7 +257,7 @@ export default async function getKeywords(parsedData, document) {
       let i = 0;
       while (i < nodeList.length && keywords.length === 0) {
         const script = nodeList[i].text;
-        if (script.includes('dataLayer.push')) {
+        if (script && script.includes('dataLayer.push')) {
           const regex = /push\((.*?)\)/g;
           const match = regex.exec(script);
           try {
