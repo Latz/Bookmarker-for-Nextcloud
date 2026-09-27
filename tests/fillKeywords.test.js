@@ -15,7 +15,7 @@ vi.mock('../src/lib/cache.js', () => ({
 vi.mock('@yaireo/tagify', () => {
   const mockAddTags = vi.fn();
   const mockTagifyConstructor = vi.fn(function() {
-    return { addTags: mockAddTags };
+    return { addTags: mockAddTags, on: vi.fn(), whitelist: [] };
   });
 
   // Store references on global object for tests to access
@@ -121,6 +121,7 @@ describe('fillKeywords', () => {
         dropdown: {
           maxItems: 5,
           highlightFirst: true,
+          includeSelectedTags: true,
         },
       });
     });
@@ -140,6 +141,7 @@ describe('fillKeywords', () => {
         dropdown: {
           maxItems: 5,
           highlightFirst: true,
+          includeSelectedTags: true,
         },
       });
     });
@@ -160,6 +162,7 @@ describe('fillKeywords', () => {
         dropdown: {
           maxItems: 5,
           highlightFirst: true,
+          includeSelectedTags: true,
         },
       });
     });
@@ -179,6 +182,7 @@ describe('fillKeywords', () => {
         dropdown: {
           maxItems: 5,
           highlightFirst: true,
+          includeSelectedTags: true,
         },
       });
     });
@@ -403,6 +407,7 @@ describe('fillKeywords', () => {
       expect(mockTagifyConstructor.mock.calls[0][1].dropdown).toEqual({
         maxItems: 5,
         highlightFirst: true,
+        includeSelectedTags: true,
       });
     });
   });

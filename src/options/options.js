@@ -9,6 +9,7 @@ import {
   createOldDatabase,
 } from '../lib/storage.js';
 import Tagify from '@yaireo/tagify';
+import '@yaireo/tagify/dist/tagify.css';
 import { getFolders } from '../background/modules/getFolders.js';
 import fillFolders, { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
@@ -50,13 +51,22 @@ document.onreadystatechange = async () => {
 
     // --- zen keywords ----------------------------------------------------------------
     const tagsInput = document.getElementById('input_zenKeywords');
-    // TODO: add whitelist
+    const zenKeywords = (await load_data(OPTION_STORE, 'input_zenKeywords')) ?? [];
     tagify = new Tagify(tagsInput, {
       backspace: 'edit',
+      whitelist: zenKeywords,
       dropdown: {
         maxItems: 5,
         highlightFirst: true,
+        includeSelectedTags: true,
       },
+    });
+    // keep already-added tags matchable in the dropdown even if they weren't
+    // in the initial whitelist
+    tagify.on('add', ({ detail }) => {
+      if (!tagify.whitelist.includes(detail.data.value)) {
+        tagify.whitelist.push(detail.data.value);
+      }
     });
     // --- zen folders ---------------------------------------------------------------------
 
@@ -78,8 +88,7 @@ document.onreadystatechange = async () => {
     }
 
     //--- fill zen tags
-    const zenKeywords = await load_data(OPTION_STORE, 'input_zenKeywords');
-    if (zenKeywords !== undefined) {
+    if (zenKeywords.length > 0) {
       tagify.addTags(zenKeywords);
     }
 
@@ -92,7 +101,6 @@ document.onreadystatechange = async () => {
     });
 
     // --- zen keywords --------------------------------------------------------------------------
-    // TODO: add whitelist
     tagify.on('add', saveZenTags);
     tagify.on('remove', saveZenTags);
   }

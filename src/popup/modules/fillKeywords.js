@@ -1,5 +1,6 @@
 // @ts-check
 import { cacheGet } from '../../lib/cache.js';
+import '@yaireo/tagify/dist/tagify.css';
 
 export default async function fillKeywords(keywords) {
   const tagsInput = document.getElementById('keywords');
@@ -29,7 +30,15 @@ export default async function fillKeywords(keywords) {
     dropdown: {
       maxItems: 5,
       highlightFirst: true,
+      includeSelectedTags: true,
     },
+  });
+  // keep already-added tags matchable in the dropdown even if they weren't
+  // in the initial whitelist
+  tagify.on('add', ({ detail }) => {
+    if (!tagify.whitelist.includes(detail.data.value)) {
+      tagify.whitelist.push(detail.data.value);
+    }
   });
 
   if (!keywords || (Array.isArray(keywords) && keywords.length === 0)) {

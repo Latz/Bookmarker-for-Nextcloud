@@ -13,6 +13,25 @@
   --tagify-dd-text-color: light-dark(black, oklch(97.807% .029 256.847));
 }
 
+/* tagify.css is unlayered, so it otherwise wins over Tailwind's @layer
+   utilities (input-bordered/input-info) regardless of source order or
+   specificity -- reskin via Tagify's own CSS variables instead of fighting
+   the cascade. */
+.tagify {
+  --tags-border-color: var(--color-info);
+  --tags-hover-border-color: var(--color-info);
+  --tags-focus-border-color: var(--color-info);
+}
+
+/* tagify.css only recolors the border on focus, which is invisible here
+   since it already matches the resting border color above -- add the same
+   outline treatment the app's other inputs use on focus (.input:focus in
+   popup.css) so focus is actually visible. */
+.tagify.tagify--focus {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}
+
 /* Ensure wrapper uses the variables */
 .tagify__dropdown__wrapper {
   background: var(--tagify-dd-bg-color);

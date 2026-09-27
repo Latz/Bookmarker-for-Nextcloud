@@ -394,6 +394,7 @@ describe('options.js', () => {
       mockTagifyInstance = {
         on: vi.fn(),
         addTags: vi.fn(),
+        whitelist: [],
         value: [{ value: 'tag1' }, { value: 'tag2' }],
       };
 
@@ -417,9 +418,11 @@ describe('options.js', () => {
     it('should initialize Tagify on the keywords input', async () => {
       expect(Tagify).toHaveBeenCalledWith(mockElements.input_zenKeywords, {
         backspace: 'edit',
+        whitelist: ['keyword1', 'keyword2'],
         dropdown: {
           maxItems: 5,
           highlightFirst: true,
+          includeSelectedTags: true,
         },
       });
     });
@@ -434,8 +437,9 @@ describe('options.js', () => {
     });
 
     it('should save tags when add event is triggered', async () => {
-      // Get the add event handler
-      const addHandler = mockTagifyInstance.on.mock.calls.find(call => call[0] === 'add')[1];
+      // Get the add event handler (saveZenTags is registered last; the first
+      // 'add' handler only keeps the whitelist in sync)
+      const addHandler = mockTagifyInstance.on.mock.calls.filter(call => call[0] === 'add').pop()[1];
 
       // Trigger the handler
       addHandler();
