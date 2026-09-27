@@ -107,7 +107,7 @@ describe('cache.js', () => {
     it('should fetch from server when cache is expired', async () => {
       const oneDayAgo = Date.now() - 25 * 60 * 60 * 1000; // 25 hours ago
       mockDB.get
-        .mockResolvedValueOnce({ data: ['old-tag'] }) // element
+        .mockResolvedValueOnce({ item: 'keywords', value: ['old-tag'] }) // element
         .mockResolvedValueOnce({ value: oneDayAgo }); // created (expired)
 
       const mockServerData = { data: ['new-tag'] };
@@ -158,6 +158,57 @@ describe('cache.js', () => {
       expect(apiCall).toHaveBeenCalled();
       // cacheGet now returns just the array, not the full API response
       expect(result).toEqual(['tag1']);
+    });
+
+    it('should cache the bare array returned by the tag endpoint', async () => {
+      mockDB.get.mockResolvedValue(undefined);
+
+      apiCall.mockResolvedValue(['opendata', 'php']);
+
+      const result = await cacheGet('keywords');
+
+      expect(result).toEqual(['opendata', 'php']);
+      expect(mockDB.put).toHaveBeenCalledWith('keywords', {
+        item: 'keywords',
+        value: ['opendata', 'php'],
+      });
+    });
+
+    it('should refetch when a cached keywords entry holds a non-array value', async () => {
+      mockDB.get
+        .mockResolvedValueOnce({ item: 'keywords', value: undefined })
+        .mockResolvedValueOnce({ value: Date.now() });
+
+      apiCall.mockResolvedValue({ data: ['tag1'] });
+
+      const result = await cacheGet('keywords');
+
+      expect(apiCall).toHaveBeenCalled();
+      expect(result).toEqual(['tag1']);
+    });
+
+    it('should not cache a failed apiCall response (error status)', async () => {
+      mockDB.get.mockResolvedValue(undefined); // No cached data
+
+      apiCall.mockResolvedValue({ status: 'error', statusText: 'Not Found' });
+
+      const result = await cacheGet('keywords');
+
+      expect(result).toEqual([]);
+      // must not persist the failure, or the next cacheGet would return
+      // undefined from cache instead of retrying the server
+      expect(mockDB.put).not.toHaveBeenCalled();
+    });
+
+    it('should not cache a failed apiCall response (network error)', async () => {
+      mockDB.get.mockResolvedValue(undefined);
+
+      apiCall.mockResolvedValue({ status: -1, statusText: 'Failed to fetch' });
+
+      const result = await cacheGet('folders');
+
+      expect(result).toEqual([]);
+      expect(mockDB.put).not.toHaveBeenCalled();
     });
   });
 

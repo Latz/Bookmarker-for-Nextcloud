@@ -31,7 +31,10 @@ export async function cacheGet(type, forceServer = false) {
   // entry is discarded and refetched rather than handed to callers that now
   // expect option descriptors. Entries live for 24h, so this matters for
   // anyone upgrading mid-cache.
-  const staleFormat = type === 'folders' && element && !Array.isArray(element.value);
+  // Keywords entries written before failed fetches stopped being cached can
+  // hold `undefined`; treat any non-array value as a miss so they self-heal.
+  const staleFormat =
+    (type === 'folders' || type === 'keywords') && element && !Array.isArray(element.value);
 
   // data was not found in cache -> load from server
   if (
@@ -42,16 +45,20 @@ export async function cacheGet(type, forceServer = false) {
   ) {
     // We call it "keywords" Nextcloud calls it "tags" -> convert
     const datatype = type === 'keywords' ? 'tag' : 'folder';
-    let data = await apiCall(
+    const response = await apiCall(
       `index.php/apps/bookmarks/public/rest/v2/${datatype}`,
       'GET',
     );
-    if (type === 'folders') {
-      data = preRenderFolders(data.data);
-    } else if (type === 'keywords') {
-      // Extract the actual array from the API response
-      data = data.data;
+    // The tag endpoint returns a bare array; the folder endpoint wraps it in
+    // { status, data }.
+    const payload = Array.isArray(response) ? response : response.data;
+    // A failed apiCall resolves to a status/statusText object with no array.
+    // Caching that would poison this entry for 24h, so return empty and let
+    // the next call retry the server.
+    if (!Array.isArray(payload)) {
+      return [];
     }
+    const data = type === 'folders' ? preRenderFolders(payload) : payload;
     cacheAdd(type, data);
     if (forceServer) cacheRefreshNotification();
     return data;
