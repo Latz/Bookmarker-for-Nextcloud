@@ -96,9 +96,9 @@ const domReady =
   document.readyState === 'complete'
     ? Promise.resolve()
     : new Promise((resolve) => {
-        document.onreadystatechange = () => {
+        document.addEventListener('readystatechange', () => {
           if (document.readyState === 'complete') resolve();
-        };
+        });
       });
 
 /**
@@ -118,12 +118,24 @@ async function runFormFlow(dataPromise) {
   if (!data.ok) {
     createErrorBox(data);
     // Only needed on the error path, so keep it out of the default bundle.
-    const { default: textFit } = await import('textfit');
-    textFit(document.getElementById('errormessage'));
-  } else {
-    hydrateForm(data);
-    addSaveBookmarkButtonListener(data.bookmarked);
+    // Fitting is cosmetic: the box stays readable if the import fails.
+    try {
+      const { default: textFit } = await import('textfit');
+      textFit(document.getElementById('errormessage'));
+    } catch (error) {
+      console.error('[popup] textfit failed:', error);
+    }
+    return;
   }
+
+  try {
+    await hydrateForm(data);
+  } catch (error) {
+    console.error('[popup] hydrating the form failed:', error);
+    createErrorBox({ error: error?.message });
+    return;
+  }
+  addSaveBookmarkButtonListener(data.bookmarked);
 }
 
 // Not top-level awaited: awaiting here would make `await import('popup.js')`
@@ -146,14 +158,36 @@ const boot = (async () => {
   }
 })();
 
-// Nothing awaits the bootstrap, so report failures rather than letting them
-// become silent unhandled rejections. (Previously these propagated out of the
-// readystatechange handler, where they were equally invisible.)
+// Nothing awaits the bootstrap, so report failures rather than leaving an
+// empty popup with a spinner that never stops.
 boot.catch((error) => {
   console.error('[popup] initialisation failed:', error);
+  try {
+    createErrorBox({ error: error?.message });
+  } catch (renderError) {
+    console.error('[popup] could not show the error:', renderError);
+  }
 });
 
 // --------------------------------------------------------------------------------------------------
+/**
+ * Asks the service worker for the page data. Never rejects: a throw (e.g. the
+ * worker is still waking up: "Receiving end does not exist") or a missing/
+ * malformed reply becomes a retryable error result, so the retry loop treats
+ * it like any other failed attempt.
+ * @returns {Promise<Object>} The background's reply or a retryable error object
+ */
+async function requestData() {
+  const fallback = () => chrome.i18n.getMessage('ConnectionError') || 'Error';
+  try {
+    const data = await chrome.runtime.sendMessage({ msg: 'getData' });
+    if (data && typeof data === 'object') return data;
+    return { ok: false, retryable: true, error: fallback() };
+  } catch (error) {
+    return { ok: false, retryable: true, error: error?.message || fallback() };
+  }
+}
+
 /**
  * Gets data from the background with retry logic
  * Retries the connection when it fails, up to the configured number of retries
@@ -164,21 +198,23 @@ async function getDataWithRetry() {
   // before the first sendMessage would put a storage read in front of the
   // round trip this whole module is arranged to start as early as possible --
   // the count is not needed until the first attempt has already failed.
-  let pending = chrome.runtime.sendMessage({ msg: 'getData' });
-  // Mark it handled: if the option read below rejects first we never reach the
-  // await, and an in-flight rejection would surface as an unhandled one. The
-  // await still observes the real rejection.
-  pending.catch(() => {});
-  const maxRetries = await getOption('input_numberOfRetries');
+  // requestData never rejects, so an in-flight failure cannot surface as an
+  // unhandled rejection while the option read below is still pending.
+  let pending = requestData();
+  let maxRetries;
+  try {
+    maxRetries = await getOption('input_numberOfRetries');
+  } catch (error) {
+    // Fall back to the default count rather than failing the whole flow
+    console.error('[popup] reading the retry count failed:', error);
+  }
   const retryCount =
     Number.isFinite(maxRetries) && maxRetries > 0 ? Math.round(maxRetries) : 5;
 
   let lastError = null;
 
   for (let attempt = 0; attempt < retryCount; attempt++) {
-    // Exceptions from sendMessage propagate immediately (no retry on throws)
-    const data = await (pending ??
-      chrome.runtime.sendMessage({ msg: 'getData' }));
+    const data = await (pending ?? requestData());
     pending = null;
 
     // If the data is ok, return it immediately
@@ -258,7 +294,8 @@ function createErrorBox(data) {
   const msgDiv = document.createElement('div');
   msgDiv.id = 'errormessage';
   msgDiv.className = 'div3 text-clip';
-  msgDiv.textContent = data.error;
+  msgDiv.textContent =
+    data?.error || chrome.i18n.getMessage('ConnectionError') || 'Error';
 
   parent.append(iconDiv, labelDiv, msgDiv);
   document.body.replaceChildren(parent);
@@ -322,16 +359,25 @@ function createReconnectBanner(server) {
       return;
     }
 
-    const granted = await chrome.permissions.request({
-      origins: [`${origin}/*`],
-    });
-    if (!granted) {
-      msg.textContent = chrome.i18n.getMessage('reconnectDenied');
-      return;
-    }
+    // A second click while the request/form flow runs would build the form twice
+    button.disabled = true;
+    try {
+      const granted = await chrome.permissions.request({
+        origins: [`${origin}/*`],
+      });
+      if (!granted) {
+        msg.textContent = chrome.i18n.getMessage('reconnectDenied');
+        button.disabled = false;
+        return;
+      }
 
-    prefetchFormOptions();
-    await runFormFlow(getDataWithRetry());
+      prefetchFormOptions();
+      await runFormFlow(getDataWithRetry());
+    } catch (error) {
+      console.error('[popup] reconnect failed:', error);
+      msg.textContent = chrome.i18n.getMessage('reconnectDenied');
+      button.disabled = false;
+    }
   });
 
   form.replaceChildren(msg, button);

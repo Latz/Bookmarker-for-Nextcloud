@@ -339,7 +339,11 @@ describe('popup.js', () => {
 
       // Signal readiness the way the browser would
       mockDocument.readyState = 'complete';
-      mockDocument.onreadystatechange();
+      const [, onReadyStateChange] =
+        mockDocument.addEventListener.mock.calls.find(
+          ([type]) => type === 'readystatechange',
+        );
+      onReadyStateChange();
       await flush();
 
       expect(mockElements.bookmarkForm.replaceChildren).toHaveBeenCalled();
@@ -680,38 +684,188 @@ describe('popup.js', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should handle chrome.runtime.sendMessage errors', async () => {
-      // Mock credentials exist
-      load_data.mockImplementation((store, key) => {
-        if (key === 'appPassword') return Promise.resolve('test-password');
-        // store_data writes appPassword and server together at login (login.js),
-        // so a real popup never sees one without the other. permissions.contains
-        // defaults to true in tests/setup.js, so this keeps the normal-flow tests
-        // on the normal flow rather than the reconnect-banner path (S5).
-        if (key === 'server') return Promise.resolve('https://example.com');
-        return Promise.resolve(undefined);
-      });
-
-      // Mock zen mode disabled
-      getOption.mockResolvedValue(false);
-
-      // Mock error response from sendMessage
-      globalThis.chrome.runtime.sendMessage.mockRejectedValue(
-        new Error('Message error'),
-      );
-
-      const consoleErrorSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+    it('should show an error box when the storage read fails at boot', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      load_data.mockRejectedValue(new Error('Storage error'));
 
       await import('../src/popup/popup.js');
       await flush();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[popup] initialisation failed:',
-        expect.objectContaining({ message: 'Message error' }),
+      expect(mockElements.body.replaceChildren).toHaveBeenCalled();
+      expect(mockElements.body.innerHTML).toContain('Storage error');
+    });
+  });
+
+  describe('getData failures', () => {
+    const withCredentials = () => {
+      load_data.mockImplementation((store, key) => {
+        if (key === 'appPassword') return Promise.resolve('test-password');
+        if (key === 'server') return Promise.resolve('https://example.com');
+        return Promise.resolve(undefined);
+      });
+      // cbx_enableZen false; input_numberOfRetries falls back to 5
+      getOption.mockResolvedValue(false);
+    };
+    const getDataCalls = () =>
+      globalThis.chrome.runtime.sendMessage.mock.calls.filter(
+        ([msg]) => msg?.msg === 'getData',
       );
-      consoleErrorSpy.mockRestore();
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should retry when sendMessage throws, then show an error box', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      withCredentials();
+      globalThis.chrome.runtime.sendMessage.mockRejectedValue(
+        new Error('Message error'),
+      );
+
+      await import('../src/popup/popup.js');
+      await vi.runAllTimersAsync();
+
+      expect(getDataCalls()).toHaveLength(5);
+      expect(hydrateForm).not.toHaveBeenCalled();
+      expect(mockElements.body.innerHTML).toContain('Message error');
+    });
+
+    it('should recover when sendMessage throws once and then succeeds', async () => {
+      vi.useFakeTimers();
+      withCredentials();
+      const mockData = { ok: true, url: 'https://example.com', title: 'T' };
+      globalThis.chrome.runtime.sendMessage
+        .mockRejectedValueOnce(new Error('Receiving end does not exist'))
+        .mockResolvedValue(mockData);
+
+      await import('../src/popup/popup.js');
+      await vi.runAllTimersAsync();
+
+      expect(getDataCalls()).toHaveLength(2);
+      expect(hydrateForm).toHaveBeenCalledWith(mockData);
+    });
+
+    it('should treat an empty reply as a retryable failure', async () => {
+      vi.useFakeTimers();
+      withCredentials();
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue(undefined);
+
+      await import('../src/popup/popup.js');
+      await vi.runAllTimersAsync();
+
+      expect(getDataCalls()).toHaveLength(5);
+      expect(hydrateForm).not.toHaveBeenCalled();
+      expect(mockElements.body.replaceChildren).toHaveBeenCalled();
+    });
+
+    it('should fall back to 5 attempts when the retry count cannot be read', async () => {
+      vi.useFakeTimers();
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      load_data.mockImplementation((store, key) => {
+        if (key === 'appPassword') return Promise.resolve('test-password');
+        if (key === 'server') return Promise.resolve('https://example.com');
+        return Promise.resolve(undefined);
+      });
+      getOption.mockImplementation((name) =>
+        name === 'input_numberOfRetries'
+          ? Promise.reject(new Error('idb down'))
+          : Promise.resolve(false),
+      );
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue({
+        ok: false,
+        error: 'Connection failed',
+      });
+
+      await import('../src/popup/popup.js');
+      await vi.runAllTimersAsync();
+
+      expect(getDataCalls()).toHaveLength(5);
+    });
+
+    it('should show an error box and skip the save listener when hydrating fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      withCredentials();
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue({
+        ok: true,
+        url: 'https://example.com',
+        title: 'T',
+        bookmarked: false,
+      });
+      hydrateForm.mockRejectedValue(new Error('hydrate broke'));
+
+      await import('../src/popup/popup.js');
+      await flush();
+
+      expect(addSaveBookmarkButtonListener).not.toHaveBeenCalled();
+      expect(mockElements.body.innerHTML).toContain('hydrate broke');
+    });
+
+    it('should show a fallback text when the error has no message', async () => {
+      withCredentials();
+      globalThis.chrome.runtime.sendMessage.mockResolvedValue({
+        ok: false,
+        retryable: false,
+      });
+
+      await import('../src/popup/popup.js');
+      await flush();
+
+      expect(mockElements.body.innerHTML).not.toContain('undefined');
+      expect(mockElements.body.innerHTML).toContain('id="errormessage"');
+    });
+  });
+
+  describe('Reconnect banner', () => {
+    const noPermission = () => {
+      load_data.mockImplementation((store, key) => {
+        if (key === 'appPassword') return Promise.resolve('test-password');
+        if (key === 'server') return Promise.resolve('https://example.com');
+        return Promise.resolve(undefined);
+      });
+      getOption.mockResolvedValue(false);
+      globalThis.chrome.permissions.contains.mockResolvedValue(false);
+    };
+    const getClickHandler = async () => {
+      await import('../src/popup/popup.js');
+      await flush();
+      const button = mockElements.bookmarkForm.replaceChildren.mock.calls[0][1];
+      const [, handler] = button.addEventListener.mock.calls.find(
+        ([type]) => type === 'click',
+      );
+      return { button, handler };
+    };
+
+    it('should disable the button while the reconnect flow runs', async () => {
+      noPermission();
+      let resolveRequest;
+      globalThis.chrome.permissions.request.mockReturnValue(
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        }),
+      );
+      const { button, handler } = await getClickHandler();
+
+      const running = handler();
+      await flush();
+      expect(button.disabled).toBe(true);
+
+      resolveRequest(false);
+      await running;
+      expect(button.disabled).toBe(false);
+    });
+
+    it('should re-enable the button when permissions.request throws', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      noPermission();
+      globalThis.chrome.permissions.request.mockRejectedValue(
+        new Error('request failed'),
+      );
+      const { button, handler } = await getClickHandler();
+
+      await handler();
+
+      expect(button.disabled).toBe(false);
     });
   });
 });
