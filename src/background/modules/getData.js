@@ -92,6 +92,12 @@ export default async function getData() {
     };
   }
 
+  // The check needs only url/title, so its network round trip overlaps with
+  // the page extraction below instead of queueing behind it. The no-op catch
+  // prevents an unhandled rejection when we return early before awaiting it.
+  const checkPromise = checkBookmark(data.url, data.title, abortController.signal);
+  checkPromise.catch(() => {});
+
   const { input_headings_slider: headingLevel = 3 } = await headingLevelPromise;
 
   // Extraction runs inside the injected function, against the live page --
@@ -130,7 +136,7 @@ export default async function getData() {
     await Promise.all([
       Promise.resolve(getDescription(mockDoc)), // Synchronous, but wrapped for consistency
       getKeywords(parsedData, mockDoc),
-      checkBookmark(data.url, data.title, abortController.signal),
+      checkPromise,
       getFolders(),
     ]);
 
@@ -212,11 +218,13 @@ async function waitForInflightRequest(inflightPromise, signal) {
 
 /**
  * Checks cache for a bookmark check result
+ * @param {string} url - URL to look up.
+ * @param {Object} options - Pre-fetched options (saves per-lookup option reads).
  */
-async function checkCache(url, cacheBookmarkChecks) {
-  if (!cacheBookmarkChecks) return null;
+async function checkCache(url, options) {
+  if (!options.cbx_cacheBookmarkChecks) return null;
 
-  let cached = await getCachedBookmarkCheck(url);
+  let cached = await getCachedBookmarkCheck(url, options);
   if (cached) {
     log(DEBUG, 'Using cached bookmark check (exact URL) for', url);
     return cached;
@@ -224,7 +232,7 @@ async function checkCache(url, cacheBookmarkChecks) {
 
   const normUrl = normalizeUrl(url);
   if (normUrl !== url) {
-    cached = await getCachedBookmarkCheck(normUrl);
+    cached = await getCachedBookmarkCheck(normUrl, options);
     if (cached) {
       log(DEBUG, 'Using cached bookmark check (normalized URL) for', url);
       return cached;
@@ -250,7 +258,7 @@ async function checkBookmark(url, title, signal = null) {
     return { ok: true, found: false, matches: [], count: 0 };
   }
 
-  const cached = await checkCache(url, allOptions.cbx_cacheBookmarkChecks);
+  const cached = await checkCache(url, allOptions);
   if (cached) return cached;
 
   const normalizedUrl = normalizeUrl(url);
@@ -273,7 +281,9 @@ async function checkBookmark(url, title, signal = null) {
 
       if (urlMatches.found && urlMatches.matches.length > 0) {
         log(DEBUG, 'Found exact URL match - skipping title check');
-        await cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
+        // Fire-and-forget: the response must not wait on an IndexedDB write
+        // (cacheBookmarkCheck handles its own errors).
+        cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
         return urlMatches;
       }
 
@@ -293,7 +303,7 @@ async function checkBookmark(url, title, signal = null) {
       }
 
       if (urlMatches.ok) {
-        await cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
+        cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
       }
 
       log(DEBUG, 'checkBookmark response', urlMatches);

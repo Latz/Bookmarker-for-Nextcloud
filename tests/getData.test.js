@@ -215,6 +215,31 @@ describe('getData with offscreen document parsing', () => {
     expect(result.error).toBe('Cannot access page');
   });
 
+  it('should start the server check before page extraction finishes', async () => {
+    const apiCallModule = await import('../src/lib/apiCall.js');
+    const { getOptions } = await import('../src/lib/storage.js');
+    getOptions.mockImplementation((keys) =>
+      Promise.resolve(Object.fromEntries(keys.map((k) => [k, {
+        cbx_alreadyStored: true,
+        input_headings_slider: 3,
+      }[k]]))),
+    );
+    chrome.tabs.query.mockResolvedValue([{ id: 1, url: 'https://example.com', title: 'Example' }]);
+
+    let finishExtraction;
+    chrome.scripting.executeScript.mockImplementation(() =>
+      new Promise((resolve) => { finishExtraction = () => resolve([{ result: emptyParsedData() }]); }),
+    );
+    const apiMock = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+    apiCallModule.default = apiMock;
+
+    const promise = getData();
+    // Extraction is still pending; the check request must already be out.
+    await vi.waitFor(() => expect(apiMock).toHaveBeenCalled());
+    finishExtraction();
+    await promise;
+  });
+
   it('should handle extraction errors from inside the injected function', async () => {
     // extractPageData catches internally and returns {error} rather than
     // throwing (see extractPageData.js) -- this is what a thrown error inside
