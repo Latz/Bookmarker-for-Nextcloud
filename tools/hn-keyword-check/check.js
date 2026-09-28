@@ -6,7 +6,7 @@
 //
 // Usage: node check.js [--source hn|lobsters|devto|algolia]... [--feed <url>]...
 //        [--pages N] [--url <url>]... [--exclude <results.json>] [--limit N]
-//        [--json <file>] [--verbose]
+//        [--json <file>] [--verbose] [--review]
 import './stubs.js';
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
@@ -41,6 +41,7 @@ const { values: args } = parseArgs({
     limit: { type: 'string' },
     json: { type: 'string' },
     verbose: { type: 'boolean', short: 'v', default: false },
+    review: { type: 'boolean', default: false },
   },
 });
 
@@ -182,7 +183,10 @@ const truncate = (text, max) =>
 
 function printResult(r) {
   const host = truncate(new URL(r.url).hostname.replace(/^www\./, ''), 30);
-  const status = r.status.padEnd(17);
+  // --review: this is reference.js's automated guess, not a verdict -- a
+  // human (or Claude, asked to review) reads the printed detail per page and
+  // decides, so it's labeled as a hint here instead of a plain status.
+  const status = (args.review ? `guess: ${r.status}` : r.status).padEnd(17);
   if (!r.reference) {
     console.log(`${status} ${host.padEnd(30)} ${r.note ?? ''}`);
     return;
@@ -200,7 +204,7 @@ function printResult(r) {
   }
 
   const interesting = r.status !== 'ok' && r.status !== 'none';
-  if (!interesting && !args.verbose) return;
+  if (!interesting && !args.verbose && !args.review) return;
 
   console.log(`    ${r.url}`);
   for (const [source, keywords] of Object.entries(r.reference.keywords)) {
