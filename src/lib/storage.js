@@ -13,12 +13,20 @@ import { cacheDbVersion, initCacheStores } from './cacheSchema.js';
 const optionsCache = new Map();
 const CACHE_TTL = 30000; // 30 seconds TTL for options cache
 
+// In-flight reads (name -> Promise<value>). A read that has been dispatched but
+// not yet resolved is not in optionsCache, so without this a second caller
+// (e.g. the popup's prefetch followed by createForm) repeats the IndexedDB get.
+const pendingOptions = new Map();
+
 /**
  * Clear the options cache
  * Call this when options are updated
  */
 export function clearOptionsCache() {
   optionsCache.clear();
+  // A read dispatched before the write may return the old value; don't let
+  // later callers join it.
+  pendingOptions.clear();
 }
 
 // -----------------------------------------------------------------------
@@ -57,11 +65,18 @@ async function getMainDBConnection() {
     upgrade(db, oldVersion) {
       initDatabase(db, oldVersion);
     },
-  }).then((db) => {
-    mainDbConnection = db;
-    mainDbConnectionPromise = null;
-    return db;
-  });
+  }).then(
+    (db) => {
+      mainDbConnection = db;
+      mainDbConnectionPromise = null;
+      return db;
+    },
+    (error) => {
+      // Don't keep the rejected promise, or every later call would fail with it
+      mainDbConnectionPromise = null;
+      throw error;
+    },
+  );
 
   return mainDbConnectionPromise;
 }
@@ -188,14 +203,28 @@ export async function getOption(optionName) {
     optionsCache.delete(optionName);
   }
 
+  // Join a read that is already in flight
+  if (pendingOptions.has(optionName)) {
+    return pendingOptions.get(optionName);
+  }
+
   // Cache miss or expired - fetch from IndexedDB
-  let data = await load_data('options', optionName);
-  if (data === undefined) data = false;
+  const pending = (async () => {
+    let data = await load_data('options', optionName);
+    if (data === undefined) data = false;
 
-  // Update cache with value and timestamp
-  optionsCache.set(optionName, { value: data, timestamp: now });
+    // Update cache with value and timestamp
+    optionsCache.set(optionName, { value: data, timestamp: now });
 
-  return data;
+    return data;
+  })().finally(() => {
+    if (pendingOptions.get(optionName) === pending) {
+      pendingOptions.delete(optionName);
+    }
+  });
+  pendingOptions.set(optionName, pending);
+
+  return pending;
 }
 
 /**
@@ -208,6 +237,7 @@ export async function getOptions(optionNames) {
   const now = Date.now();
   const result = {};
   const namesToFetch = [];
+  const joined = [];
 
   // Check cache first (per-option expiration)
   for (const name of optionNames) {
@@ -221,27 +251,55 @@ export async function getOptions(optionNames) {
       // Cache expired for this option, will refetch
       optionsCache.delete(name);
     }
+    // Already being read by another caller: wait for that read instead
+    if (pendingOptions.has(name)) {
+      joined.push(
+        pendingOptions.get(name).then((value) => {
+          result[name] = value;
+        }),
+      );
+      continue;
+    }
     namesToFetch.push(name);
   }
 
   // Fetch missing/expired options from IndexedDB (truly batched with parallel gets)
   if (namesToFetch.length > 0) {
-    const db = await getMainDBConnection();
+    const batch = (async () => {
+      const db = await getMainDBConnection();
+      // Fetch all options in parallel using Promise.all
+      return Promise.all(
+        namesToFetch.map((name) =>
+          db.get('options', name).catch(() => undefined),
+        ),
+      );
+    })();
 
-    // Fetch all options in parallel using Promise.all
-    const promises = namesToFetch.map((name) =>
-      db.get('options', name).catch(() => undefined),
-    );
-    const results = await Promise.all(promises);
-
-    // Process results and update cache with per-option timestamps
+    // Publish each name as pending so concurrent callers can join, and update
+    // the cache with per-option timestamps as the batch resolves
     namesToFetch.forEach((name, index) => {
-      const data = results[index];
-      const value = data !== undefined ? data.value : false;
-      result[name] = value;
-      optionsCache.set(name, { value, timestamp: now });
+      const pending = batch
+        .then((results) => {
+          const data = results[index];
+          const value = data !== undefined ? data.value : false;
+          optionsCache.set(name, { value, timestamp: now });
+          return value;
+        })
+        .finally(() => {
+          if (pendingOptions.get(name) === pending) {
+            pendingOptions.delete(name);
+          }
+        });
+      pendingOptions.set(name, pending);
+      joined.push(
+        pending.then((value) => {
+          result[name] = value;
+        }),
+      );
     });
   }
+
+  await Promise.all(joined);
 
   return result;
 }

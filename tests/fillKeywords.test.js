@@ -36,7 +36,9 @@ vi.mock('@yaireo/tagify', () => {
 // fillKeywords() call -- leaving the globals it publishes undefined in
 // beforeEach.
 import '@yaireo/tagify';
-import fillKeywords from '../src/popup/modules/fillKeywords.js';
+import fillKeywords, {
+  preloadKeywordAssets,
+} from '../src/popup/modules/fillKeywords.js';
 import { cacheGet } from '../src/lib/cache.js';
 
 describe('fillKeywords', () => {
@@ -425,6 +427,57 @@ describe('fillKeywords', () => {
         'input-sm',
         'input',
       );
+    });
+  });
+
+  describe('preloadKeywordAssets', () => {
+    it('should read the keyword cache before fillKeywords is called', async () => {
+      cacheGet.mockResolvedValue(['tag1']);
+
+      preloadKeywordAssets();
+      expect(cacheGet).toHaveBeenCalledTimes(1);
+
+      globalThis.document = {
+        getElementById: vi.fn().mockReturnValue(mockTagsInput),
+      };
+      await fillKeywords([]);
+
+      // Consumed the preloaded result instead of reading again
+      expect(cacheGet).toHaveBeenCalledTimes(1);
+      expect(mockTagifyConstructor).toHaveBeenCalledWith(
+        mockTagsInput,
+        expect.objectContaining({ whitelist: ['tag1'] }),
+      );
+    });
+
+    it('should preload only once until consumed', async () => {
+      cacheGet.mockResolvedValue([]);
+
+      preloadKeywordAssets();
+      preloadKeywordAssets();
+      expect(cacheGet).toHaveBeenCalledTimes(1);
+
+      globalThis.document = {
+        getElementById: vi.fn().mockReturnValue(mockTagsInput),
+      };
+      await fillKeywords([]);
+    });
+
+    it('should fall back to an empty whitelist when the cache read fails', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      cacheGet.mockRejectedValue(new Error('idb down'));
+
+      preloadKeywordAssets();
+      globalThis.document = {
+        getElementById: vi.fn().mockReturnValue(mockTagsInput),
+      };
+      await fillKeywords([]);
+
+      expect(mockTagifyConstructor).toHaveBeenCalledWith(
+        mockTagsInput,
+        expect.objectContaining({ whitelist: [] }),
+      );
+      spy.mockRestore();
     });
   });
 });

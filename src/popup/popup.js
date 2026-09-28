@@ -2,6 +2,7 @@
 import { createForm, hydrateForm } from './modules/hydrateForm.js';
 import { load_data, getOption, getOptions } from '../lib/storage.js';
 import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
+import { preloadKeywordAssets } from './modules/fillKeywords.js';
 
 /**
  * Reads the credential/zen state and, when the bookmark form is the path we
@@ -42,12 +43,14 @@ const sessionPromise = (async () => {
     } catch (e) {
       origin = null;
     }
+    // The prefetch only reads options, so it can overlap the permission check
+    // instead of waiting behind it.
+    prefetchFormOptions();
     const hasPermission = origin
       ? await chrome.permissions.contains({ origins: [`${origin}/*`] })
       : false;
 
     if (hasPermission) {
-      prefetchFormOptions();
       dataPromise = getDataWithRetry();
     } else {
       needsReconnect = true;
@@ -79,7 +82,13 @@ function prefetchFormOptions() {
     'cbx_alreadyStored',
     'cbx_autoDescription',
     'folderIDs',
-  ]).catch(() => {});
+    'input_numberOfRetries',
+  ])
+    .then((options) => {
+      // Tagify and the keyword whitelist are also independent of getData
+      if (options.cbx_showKeywords) preloadKeywordAssets();
+    })
+    .catch(() => {});
 }
 
 /** Resolves once the document has finished loading. */

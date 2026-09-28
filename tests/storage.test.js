@@ -398,6 +398,46 @@ describe('storage.js', () => {
 
       expect(result).toEqual({ nonexistent: false });
     });
+
+    it('should not repeat a read that is still in flight', async () => {
+      mockDB.get.mockImplementation((store, name) =>
+        Promise.resolve({ item: name, value: `${name}-value` }),
+      );
+
+      // Second call starts before the first has resolved (empty cache)
+      const [first, second] = await Promise.all([
+        getOptions(['a', 'b']),
+        getOptions(['b', 'c']),
+      ]);
+
+      expect(first).toEqual({ a: 'a-value', b: 'b-value' });
+      expect(second).toEqual({ b: 'b-value', c: 'c-value' });
+      // a, b, c -- b is read once
+      expect(mockDB.get).toHaveBeenCalledTimes(3);
+    });
+
+    it('should let getOption join an in-flight getOptions read', async () => {
+      mockDB.get.mockResolvedValue({ item: 'a', value: 'a-value' });
+
+      const [batch, single] = await Promise.all([
+        getOptions(['a']),
+        getOption('a'),
+      ]);
+
+      expect(batch).toEqual({ a: 'a-value' });
+      expect(single).toBe('a-value');
+      expect(mockDB.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not join a failed read afterwards', async () => {
+      openDB.mockRejectedValueOnce(new Error('open failed'));
+      await expect(getOptions(['a'])).rejects.toThrow('open failed');
+
+      // A failed open must not poison the pool: the retry opens again
+      openDB.mockResolvedValue(mockDB);
+      mockDB.get.mockResolvedValue({ item: 'a', value: 'ok' });
+      await expect(getOptions(['a'])).resolves.toEqual({ a: 'ok' });
+    });
   });
 
   describe('clearData', () => {
