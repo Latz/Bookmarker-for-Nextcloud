@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Fixed the keywords field never suggesting existing Nextcloud tags: the tag endpoint returns a plain array, which was read as `{ data }` and cached as empty. Failed tag/folder fetches are no longer cached for 24h, and broken cache entries are refetched.
+- Fixed the keywords dropdown not appearing when typing a tag that is already in the field.
+- Fixed the Tagify stylesheet never being included in the built extension; the keywords field now also has a border and focus outline matching the other inputs.
+- Fixed a background error during keyword extraction on pages with SVG `<script>` elements or empty meta keyword tags.
 - Fixed "Clear Cache" in options throwing a `VersionError` and silently doing nothing, caused by an out-of-date DB version number left over from an unrelated schema bump. The cache DB version/schema is now shared between `cache.js` and `storage.js` so they can't drift apart again.
 - Moved the keyword-suggestion cache update from the popup to the background script, fixing a race with `window.close()` that could drop newly-used tags.
 - Tightened the save-success check for the keyword cache so a failed or timed-out save no longer pollutes it with tags that were never actually saved.
