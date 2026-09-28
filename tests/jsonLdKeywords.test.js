@@ -70,6 +70,32 @@ describe('extractKeywordsFromJsonLd', () => {
     expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['Space']);
   });
 
+  it('reads keywords from a top-level array of objects', () => {
+    const jsonld = [
+      { '@type': 'BreadcrumbList' },
+      { '@type': 'NewsArticle', keywords: ['a', 'b'] },
+    ];
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['a', 'b']);
+  });
+
+  it('returns [] for a top-level array without keywords', () => {
+    const jsonld = [{ '@type': 'NewsArticle', articleSection: ['business'] }];
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual([]);
+  });
+
+  it('ignores non-object entries and broken items in a top-level array', () => {
+    const jsonld = [
+      null,
+      'text',
+      { keywords: { length: 2 } }, // throws inside extraction
+      { keywords: 'x,y' },
+    ];
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['x', 'y']);
+  });
+
   it('falls back to mainEntity.keywords', () => {
     const jsonld = { mainEntity: { keywords: ['n1', 'n2'] } };
 
@@ -104,6 +130,14 @@ describe('extractJsonLdKeywords', () => {
 
     expect(() => extractJsonLdKeywords(document)).not.toThrow();
     expect(extractJsonLdKeywords(document)).toEqual(['ok']);
+  });
+
+  it('finds keywords in a script block that holds a top-level array', () => {
+    const document = documentWith(
+      JSON.stringify([{ '@type': 'NewsArticle', keywords: ['a', 'b'] }]),
+    );
+
+    expect(extractJsonLdKeywords(document)).toEqual(['a', 'b']);
   });
 
   it('returns [] when there are no JSON-LD blocks', () => {

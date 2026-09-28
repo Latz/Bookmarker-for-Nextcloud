@@ -85,9 +85,24 @@ function extractKeywordsFromMainEntity(jsonld) {
 }
 
 /**
- * Extracts keywords from one parsed JSON-LD object
+ * Extracts keywords from one parsed JSON-LD value: an object, or a top-level
+ * array of objects (e.g. `[{ "@type": "NewsArticle", ... }]`), in which case
+ * the first item that yields keywords wins.
  */
 export function extractKeywordsFromJsonLd(jsonld) {
+  if (Array.isArray(jsonld)) {
+    for (const item of jsonld) {
+      if (!item || typeof item !== 'object') continue;
+      try {
+        const keywords = extractKeywordsFromJsonLd(item);
+        if (keywords.length > 0) return keywords;
+      } catch {
+        // one oddly shaped item must not hide the keywords of the others
+        continue;
+      }
+    }
+    return [];
+  }
   return (
     extractKeywordsFromGraphArticle(jsonld) ??
     extractKeywordsFromKeywordsField(jsonld) ??
