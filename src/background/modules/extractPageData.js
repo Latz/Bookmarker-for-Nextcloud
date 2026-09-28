@@ -44,11 +44,15 @@ export function extractPageData(headingLevel) {
       }),
     );
 
-    const aRelTag = Array.from(document.querySelectorAll('a[rel=tag]')).map(
+    // `~=` matches one token of a space-separated rel list: WordPress themes
+    // write rel="category tag", which the exact match `[rel=tag]` misses
+    // (https://www.techdirt.com/). The result still feeds the mock document's
+    // 'a[rel=tag]' / 'a[rel=category]' selectors.
+    const aRelTag = Array.from(document.querySelectorAll('a[rel~="tag"]')).map(
       (a) => a.textContent,
     );
     const aRelCategory = Array.from(
-      document.querySelectorAll('a[rel=category]'),
+      document.querySelectorAll('a[rel~="category"]'),
     ).map((a) => a.textContent);
 
     const jsonLdScripts = Array.from(

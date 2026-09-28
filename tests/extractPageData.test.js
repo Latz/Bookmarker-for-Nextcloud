@@ -18,6 +18,11 @@
 
 import { describe, it, expect, afterEach } from 'vitest';
 import { extractPageData } from '../src/background/modules/extractPageData.js';
+import { createMockDocument } from '../src/background/modules/mockDocument.js';
+import {
+  extractRelCategoryKeywords,
+  extractRelTagKeywords,
+} from '../src/background/modules/keywords/pageSources.js';
 
 describe('extractPageData', () => {
   afterEach(() => {
@@ -72,6 +77,34 @@ describe('extractPageData', () => {
 
     expect(result.aRelTag).toEqual(['Tag 1', 'Tag 2']);
     expect(result.aRelCategory).toEqual(['Category 1']);
+  });
+
+  it('matches rel values that list several tokens (rel="category tag")', () => {
+    document.body.innerHTML = `
+      <a rel="category tag" href="/c1">Both</a>
+      <a rel="tag nofollow" href="/t1">Tag nofollow</a>
+      <a rel="noopener category" href="/c2">Category noopener</a>
+      <a rel="tagline" href="/x">Not a tag</a>
+      <a rel="subcategory" href="/y">Not a category</a>
+    `;
+
+    const result = extractPageData(3);
+
+    expect(result.aRelTag).toEqual(['Both', 'Tag nofollow']);
+    expect(result.aRelCategory).toEqual(['Both', 'Category noopener']);
+  });
+
+  it('lets the rel-tag extractors see rel="category tag" links via the mock document', () => {
+    document.body.innerHTML = `
+      <a rel="category tag" href="/flock">flock</a>
+      <a rel="tag" href="/alpr">alpr</a>
+      <a rel="category" href="/news">news</a>
+    `;
+
+    const mockDoc = createMockDocument(extractPageData(3));
+
+    expect(extractRelTagKeywords(mockDoc)).toEqual(['flock', 'alpr']);
+    expect(extractRelCategoryKeywords(mockDoc)).toEqual(['flock', 'news']);
   });
 
   it('extracts JSON-LD script contents', () => {
