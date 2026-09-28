@@ -41,6 +41,10 @@ export function extractMetaKeywords(document) {
       else if (metaKeywords[0].includes('&amp;'))
         // https://www.epa.gov/mold/mold-course-introduction
         keywords = metaKeywords[0].split(/&amp;/g);
+    } else {
+      // A lone keyword without dividers, e.g. <meta property="article:tag" content="self-hosting">
+      // (https://david.alvarezrosa.com/posts/self-hosting-on-the-dark-web/)
+      keywords = [metaKeywords[0]];
     }
   } else keywords = metaKeywords;
   if (keywords) {

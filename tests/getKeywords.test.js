@@ -91,9 +91,15 @@ describe('getKeywords', () => {
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
-      // Note: The implementation has a bug - when there's a single keyword without dividers,
-      // it returns an empty array instead of the keyword itself
-      expect(result).toEqual([]);
+      expect(result).toEqual(['singleKeyword']);
+    });
+
+    it('should keep a single hyphenated keyword (article:tag)', async () => {
+      getMeta.mockReturnValue(['self-hosting']);
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toEqual(['self-hosting']);
     });
 
     it('should split keywords by comma', async () => {
