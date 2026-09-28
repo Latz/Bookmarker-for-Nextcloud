@@ -23,8 +23,8 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "clean": "rm -f src/options/options.css src/popup/css/popup.css",
-    "clean:dist": "rm -rf dist .parcel-cache",
+    "clean": "del /f /q src\\options\\options.css src\\popup\\css\\popup.css 2>nul & exit /b 0",
+    "clean:dist": "if exist dist rmdir /s /q dist & if exist .parcel-cache rmdir /s /q .parcel-cache",
     "build:css:options": "npx @tailwindcss/cli -i ./src/options/input.css -o ./src/options/options.css --minify",
     "build:css:popup": "npx @tailwindcss/cli -i ./src/popup/css/input.css -o ./src/popup/css/popup.css --minify",
     "build:css": "npm run build:css:options && npm run build:css:popup",

@@ -10,12 +10,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
-      exclude: [
-        'node_modules/',
-        'tests/',
-        '*.config.js',
-        'src/popup/modules/tagify.js',
-      ],
+      exclude: ['node_modules/', 'tests/', '*.config.js'],
     },
     testTimeout: 10000,
     hookTimeout: 10000,
