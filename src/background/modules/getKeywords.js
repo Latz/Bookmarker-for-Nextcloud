@@ -1,408 +1,34 @@
 // @ts-check
-import getMeta from './getMeta.js';
-import { cacheGet } from '../../lib/cache.js';
-import { getOption, getOptions } from '../../lib/storage.js';
-import getDescription from './getDescription.js';
+import { getOptions } from '../../lib/storage.js';
 import log from '../../lib/log.js';
+import { reduceKeywords } from './keywords/reduceKeywords.js';
+import { extractJsonLdKeywords } from './keywords/jsonLdKeywords.js';
+import { extractMetaKeywords } from './keywords/metaKeywords.js';
+import {
+  extractGithubKeywords,
+  extractGtmKeywords,
+  extractNextDataKeywords,
+  extractRelCategoryKeywords,
+  extractRelTagKeywords,
+} from './keywords/pageSources.js';
+import { findExtendedKeywords } from './keywords/extendedKeywords.js';
 
 const DEBUG = false;
 
-// ---------------------------------------------------------------------------------------------------
-/**
- * Logs the given part, keywords, and the length of the keywords array to the console.
- *
- * @param {string} part - The part to log.
- * @param {Array<string>} [keywords] - An optional array of keywords to log.
- *
- * @returns {void}
- */
-
-/**
- * Builds a lookup Set of lowercased stored keywords.
- *
- * Returns null when there is nothing to match against, which callers treat as
- * "no keywords survive reduction".
- *
- * @param {Array<string>|{ok: boolean}|undefined} allKeywordsRaw - Stored keyword list, or an API error object.
- * @returns {Set<string>|null} Lowercased lookup set, or null if unusable.
- */
-function buildKeywordLookup(allKeywordsRaw) {
-  if (
-    allKeywordsRaw === undefined ||
-    Object.keys(allKeywordsRaw).length === 0 ||
-    // no keywords on server, api returns an error
-    allKeywordsRaw?.ok === false
-  ) {
-    return null;
-  }
-  return new Set(allKeywordsRaw.map((keyword) => keyword.toLowerCase()));
-}
-
-/**
- * Reduces an array of keywords by removing duplicates and filtering out
- * any keywords that are not present in the cache.
- *
- * @param {Array} keywords - An array of keywords to be reduced.
- * @param {boolean} [force] - Reduce even when the user disabled reduction.
- * @param {Set<string>|Array<string>|null} [cachedAllKeywords] - Pre-built lookup Set (preferred) or raw keyword array. Omit to read from the cache.
- * @param {boolean} [reduceEnabled] - Pre-fetched cbx_reduceKeywords, to avoid re-reading it in a loop.
- * @return {Promise<Array>} - An array of reduced keywords.
- */
-async function reduceKeywords(
-  keywords,
-  force = false,
-  cachedAllKeywords = null,
-  reduceEnabled = null,
-) {
-  const cbx_reduceKeywords =
-    reduceEnabled ?? (await getOption('cbx_reduceKeywords'));
-
-  if (force === false && cbx_reduceKeywords === false) {
-    // if the user does not want to reduce the keywords, we return
-    return keywords;
-  }
-
-  // A Set turns the per-word membership test below from a linear scan of the
-  // whole stored keyword list into a hash lookup. Callers in a loop pass a
-  // prebuilt Set so it is not rebuilt for every headline.
-  let lookup;
-  if (cachedAllKeywords instanceof Set) {
-    lookup = cachedAllKeywords;
-  } else {
-    lookup = buildKeywordLookup(
-      cachedAllKeywords ?? (await cacheGet('keywords')),
-    );
-  }
-  if (lookup === null) return [];
-
-  // dedupe first so the lookup runs once per distinct keyword
-  const unique = [...new Set(keywords)];
-
-  return unique.filter((keyword) => lookup.has(keyword.toLowerCase()));
-}
-
-// ----------------------------------------------------------------------------------------
-
-/**
- * Finds keywords on a JSON-LD `@graph`-wrapped Article node.
- * https://harpers.org/archive/2024/07/art-and-artifice-donna-tartt/
- * @returns {Array|null} Keywords, or null if this shape doesn't apply.
- */
-function extractKeywordsFromGraphArticle(jsonld) {
-  if (jsonld['@graph'] && Array.isArray(jsonld['@graph'])) {
-    for (const element of jsonld['@graph']) {
-      if (element['@type'] === 'Article') {
-        return element['keywords'] || [];
-      }
-    }
-  }
-  if (jsonld['@graph']?.['@type'] === 'Article') {
-    return jsonld['@graph']['keywords'] || [];
-  }
-  return null;
-}
-
-/**
- * Extracts keywords from the various shapes a JSON-LD `keywords` field
- * appears in across sites: array, plain string, CNN's termCode objects,
- * comma-separated string, or `tag:value` prefixed entries.
- * @returns {Array|null} Keywords, or null when `jsonld.keywords` is absent.
- */
-function extractKeywordsFromKeywordsField(jsonld) {
-  if (!jsonld.keywords) return null;
-
-  if (jsonld.keywords.length > 0) {
-    if (Array.isArray(jsonld.keywords)) {
-      return jsonld.keywords;
-    }
-    if (typeof jsonld.keywords === 'string') {
-      return jsonld.keywords.split(',');
-    }
-  }
-  //https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
-  // `Object.prototype.hasOwn` does not exist (the static method is
-  // `Object.hasOwn`), and `keywords[0]` can be undefined when `keywords` is
-  // an object with a truthy `length` but no index 0 -- both previously threw
-  // a TypeError that propagated out of getKeywords, crashing the whole
-  // extraction pipeline for any page with such JSON-LD.
-  if (jsonld.keywords[0] && Object.hasOwn(jsonld.keywords[0], 'termCode')) {
-    const terms = [];
-    jsonld.keywords.forEach((term) => {
-      if (term.termCode.label) terms.push(term.termCode.label);
-    });
-    return terms;
-  }
-  const keywords = jsonld.keywords.split(',').map((keyword) => keyword.trim());
-  if (Array.isArray(keywords)) {
-    return keywords;
-  }
-  const tags = [];
-  jsonld.keywords?.forEach((keyword) => {
-    const [id, value] = keyword.split(':');
-    if (id.toLowerCase() === 'tag') tags.push(value);
-  });
-  if (tags.length > 0) {
-    return tags;
-  }
-  // keywords are only comma separated Array
-  // https://www.vox.com/platform/amp/down-to-earth/22679378/tree-planting-forest-restoration-climate-solutions
-  return jsonld.keywords;
-}
-
-/**
- * Finds keywords on `mainEntity.keywords` (schema.org's alternate location).
- * https://www.nature.com/articles/d41586-024-00169-7
- * @returns {Array|null} Keywords, or null if this shape doesn't apply.
- */
-function extractKeywordsFromMainEntity(jsonld) {
-  if (
-    jsonld?.mainEntity?.keywords?.length > 0 &&
-    Array.isArray(jsonld.mainEntity.keywords)
-  ) {
-    return jsonld.mainEntity.keywords;
-  }
-  return null;
-}
-
-/**
- * Extracts keywords from JSON-LD structured data
- */
-function extractKeywordsFromJsonLd(jsonld) {
-  return (
-    extractKeywordsFromGraphArticle(jsonld) ??
-    extractKeywordsFromKeywordsField(jsonld) ??
-    extractKeywordsFromMainEntity(jsonld) ??
-    []
-  );
-}
-
-/**
- * Extracts keywords from a page's meta tags (keywords, news_keywords,
- * article:tag, etc.), splitting a single divider-separated string when only
- * one meta value was found.
- * @returns {Array<string>} Keywords found in meta tags, or [] if none.
- */
-function extractMetaKeywords(document) {
-  const metaKeywords = getMeta(
-    document,
-    { type: 'name', id: 'keywords' },
-    { type: 'property', id: 'keywords' },
-    { type: 'name', id: 'news_keywords' },
-    { type: 'property', id: 'article:tag' },
-    { type: 'property', id: 'og:article:tag' },
-    { type: 'itemprop', id: 'keywords' },
-    { type: 'name', id: 'sailthru.tags' },
-    { type: 'name', id: 'parsely-tags' },
-    { type: 'http-equiv', id: 'keywords' },
-  );
-
-  if (metaKeywords.length === 0) {
-    return [];
-  }
-
-  let keywords;
-  // If there is exactly one keywords string it might be a collection of keywords devided by comma, semicolo, or spaces
-  // Try these possibilities otherwise return given keyword string
-  // TODO: Vielleicht erst Wörter zwischen Anführungszeichen raus suchen
-  if (metaKeywords.length === 1 && metaKeywords[0]) {
-    const dividers = [',', ';', '&amp;', ' '];
-    if (dividers.some((v) => metaKeywords[0].includes(v))) {
-      // https://www.heise.de
-      if (metaKeywords[0].includes(',')) keywords = metaKeywords[0].split(',');
-      else if (metaKeywords[0].includes(';'))
-        keywords = metaKeywords[0].split(';');
-      else if (metaKeywords[0].includes(' '))
-        keywords = metaKeywords[0].split(' ');
-      else if (metaKeywords[0].includes('&amp;'))
-        // https://www.epa.gov/mold/mold-course-introduction
-        keywords = metaKeywords[0].split(/&amp;/g);
-    }
-  } else keywords = metaKeywords;
-  if (keywords) {
-    keywords = keywords
-      .map((keyword) => keyword.replaceAll('"', ''))
-      .map((keyword) => keyword.trim());
-  } else keywords = [];
-  return keywords;
-}
-
-/**
- * Scans headlines from h1 up to hMaxLevel for words matching stored
- * keywords, level by level, stopping at the first headline that matches.
- * @returns {Promise<Array<string>>} Reduced keywords, or [] if none matched.
- */
-async function findKeywordsInHeadlines(
-  document,
-  maxLevel,
-  keywordLookup,
-  reduceEnabled,
-) {
-  let level = 1;
-  while (level <= maxLevel) {
-    const headlines = document.querySelectorAll(`h${level}`);
-
-    for (const headline of headlines) {
-      const words = headline.innerText.split(/[\W_]+/g);
-      const reducedKw = await reduceKeywords(
-        words,
-        true,
-        keywordLookup,
-        reduceEnabled,
-      );
-      if (reducedKw && reducedKw.length > 0) {
-        return reducedKw;
-      }
-    }
-    level++;
-  }
-  return [];
-}
+// Keyword sources that still need finding are listed in
+// docs/keyword-sources-todo.md.
 
 export default async function getKeywords(parsedData, document) {
   // define an array of function whcih can be looped through later and
   // break if a function found keywords
-
-  let keywords;
-  const fs = [
-    // -----------------------------------------------------------------------------------------
-    // get Meta data
+  const sources = [
     () => extractMetaKeywords(document),
-    // ------------------------------------------------------------------------------
-    // try <a href="" rel="tag">
-    // (https://www.lenfestinstitute.org/solution-set/i-canceled-22-digital-newspaper-subscriptions-heres-what-i-learned-about-digital-retention-strategies/)
-    // ------------------------------------------------------------------------------
-    () => {
-      const keywords = [];
-      const relsTag = document.querySelectorAll('a[rel=tag]');
-      relsTag.forEach((tag) => keywords.push(tag.textContent));
-      return keywords;
-    },
-    // ------------------------------------------------
-    // try <a href="" rel="category">
-    () => {
-      const keywords = [];
-      const relsCategories = document.querySelectorAll('a[rel=category]');
-      relsCategories.forEach((category) => keywords.push(category.textContent));
-      return keywords;
-    },
-    // ------------------------------------------------
-    // try JSON-LD
-    () => {
-      let keywords = [];
-      const jsonlds = document.querySelectorAll(
-        'script[type="application/ld+json"]',
-      );
-      for (const jsonldEl of jsonlds) {
-        if (!jsonldEl) continue;
-        try {
-          // extractKeywordsFromJsonLd is inside the try, not just JSON.parse:
-          // structured data can be valid JSON but still shaped in a way that
-          // throws inside extraction (see the hasOwn note above). A crash here
-          // must not take down keyword extraction for the whole page -- move
-          // on to the next script instead.
-          const parsed = JSON.parse(jsonldEl.innerText);
-          keywords = extractKeywordsFromJsonLd(parsed);
-        } catch {
-          continue;
-        }
-        if (keywords.length === 0) break;
-      }
-      return keywords;
-    },
-    // ------------------------------------------------------------------------------------------
-    // Google Tags Manager
-    // ------------------------------------------------------------------------------------------
-    () => {
-      log(DEBUG, 'Google Tags Manager');
-      let keywords = [];
-      const nodeList = document.querySelectorAll('script');
-
-      let i = 0;
-      while (i < nodeList.length && keywords.length === 0) {
-        const script = nodeList[i].text;
-        if (script?.includes('dataLayer.push')) {
-          // Bound the scan: an untrusted page with many unclosed "push("
-          // occurrences would otherwise make the lazy quantifier retry from
-          // every one of them, an O(n^2) cost on attacker-controlled input.
-          const boundedScript =
-            script.length > 5000 ? script.slice(0, 5000) : script;
-          const regex = /push\((.*?)\)/g;
-          const match = regex.exec(boundedScript);
-          try {
-            // JSON might be broken, so be carful
-            const json = JSON.parse(match[1].replaceAll('undefined', '"x"'));
-            keywords = json.content.keywords.split('|');
-          } catch (e) {
-            log(DEBUG, 'GTM dataLayer JSON was malformed, skipping:', e);
-            return [];
-          }
-        }
-        i++;
-      }
-      return keywords;
-    },
-    // ------------------------------------------------------------------------------------------
-    // Github
-    // ------------------------------------------------------------------------------------------
-    () => {
-      log(DEBUG, 'github');
-      let keywords = [];
-      // GitHub's current topic selectors (updated 2025)
-      // Topics are displayed as: <a href="/topics/opencode" class="topic-tag topic-tag-link">opencode</a>
-      const selectors = [
-        'a[class*="topic-tag"]', // Matches topic-tag class
-        'a[data-view-component="true"][title^="Topic:"]', // GitHub's newer structure
-        'a[href^="/topics/"]', // Topic links
-        'a[data-ga-click="Topic, repository page"]', // Legacy selector (for backward compatibility)
-      ];
-
-      for (const selector of selectors) {
-        const elements = document.querySelectorAll(selector);
-        log(
-          DEBUG,
-          `GitHub selector: ${selector}, found ${elements.length} elements`,
-        );
-        if (elements.length > 0) {
-          elements.forEach((el) => {
-            const text = el.textContent.trim();
-            if (text) {
-              keywords.push(text);
-            }
-          });
-          // Stop after finding topics with first successful selector
-          if (keywords.length > 0) break;
-        }
-      }
-      log(DEBUG, 'github keywords:', keywords);
-
-      return keywords;
-    },
-
-    () => {
-      let keywords = [];
-      log(DEBUG, 'Next_data');
-      let next_data = '';
-      try {
-        next_data = document.getElementById('__NEXT_DATA__').innerText;
-      } catch (e) {
-        return [];
-      }
-      const json = JSON.parse(next_data);
-      try {
-        const tags = json.props.pageProps.post.tags;
-        if (tags) {
-          keywords = tags.split(',');
-        }
-      } catch (e) {
-        // __NEXT_DATA__ may legitimately lack a post.tags field on this page
-        log(DEBUG, 'No post.tags in __NEXT_DATA__, skipping:', e);
-        return [];
-      }
-
-      return keywords;
-    },
-
-    // -----------------------------------------------------------------------------------------------
+    () => extractRelTagKeywords(document),
+    () => extractRelCategoryKeywords(document),
+    () => extractJsonLdKeywords(document),
+    () => extractGtmKeywords(document),
+    () => extractGithubKeywords(document),
+    () => extractNextDataKeywords(document),
     // xplGlobal.document.metadata -> https://ieeexplore.ieee.org/document/10243497
     // Extraction (including the JSON.parse and error handling) now runs
     // in-page inside extractPageData -- this is a pure field read.
@@ -412,9 +38,6 @@ export default async function getKeywords(parsedData, document) {
     () => parsedData.bruteForceKeywords ?? [],
   ];
 
-  // Loop through the various functions
-  // --------------------------------------------------------------------------------------------
-
   // OPTIMIZATION: Batch fetch all options upfront to avoid multiple storage reads
   const options = await getOptions([
     'cbx_autoTags',
@@ -422,25 +45,20 @@ export default async function getKeywords(parsedData, document) {
     'input_headings_slider',
   ]);
 
-  // This large try is lame but it keeps the extension running if there is any error
-  // finding the keywords.
-  //  try {
   if (!options.cbx_autoTags) return [];
 
-  for (const f of fs) {
-    let keywords = [];
-    keywords = f();
+  // Loop through the various sources; the first one that finds anything wins
+  for (const source of sources) {
+    const keywords = source();
     log(DEBUG, '🚀 ~ keywords:', keywords);
 
     // use only keywords that are already stored in Bookmarks
     // switchable by Options/Advanced
     if (keywords && keywords.length > 0) {
-      const reducedKeywords = await reduceKeywords(keywords);
-      return reducedKeywords;
+      return reduceKeywords(keywords);
     }
   }
 
-  // ----------------------------------------------------------------------------------------
   // --- Last resort: Try to match parts of description or headlines with stored keywords ---
 
   // If the user does not want to use this feature, return an empty array
@@ -452,90 +70,5 @@ export default async function getKeywords(parsedData, document) {
   if (!options.cbx_extendedKeywords) return [];
   log(DEBUG, 'Extended Keywords!');
 
-  // Build the lookup once for all extended-mode reduce calls below. Previously
-  // the raw list was re-lowercased on every call, once per headline.
-  const keywordLookup = buildKeywordLookup(await cacheGet('keywords'));
-  // force === true below, so cbx_reduceKeywords never gates these calls; pass
-  // it explicitly anyway so reduceKeywords does not re-read it per headline.
-  const reduceEnabled = await getOption('cbx_reduceKeywords');
-
-  // --- description ---
-  log(DEBUG, 'Description');
-  let description = getDescription(document);
-  if (description.length > 0) {
-    const words = description.split(/[\W_]+/g);
-    keywords = await reduceKeywords(words, true, keywordLookup, reduceEnabled);
-    if (keywords.length > 0) {
-      return keywords;
-    }
-  } // --- headlines ---
-  log(DEBUG, 'Headlines');
-  keywords = await findKeywordsInHeadlines(
-    document,
-    options.input_headings_slider,
-    keywordLookup,
-    reduceEnabled,
-  );
-  if (keywords.length > 0) {
-    return keywords;
-  }
-
-  // The functions have found no keywords return an empty array
-  return [];
+  return findExtendedKeywords(document, options.input_headings_slider);
 }
-
-/* -----------------------------------------------------------------------------------------
-Noch nicht bearbeitet:
-+ https://tedium.co/2023/04/26/transmeta-crusoe-processor-history/
-    <i class="fas fa-tags">
-+ https://www.npr.org/2023/04/26/1170522239/tech-job-openings-mass-layoffs-workers-silicon-valley-google-meta-amazon
-    <div class="tags">
-+ elviovicosa.com/writings/microservices-in-an-early-stage-company-is-a-huge-mistake
-  (tags)
-+ https://www.sciencedirect.com/science/article/pii/S1053811923001015
-     keywords direkt auf Seite
-+ https://www.thelocal.se/20230425/spotify-passes-500-million-active-users-as-first-quarter-loss-widens
-    jsdonld: keywords, erzeugen aber Fehler
-    meta: news_keywords
-+ https://www.nature.com/articles/s41416-023-02260-8
-    keywords
-+ https://www.theregister.com/2023/04/20/google_c4_data_nasty_sources/
-    <span class="keyword_name">
-+ https://www.scientificamerican.com/article/how-our-team-overturned-the-90-year-old-metaphor-of-a-little-man-in-the-brain-who-controls-movement1/
-    <script>dataLayer = [{"con
-+ https://www.cbc.ca/news/politics/c11-online-streaming-1.6824314
-    gs_keywords
-
-------------------------------------------------------------------
-
-
-https://arstechnica.com/space/2023/11/after-decades-of-dreams-a-commercial-spaceplane-is-almost-ready-to-fly/
-( keywords:
-            'Dream Chaser|international space station|NASA|Sierra space|spaceplane',))
-
--------------------------------------------------------------------------------
-https://hexdocs.pm/ecto/Ecto.Changeset.html#module-schemaless-changesets
-(jsonld -> description)
-
-+ Trim keywords: Category: entfernen
-
-+ Sehr großes Keyword
-https://www.bbc.com/future/article/20231106-the-big-bubble-curtains-protecting-porpoises-from-wind-farm-noise
-
-+ Trim: <p> entfernen
-
-https://www.latimes.com/california/story/2023-10-26/lapd-considering-stronger-body-camera-policy
-<div class="tags">
-            <a class="link" href="https://www.latimes.com/california"
-              >California</a
-            >
-          </div>
-
-
-https://townhall.com/columnists/isabellemorales/2023/11/06/congress-has-opportunity-to-stop-the-federal-governments-civil-asset-forfeiture-racket-n2630835
-<script id="post-meta" type="application/json">
-
-https://arstechnica.com/tech-policy/2024/01/google-and-att-invest-in-starlink-rival-for-satellite-to-smartphone-service/
--> Google Tag Manager DataLayer
-
-*/
