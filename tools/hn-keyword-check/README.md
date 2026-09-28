@@ -6,7 +6,9 @@ extension's own pipeline (`extractPageData` → `createMockDocument` →
 `getDescription` / `getKeywords` from `../../src`).
 
 ```sh
-node tools/hn-keyword-check/check.js              # all front-page stories
+npm run check:hn                                  # all front-page stories
+npm run check:hn -- --limit 10                    # flags go after --
+node tools/hn-keyword-check/check.js              # same, without npm
 node tools/hn-keyword-check/check.js --limit 10
 node tools/hn-keyword-check/check.js --url <url>  # one page (repeatable)
 node tools/hn-keyword-check/check.js --verbose --json results.json

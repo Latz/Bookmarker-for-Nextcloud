@@ -42,7 +42,8 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "sonar:scan": "npm run test:coverage && sonar-scanner"
+    "sonar:scan": "npm run test:coverage && sonar-scanner",
+    "check:hn": "node tools/hn-keyword-check/check.js"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^3.0.0",
