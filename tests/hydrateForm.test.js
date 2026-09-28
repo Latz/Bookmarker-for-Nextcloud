@@ -406,15 +406,13 @@ describe('hydrateForm', () => {
       },
     };
 
-    globalThis.navigator = {
-      language: 'en-US',
-    };
+    vi.stubGlobal('navigator', { language: 'en-US' });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
     delete globalThis.chrome;
-    delete globalThis.navigator;
+    vi.unstubAllGlobals();
   });
 
   it('should set URL value', async () => {

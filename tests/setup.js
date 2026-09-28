@@ -107,5 +107,12 @@ afterEach(() => {
   if (!pristineDocument) return;
   globalThis.document = pristineDocument;
   globalThis.window = pristineWindow;
-  globalThis.navigator = pristineNavigator;
+  // navigator is getter-only under happy-dom on Vitest 5; a plain assignment throws.
+  if (globalThis.navigator !== pristineNavigator) {
+    Object.defineProperty(globalThis, 'navigator', {
+      value: pristineNavigator,
+      configurable: true,
+      writable: true,
+    });
+  }
 });
