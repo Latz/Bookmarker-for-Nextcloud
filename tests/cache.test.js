@@ -281,6 +281,56 @@ describe('cache.js', () => {
 
       expect(putResolved).toBe(true);
     });
+
+    describe('overlapping calls', () => {
+      let store;
+
+      beforeEach(() => {
+        // A stateful fake with real async gaps, so an unserialised
+        // read-modify-write shows up as a lost update
+        store = new Map([
+          ['keywords', { item: 'keywords', value: ['a'] }],
+          ['keywords_created', { item: 'keywords_created', value: Date.now() }],
+        ]);
+        const gap = () => new Promise((resolve) => setTimeout(resolve, 5));
+        mockDB.get.mockImplementation(async (_store, key) => {
+          await gap();
+          return store.get(key);
+        });
+        mockDB.put.mockImplementation(async (_store, entry) => {
+          await gap();
+          store.set(entry.item, entry);
+        });
+      });
+
+      it('keeps the tags of both when two saves run at the same time', async () => {
+        await Promise.all([
+          cacheTempAdd('keywords', ['x']),
+          cacheTempAdd('keywords', ['y']),
+        ]);
+
+        // Both used to read ['a'] and the later write dropped the other's tag
+        expect(store.get('keywords').value).toEqual(['a', 'x', 'y']);
+      });
+
+      it('does not store a tag twice when both saves add it', async () => {
+        await Promise.all([
+          cacheTempAdd('keywords', ['New']),
+          cacheTempAdd('keywords', ['new']),
+        ]);
+
+        expect(store.get('keywords').value).toEqual(['New', 'a']);
+      });
+
+      it('keeps working after a failed call', async () => {
+        mockDB.put.mockRejectedValueOnce(new Error('quota'));
+
+        await expect(cacheTempAdd('keywords', ['x'])).rejects.toThrow('quota');
+        await cacheTempAdd('keywords', ['y']);
+
+        expect(store.get('keywords').value).toEqual(['a', 'y']);
+      });
+    });
   });
 
   describe('cacheBookmarkCheck', () => {
@@ -469,6 +519,17 @@ describe('cache.js', () => {
       await cacheBookmarkCheck('https://example2.com', { bookmarked: false });
 
       // Should open DB again due to invalid connection
+      expect(openDB).toHaveBeenCalledTimes(2);
+    });
+
+    it('should retry opening the DB after a failed open instead of caching the rejection', async () => {
+      openDB.mockRejectedValueOnce(new Error('blocked'));
+
+      await expect(cacheAdd('folders', [])).rejects.toThrow('blocked');
+
+      // Without the reset the rejected promise would be handed back here too,
+      // until the 5-minute idle timer fired.
+      await expect(cacheAdd('folders', [])).resolves.toBeUndefined();
       expect(openDB).toHaveBeenCalledTimes(2);
     });
   });

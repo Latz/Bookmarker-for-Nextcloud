@@ -61,7 +61,10 @@ export async function cacheGet(type, forceServer = false) {
       return [];
     }
     const data = type === 'folders' ? preRenderFolders(payload) : payload;
-    cacheAdd(type, data);
+    // The data is already in hand; a failed cache write must not fail the read.
+    await cacheAdd(type, data).catch((error) => {
+      console.error(`Error caching ${type}:`, error);
+    });
     if (forceServer) cacheRefreshNotification();
     return data;
   } else {
@@ -84,11 +87,32 @@ export async function cacheAdd(type, data) {
 // ---------------------------------------------------------------------
 // If the user enters a tag that's not already in the tags collection,
 // add it to the local cache
-export async function cacheTempAdd(type, newTags) {
+export function cacheTempAdd(type, newTags) {
+  // Read-modify-write, so two overlapping calls (e.g. a popup save and a zen
+  // mode save) would both read the same list and the later write would drop the
+  // earlier one's tags. Calls are queued instead; they all run in the service
+  // worker, so an in-process queue is enough to make each one atomic.
+  const run = tempAddQueue.then(() => addTempTags(type, newTags));
+  tempAddQueue = run.catch(() => {}); // a failed call must not block the next
+  return run;
+}
+
+let tempAddQueue = Promise.resolve();
+
+async function addTempTags(type, newTags) {
   const cachedTags = await cacheGet(type);
-  const allTags = cachedTags.concat(newTags);
+  // case-insensitive, like the caller's own check: concurrent saves of the same
+  // new tag must not leave it in the list twice
+  const known = new Set(cachedTags.map((tag) => String(tag).toLowerCase()));
+  const added = [];
+  for (const tag of newTags) {
+    const key = String(tag).toLowerCase();
+    if (known.has(key)) continue;
+    known.add(key);
+    added.push(tag);
+  }
   const db = await getDBConnection();
-  await db.put(type, { item: type, value: allTags.sort() });
+  await db.put(type, { item: type, value: cachedTags.concat(added).sort() });
 }
 
 // ---------------------------------------------------------------------
@@ -101,8 +125,13 @@ function elementExpired(db, type, created, forceServer) {
   const diff = Date.now() - created.value;
   if (diff > one_day) {
     // remove entry
-    db.delete(type, type);
-    db.delete(type, `${type}_created`);
+    // Best effort: the caller refetches either way.
+    Promise.all([
+      db.delete(type, type),
+      db.delete(type, `${type}_created`),
+    ]).catch((error) => {
+      console.warn(`Could not remove expired ${type} cache entry:`, error);
+    });
     return true;
   }
   return false;
@@ -146,11 +175,28 @@ async function getDBConnection() {
   // Create new connection
   dbConnectionPromise = openDB(dbName, cacheDbVersion, {
     upgrade: initCacheStores,
-  }).then((db) => {
+    // Another context (e.g. the options page's "clear cache") wants to upgrade
+    // or delete the DB: release ours. The next call reopens.
+    blocking() {
+      closeDBConnection();
+    },
+    // The browser dropped the connection (e.g. site data cleared).
+    terminated() {
+      dbConnectionPool = null;
+    },
+  }).then(
+    (db) => {
       dbConnectionPool = db;
       dbConnectionPromise = null;
       return db;
-  });
+    },
+    (error) => {
+      // Without this the rejected promise stays cached and every later call
+      // gets it back until the idle timer fires (storage.js does the same).
+      dbConnectionPromise = null;
+      throw error;
+    },
+  );
 
   return dbConnectionPromise;
 }

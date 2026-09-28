@@ -25,6 +25,7 @@ import {
   clearData,
   initDatabase,
   initDefaults,
+  ensureDefaults,
   createOldDatabase,
   clearOptionsCache,
   _resetMainConnectionForTesting,
@@ -160,9 +161,9 @@ describe('storage.js', () => {
     it('should handle DB errors gracefully', async () => {
       mockDB.getAll.mockRejectedValue(new Error('DB error'));
 
-      // Note: The actual code has a bug where it references 'result' before
-      // initialization in the catch callback. This causes a ReferenceError.
-      await expect(load_data_all('options')).rejects.toThrow('Cannot access');
+      // Used to reject with a ReferenceError: the catch fallback referenced
+      // `result` inside its own initialiser. It now falls back to no rows.
+      await expect(load_data_all('options')).resolves.toEqual([]);
     });
   });
 
@@ -473,6 +474,96 @@ describe('storage.js', () => {
 
       expect(mockCacheDB.clear).toHaveBeenCalledWith('folders');
       expect(mockCacheDB.clear).toHaveBeenCalledWith('keywords');
+    });
+
+    it('should also clear stale bookmark check results and close the cache connection', async () => {
+      const mockCacheDB = { clear: vi.fn(), close: vi.fn() };
+      openDB.mockResolvedValue(mockCacheDB);
+
+      await clearData('cache');
+
+      expect(mockCacheDB.clear).toHaveBeenCalledWith('bookmarkChecks');
+      expect(mockCacheDB.close).toHaveBeenCalled();
+    });
+
+    it('should not resolve before the clears have finished', async () => {
+      let cleared = false;
+      mockDB.clear.mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => {
+              cleared = true;
+              resolve();
+            }, 10),
+          ),
+      );
+
+      await clearData('credentials');
+
+      expect(cleared).toBe(true);
+    });
+
+    it('should restore the defaults after clearing options, once the clear is done', async () => {
+      const order = [];
+      mockDB.clear.mockImplementation(async () => order.push('clear'));
+      mockDB.put.mockImplementation(async () => order.push('put'));
+
+      await clearData('options');
+
+      // Otherwise every option would read back as false until the next restart.
+      expect(order[0]).toBe('clear');
+      expect(order.filter((o) => o === 'put').length).toBeGreaterThan(10);
+    });
+
+    it('should tell the service worker to drop its cached credentials', async () => {
+      globalThis.chrome = { runtime: { sendMessage: vi.fn() } };
+      try {
+        await clearData('credentials');
+
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+          msg: 'credentialsChanged',
+        });
+      } finally {
+        delete globalThis.chrome;
+      }
+    });
+
+    it('should not fail when no service worker is listening', async () => {
+      globalThis.chrome = {
+        runtime: { sendMessage: vi.fn().mockRejectedValue(new Error('none')) },
+      };
+      try {
+        await expect(clearData('credentials')).resolves.toBeUndefined();
+      } finally {
+        delete globalThis.chrome;
+      }
+    });
+  });
+
+  describe('ensureDefaults', () => {
+    it('should add only the options that are missing and keep existing values', async () => {
+      mockDB.getAllKeys = vi.fn().mockResolvedValue(['cbx_showUrl']);
+      mockDB.put.mockResolvedValue(undefined);
+
+      await ensureDefaults();
+
+      const written = mockDB.put.mock.calls.map(([, entry]) => entry.item);
+      expect(written).not.toContain('cbx_showUrl');
+      expect(written).toContain('cbx_fuzzyUrlMatch');
+      expect(written).toContain('input_titleCheckLimit');
+    });
+
+    it('should write nothing when every default is present', async () => {
+      const { initDefaults: init } = await import('../src/lib/storage.js');
+      mockDB.put.mockResolvedValue(undefined);
+      await init();
+      const allKeys = mockDB.put.mock.calls.map(([, entry]) => entry.item);
+      mockDB.put.mockClear();
+      mockDB.getAllKeys = vi.fn().mockResolvedValue(allKeys);
+
+      await ensureDefaults();
+
+      expect(mockDB.put).not.toHaveBeenCalled();
     });
   });
 

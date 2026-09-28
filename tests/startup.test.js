@@ -7,6 +7,7 @@ vi.mock('../src/lib/apiCall.js', () => ({ default: vi.fn() }));
 vi.mock('../src/lib/storage.js', () => ({
   getOption: vi.fn(),
   load_data: vi.fn(),
+  ensureDefaults: vi.fn(() => Promise.resolve()),
 }));
 vi.mock('../src/background/modules/browser/notification.js', () => ({
   initializeErrorIconCache: vi.fn(),
@@ -19,7 +20,7 @@ vi.mock('../src/background/modules/browser/contextMenu.js', () => ({
 }));
 
 import apiCall from '../src/lib/apiCall.js';
-import { getOption, load_data } from '../src/lib/storage.js';
+import { getOption, load_data, ensureDefaults } from '../src/lib/storage.js';
 import { initializeErrorIconCache } from '../src/background/modules/browser/notification.js';
 import getBrowserTheme from '../src/background/modules/browser/getBrowserTheme.js';
 import { createContextMenus } from '../src/background/modules/browser/contextMenu.js';
@@ -104,5 +105,43 @@ describe('startup init', () => {
 
     await expect(init()).resolves.toBeUndefined();
     await flush();
+  });
+
+  it('still creates the context menu when reading the zen option fails', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    getOption.mockRejectedValue(new Error('IndexedDB unavailable'));
+
+    await expect(init()).resolves.toBeUndefined();
+
+    // Promise.all used to reject here, so the menu was never created.
+    expect(createContextMenus).toHaveBeenCalledWith(false);
+    expect(spy).toHaveBeenCalledWith(
+      '[startup] init step failed:',
+      expect.objectContaining({ message: 'IndexedDB unavailable' }),
+    );
+  });
+
+  it('still creates the context menu when the error-icon cache fails', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    initializeErrorIconCache.mockRejectedValue(new Error('fetch failed'));
+
+    await init();
+
+    expect(createContextMenus).toHaveBeenCalledWith(true);
+    spy.mockRestore();
+  });
+
+  it('adds missing default options without blocking or failing startup', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    ensureDefaults.mockRejectedValueOnce(new Error('quota'));
+
+    await expect(init()).resolves.toBeUndefined();
+    await flush();
+
+    expect(ensureDefaults).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(
+      '[startup] could not add missing default options:',
+      expect.objectContaining({ message: 'quota' }),
+    );
   });
 });

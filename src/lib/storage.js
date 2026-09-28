@@ -63,7 +63,20 @@ async function getMainDBConnection() {
 
   mainDbConnectionPromise = openDB(database, dbVersion, {
     upgrade(db, oldVersion) {
-      initDatabase(db, oldVersion);
+      initDatabase(db, oldVersion).catch((error) => {
+        console.error('[storage] database initialisation failed:', error);
+      });
+    },
+    // Another context wants to upgrade/delete the DB: release ours or it waits
+    // for this connection (which lives as long as the service worker).
+    blocking() {
+      mainDbConnection?.close();
+      mainDbConnection = null;
+    },
+    // The browser dropped the connection (e.g. site data cleared). Forget it so
+    // the next call reopens instead of failing with InvalidStateError.
+    terminated() {
+      mainDbConnection = null;
     },
   }).then(
     (db) => {
@@ -122,11 +135,9 @@ export async function load_data(storeName, ...items) {
 export async function load_data_all(storeName) {
   const db = await getMainDBConnection();
 
-  const result = await db.getAll(storeName).catch(() => {
-    return result;
-  });
-
-  return result;
+  // The fallback used to reference `result` inside its own initialiser (a
+  // ReferenceError whenever getAll rejected).
+  return db.getAll(storeName).catch(() => []);
 }
 
 // -----------------------------------------------------------------------------------------------------
@@ -151,6 +162,23 @@ export async function store_data(storeName, ...items) {
   // Clear cache if we're updating options
   if (storeName === 'options') {
     clearOptionsCache();
+  }
+  if (storeName === 'credentials') {
+    await notifyCredentialsChanged();
+  }
+}
+
+/**
+ * The service worker caches the auth header (and network timeout) for 60 s in
+ * module state that other contexts cannot reach. After a login or "forget
+ * credentials" it would keep sending the old ones, so tell it to drop them.
+ * Best effort: without a listening worker there is nothing to invalidate.
+ */
+async function notifyCredentialsChanged() {
+  try {
+    await chrome.runtime.sendMessage({ msg: 'credentialsChanged' });
+  } catch {
+    // no receiver / not in an extension context
   }
 }
 
@@ -319,43 +347,45 @@ async function InitializeStores(db) {
   }
 }
 // ---------------------------------------------------------------------
+/**
+ * Clears stored data. Resolves only once everything is really cleared (and, for
+ * options, the defaults are back), so callers can safely refresh their UI.
+ * @param {'all' | 'options' | 'credentials' | 'cache'} subject
+ */
 export async function clearData(subject) {
-  // Close and reset pooled connection before destructive operations
-  if (mainDbConnection) {
-    mainDbConnection.close();
-    mainDbConnection = null;
-    mainDbConnectionPromise = null;
-  }
-
-  const options_db = await openDB('Bookmarker', dbVersion, {
-    upgrade(options_db) {
-      initDefaults();
-    },
-  });
-
-  if (subject === 'all') {
-    options_db.clear('credentials');
-    options_db.clear('options');
-    options_db.clear('misc');
-    options_db.clear('hashes');
-    initDefaults();
-  }
-
-  if (subject === 'options') {
-    options_db.clear('options');
-  }
-
-  if (subject === 'credentials') {
-    options_db.clear('credentials');
-  }
-
   if (subject === 'cache') {
     const cache_db = await openDB('BookmarkerCache', cacheDbVersion, {
       upgrade: initCacheStores,
     });
-    cache_db.clear('folders');
-    cache_db.clear('keywords');
+    try {
+      // bookmarkChecks too, or stale duplicate-check results survive a "clear cache"
+      await Promise.all([
+        cache_db.clear('folders'),
+        cache_db.clear('keywords'),
+        cache_db.clear('bookmarkChecks'),
+      ]);
+    } finally {
+      cache_db.close();
+    }
+    return;
   }
+
+  // The pooled connection is used (rather than a second, never-closed one), so
+  // the clears and the initDefaults() below are ordered on the same connection.
+  const db = await getMainDBConnection();
+  const stores = {
+    all: ['credentials', 'options', 'misc', 'hashes'],
+    options: ['options'],
+    credentials: ['credentials'],
+  }[subject];
+  if (!stores) return;
+
+  await Promise.all(stores.map((store) => db.clear(store)));
+
+  clearOptionsCache();
+  // An emptied options store would make every option read back as false.
+  if (stores.includes('options')) await initDefaults();
+  if (stores.includes('credentials')) await notifyCredentialsChanged();
 }
 // -----------------------------------------------------------------------
 /**
@@ -369,7 +399,7 @@ export async function initDatabase(db, oldVersion) {
   if (oldVersion === 0) {
     console.log('freshstart');
     await InitializeStores(db);
-    initDefaults();
+    await initDefaults();
   }
   //---  v0.16
   if (oldVersion === 1) {
@@ -378,13 +408,13 @@ export async function initDatabase(db, oldVersion) {
     const cbx_autoTags = await load_data('options', 'cbx_autoTags');
     const cbx_displayFolders = await load_data('options', 'cbx_displayFolders');
     // set default values for new version
-    initDefaults();
+    await initDefaults();
     // restore data from previous version
-    store_data('options', { cbx_autoTags: cbx_autoTags });
-    store_data('options', { cbx_displayFolders: cbx_displayFolders });
-    store_data('options', { cbx_autoDescription: cbx_autoDesc });
+    await store_data('options', { cbx_autoTags: cbx_autoTags });
+    await store_data('options', { cbx_displayFolders: cbx_displayFolders });
+    await store_data('options', { cbx_autoDescription: cbx_autoDesc });
     // delete old data name
-    delete_data('options', 'cbx_autoDesc');
+    await delete_data('options', 'cbx_autoDesc');
   }
 }
 
@@ -393,35 +423,55 @@ export function initDefaults() {
   // One store_data call: it already iterates Object.entries internally and
   // issues the puts in parallel, so this is a single pass over one connection
   // instead of 20 sequential round trips.
-  return store_data('options', {
-    cbx_showUrl: true,
-    cbx_showDescription: true,
-    cbx_autoDescription: true,
-    cbx_showKeywords: true,
-    cbx_successMessage: true,
-    cbx_alreadyStored: true,
-    cbx_autoTags: true,
-    input_headings_slider: 3,
-    input_networkTimeout: 10,
-    input_numberOfRetries: 5,
-    cbx_reduceKeywords: true,
-    folderIDs: ['-1'], // Default to root folder
-    zenFolderIDs: ['-1'], // Default to root folder
-
-    // Zen mode options
-    cbx_enableZen: false, // Zen mode disabled by default
-    cbx_zenDisplayNotification: true, // Show notifications in zen mode by default
-
-    // Enhanced duplicate checking options
-    cbx_fuzzyUrlMatch: true, // Normalize URLs to catch variants
-    cbx_cacheBookmarkChecks: true, // Cache bookmark duplicate checks
-    input_bookmarkCacheTTL: 10, // Cache TTL in minutes
-    select_duplicateStrategy: 'update_existing', // Default duplicate handling
-    cbx_titleSimilarityCheck: false, // Title similarity check (off by default)
-    input_titleSimilarityThreshold: 75, // Title similarity threshold (0-100)
-    input_titleCheckLimit: 20, // Limit bookmarks fetched for title check (performance)
-  });
+  return store_data('options', DEFAULT_OPTIONS);
 }
+
+/**
+ * Adds every default option that is missing, leaving existing values alone.
+ * Runs on service worker start: the database version is not bumped when new
+ * options are introduced, so users who updated from an older release would
+ * otherwise never get them and the features would stay silently off.
+ * @returns {Promise<void>}
+ */
+export async function ensureDefaults() {
+  const db = await getMainDBConnection();
+  const existing = new Set(await db.getAllKeys('options'));
+  const missing = Object.fromEntries(
+    Object.entries(DEFAULT_OPTIONS).filter(([key]) => !existing.has(key)),
+  );
+  if (Object.keys(missing).length > 0) {
+    await store_data('options', missing);
+  }
+}
+
+const DEFAULT_OPTIONS = {
+  cbx_showUrl: true,
+  cbx_showDescription: true,
+  cbx_autoDescription: true,
+  cbx_showKeywords: true,
+  cbx_successMessage: true,
+  cbx_alreadyStored: true,
+  cbx_autoTags: true,
+  input_headings_slider: 3,
+  input_networkTimeout: 10,
+  input_numberOfRetries: 5,
+  cbx_reduceKeywords: true,
+  folderIDs: ['-1'], // Default to root folder
+  zenFolderIDs: ['-1'], // Default to root folder
+
+  // Zen mode options
+  cbx_enableZen: false, // Zen mode disabled by default
+  cbx_zenDisplayNotification: true, // Show notifications in zen mode by default
+
+  // Enhanced duplicate checking options
+  cbx_fuzzyUrlMatch: true, // Normalize URLs to catch variants
+  cbx_cacheBookmarkChecks: true, // Cache bookmark duplicate checks
+  input_bookmarkCacheTTL: 10, // Cache TTL in minutes
+  select_duplicateStrategy: 'update_existing', // Default duplicate handling
+  cbx_titleSimilarityCheck: false, // Title similarity check (off by default)
+  input_titleSimilarityThreshold: 75, // Title similarity threshold (0-100)
+  input_titleCheckLimit: 20, // Limit bookmarks fetched for title check (performance)
+};
 
 // -----------------------------------------------------------------------
 

@@ -64,6 +64,7 @@ vi.mock('../src/background/modules/bookmarks/getData.js', () => ({
 
 vi.mock('../src/lib/storage.js', () => ({
   store_data: vi.fn(() => Promise.resolve()),
+  ensureDefaults: vi.fn(() => Promise.resolve()),
   createOldDatabase: vi.fn(() => Promise.resolve()),
   getOption: vi.fn((key) => {
     const options = {

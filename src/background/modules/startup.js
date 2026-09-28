@@ -1,6 +1,6 @@
 // @ts-check
 import apiCall from '../../lib/apiCall.js';
-import { getOption, load_data } from '../../lib/storage.js';
+import { getOption, load_data, ensureDefaults } from '../../lib/storage.js';
 import { initializeErrorIconCache } from './browser/notification.js';
 import getBrowserTheme from './browser/getBrowserTheme.js';
 import { createContextMenus } from './browser/contextMenu.js';
@@ -59,14 +59,30 @@ export async function init() {
   // this call exists to do early.
   warmupConnection().catch(() => {});
 
+  // Options introduced after the user installed are absent from their database.
+  // Not awaited: nothing below depends on it, and a failure only means the
+  // defaults are retried at the next start.
+  ensureDefaults().catch((error) => {
+    console.error('[startup] could not add missing default options:', error);
+  });
+
   // These three are mutually independent -- running them in sequence just made
   // the worker slower to reach the point where it can answer a getData
   // message, on every cold start.
-  const [, , zenModeEnabled] = await Promise.all([
+  // allSettled: one failing (e.g. an IndexedDB error in getOption) must not
+  // keep the context menu from being created.
+  const [, iconCache, zenModeEnabled] = await Promise.allSettled([
     applyThemedIcon(),
     initializeErrorIconCache(),
     getOption('cbx_enableZen'),
   ]);
+  for (const result of [iconCache, zenModeEnabled]) {
+    if (result.status === 'rejected') {
+      console.error('[startup] init step failed:', result.reason);
+    }
+  }
 
-  createContextMenus(zenModeEnabled);
+  await createContextMenus(
+    zenModeEnabled.status === 'fulfilled' ? zenModeEnabled.value : false,
+  );
 }
