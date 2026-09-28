@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Unit tests for fillFolders module
  * Tests the function that populates folder select elements
