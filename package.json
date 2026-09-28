@@ -43,7 +43,9 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "sonar:scan": "npm run test:coverage && sonar-scanner",
-    "check:hn": "node tools/hn-keyword-check/check.js"
+    "check:hn": "node tools/hn-keyword-check/check.js",
+    "perf": "node tools/perf/case-runner.js --root . --case",
+    "perf:compare": "node tools/perf/compare.js"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^3.0.0",
