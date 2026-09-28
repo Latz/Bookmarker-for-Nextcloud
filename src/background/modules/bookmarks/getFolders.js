@@ -19,8 +19,16 @@ export async function getFolders(force = false) {
       'index.php/apps/bookmarks/public/rest/v2/folder',
       'GET',
     );
+    // A failed call has no data array. preRenderFolders(undefined) would yield
+    // just [Root], and caching that would hide every folder for 24h.
+    if (!Array.isArray(serverFolders?.data)) return [];
     folders = preRenderFolders(serverFolders.data);
-    cacheAdd('folders', folders);
+    try {
+      await cacheAdd('folders', folders);
+    } catch (error) {
+      // The folders are in hand; a failed cache write must not lose them.
+      console.error('Error caching folders:', error);
+    }
   }
   log(DEBUG, 'folders', folders);
   return folders;

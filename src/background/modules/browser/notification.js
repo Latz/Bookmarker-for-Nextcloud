@@ -124,6 +124,22 @@ export async function notifyUser(response) {
   }
 }
 
+/**
+ * Closes a notification. Bound to notifications.onButtonClicked (the error
+ * notification's "Dismiss" button) and onClicked in background.js: the error
+ * notification has requireInteraction, so without a handler the button did
+ * nothing and the notification stayed on screen until closed by hand.
+ * @param {string} notificationId
+ */
+export function dismissNotification(notificationId) {
+  try {
+    // clear() returns a promise in MV3; a rejection (already gone) is harmless
+    chrome.notifications.clear(notificationId)?.catch?.(() => {});
+  } catch {
+    // notifications unavailable
+  }
+}
+
 export async function cacheRefreshNotification() {
   const iconUrl = await getIconUrl();
   try {

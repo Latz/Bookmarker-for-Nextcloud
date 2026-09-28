@@ -7,6 +7,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Chrome APIs
 globalThis.chrome = {
+  notifications: {
+    onButtonClicked: { addListener: vi.fn() },
+    onClicked: { addListener: vi.fn() },
+    clear: vi.fn(),
+  },
   tabs: {
     query: vi.fn(),
     create: vi.fn(),
@@ -56,6 +61,7 @@ const originalConsoleLog = console.log;
 // Mock all imported modules
 vi.mock('../src/lib/apiCall.js', () => ({
   default: vi.fn(() => Promise.resolve({ status: 'success', data: [] })),
+  clearApiCallCache: vi.fn(),
 }));
 
 vi.mock('../src/background/modules/bookmarks/getData.js', () => ({
@@ -81,6 +87,7 @@ vi.mock('../src/lib/storage.js', () => ({
 
 vi.mock('../src/background/modules/browser/notification.js', () => ({
   notifyUser: vi.fn(),
+  dismissNotification: vi.fn(),
   initializeErrorIconCache: vi.fn(() => Promise.resolve()),
 }));
 
@@ -94,7 +101,8 @@ vi.mock('../src/lib/cache.js', () => ({
 }));
 
 vi.mock('../src/background/modules/bookmarks/zenMode.js', () => ({
-  zenMode: vi.fn(),
+  // async in production; background.js chains .catch() onto the result
+  zenMode: vi.fn().mockResolvedValue(undefined),
   enableZenMode: vi.fn(),
 }));
 
@@ -118,6 +126,8 @@ describe('background.js', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    // MV3 tabs.create returns a promise; background.js chains .catch() onto it
+    chrome.tabs.create.mockResolvedValue(undefined);
 
     // Capture the message listener when the module is imported
     // We need to set up the listener mock to capture the callback
@@ -212,6 +222,63 @@ describe('background.js', () => {
         'PUT',
         { url: 'https://example.com', title: 'Updated Test' },
       );
+    });
+
+    it('closes a notification when its Dismiss button or the notification is clicked', async () => {
+      await import('../src/background/background.js');
+      const { dismissNotification } = await import(
+        '../src/background/modules/browser/notification.js'
+      );
+
+      // Registered synchronously at top level, like the other listeners
+      expect(chrome.notifications.onButtonClicked.addListener).toHaveBeenCalledWith(
+        dismissNotification,
+      );
+      expect(chrome.notifications.onClicked.addListener).toHaveBeenCalledWith(
+        dismissNotification,
+      );
+    });
+
+    it('drops the cached auth header when the credentials changed elsewhere', async () => {
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../src/background/background.js');
+      const { clearApiCallCache } = await import('../src/lib/apiCall.js');
+      const result = messageListener(
+        { msg: 'credentialsChanged' },
+        { id: chrome.runtime.id },
+        vi.fn(),
+      );
+
+      // Otherwise the worker keeps sending the old credentials for up to 60 s
+      expect(clearApiCallCache).toHaveBeenCalledTimes(1);
+      expect(result).toBe(false);
+    });
+
+    it('always answers a getData request, even when getData throws', async () => {
+      const sendResponse = vi.fn();
+      getData.mockRejectedValueOnce(new Error('boom'));
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../src/background/background.js');
+      const result = messageListener(
+        { msg: 'getData', data: {} },
+        {},
+        sendResponse,
+      );
+      expect(result).toBe(true);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Without this the popup would wait until the service worker dies.
+      expect(sendResponse).toHaveBeenCalledWith({ ok: false, error: 'boom' });
+      consoleError.mockRestore();
     });
 
     it('should handle getData message correctly', async () => {
@@ -993,12 +1060,18 @@ describe('background.js', () => {
 
         await new Promise((resolve) => setTimeout(resolve, 0));
 
-        // notifyUser is called AFTER store_data in the code, so it will NOT be called
-        // if store_data fails
-        expect(notifyUser).not.toHaveBeenCalled();
+        // The bookmark was saved; a failing store_data (remembering the last
+        // folders) must not swallow the notification or strand the badge.
+        expect(notifyUser).toHaveBeenCalledTimes(1);
+        expect(notifyUser).toHaveBeenCalledWith(
+          expect.objectContaining({ status: 'success' }),
+        );
 
-        // Badge should be set to save icon
+        // Badge is set to the save icon, then always cleared again
         expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
+        expect(chrome.action.setBadgeText).toHaveBeenLastCalledWith({
+          text: '',
+        });
       } finally {
         // Restore original handler
         process.removeAllListeners('unhandledRejection');

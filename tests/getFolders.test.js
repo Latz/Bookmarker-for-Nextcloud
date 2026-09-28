@@ -149,14 +149,29 @@ describe('getFolders', () => {
     expect(result).toEqual([{ value: '-1', name: 'Root' }]);
   });
 
-  it('should handle undefined folder data', async () => {
+  it('should handle undefined folder data without caching a bare Root', async () => {
     getOption.mockResolvedValue(true);
     cacheGet.mockResolvedValue(undefined);
     apiCall.mockResolvedValue({ data: undefined });
 
     const result = await getFolders();
 
-    expect(result).toEqual([{ value: '-1', name: 'Root' }]);
+    // A failed request must not be cached as "just Root" for 24h.
+    expect(result).toEqual([]);
+    expect(cacheAdd).not.toHaveBeenCalled();
+  });
+
+  it('should return the folders even when writing the cache fails', async () => {
+    getOption.mockResolvedValue(true);
+    cacheGet.mockResolvedValue([]);
+    apiCall.mockResolvedValue({ data: [{ id: 1, title: 'Docs' }] });
+    cacheAdd.mockRejectedValueOnce(new Error('quota'));
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await getFolders();
+
+    expect(result.map((f) => f.name)).toContain('Docs');
+    consoleError.mockRestore();
   });
 });
 

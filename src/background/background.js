@@ -3,8 +3,10 @@ import getData from './modules/bookmarks/getData.js';
 import { zenMode } from './modules/bookmarks/zenMode.js';
 import { saveBookmark } from './modules/bookmarks/saveBookmark.js';
 import { handleContextMenuClick } from './modules/browser/contextMenu.js';
+import { dismissNotification } from './modules/browser/notification.js';
 import { maxAttemptsError } from './modules/loginTimeout.js';
 import { init } from './modules/startup.js';
+import { clearApiCallCache } from '../lib/apiCall.js';
 
 // -----------------------------------------------------------------------------------------------
 console.log('init background');
@@ -14,6 +16,9 @@ console.log('init background');
 // awaited, so Chrome delivers their events reliably on SW cold-starts (MV3
 // requires that).
 
+const logError = (label) => (error) =>
+  console.error(`[background] ${label} failed:`, error);
+
 // Message center
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // No externally_connectable and no content scripts are declared, so only
@@ -22,23 +27,46 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false;
   switch (request.msg) {
     case 'saveBookmark':
-      saveBookmark(request.parameters, request.folderIDs, request.bookmarkID);
+      saveBookmark(
+        request.parameters,
+        request.folderIDs,
+        request.bookmarkID,
+      ).catch(logError('saveBookmark'));
       break;
     case 'getData':
-      (async () => sendResponse(await getData(request.data)))();
+      (async () => {
+        try {
+          sendResponse(await getData(request.data));
+        } catch (error) {
+          // The channel is held open below, so it must always be answered --
+          // otherwise the popup waits until the service worker is terminated.
+          console.error('[background] getData failed:', error);
+          sendResponse({
+            ok: false,
+            error: error?.message ?? String(error),
+          });
+        }
+      })();
       // Only this branch answers asynchronously, so only this branch needs the
       // message channel held open.
       return true;
     case 'authorize':
-      chrome.tabs.create({
+      chrome.tabs
+        .create({
           url: 'login/login.html',
-      });
+        })
+        .catch(logError('authorize'));
+      break;
+    case 'credentialsChanged':
+      // Login / "forget credentials" happened in another context; the cached
+      // auth header here would keep the old credentials for up to a minute.
+      clearApiCallCache();
       break;
     case 'maxAttempts':
       maxAttemptsError(request.loginPage);
       break;
     case 'zenMode':
-      zenMode();
+      zenMode().catch(logError('zenMode'));
       break;
   }
   return false;
@@ -46,6 +74,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Context menu click handler
 chrome.contextMenus.onClicked.addListener(handleContextMenuClick);
+
+// The error notification's "Dismiss" button (and a click on the notification)
+chrome.notifications.onButtonClicked.addListener(dismissNotification);
+chrome.notifications.onClicked.addListener(dismissNotification);
 
 // ------------------------------------------------------------------------------------------------
 // Initialize extension. Not top-level awaited: service workers disallow top-level

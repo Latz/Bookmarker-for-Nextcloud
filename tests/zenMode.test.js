@@ -54,6 +54,42 @@ describe('zenMode', () => {
     vi.restoreAllMocks();
   });
 
+  describe('Unbookmarkable pages', () => {
+    it('notifies and skips the API call when getData reports ok:false', async () => {
+      // e.g. chrome:// or a page without host access: no keywords/title at all
+      getData.mockResolvedValue({ ok: false, error: 'URL is not bookmarkable' });
+
+      await zenMode();
+
+      expect(apiCall).not.toHaveBeenCalled();
+      expect(notifyUser).toHaveBeenCalledWith({
+        status: 'error',
+        statusText: 'URL is not bookmarkable',
+      });
+    });
+
+    it('clears the badge even when the API call throws', async () => {
+      getData.mockResolvedValue(mockData);
+      load_data.mockResolvedValue(undefined);
+      apiCall.mockRejectedValue(new Error('boom'));
+
+      await expect(zenMode()).rejects.toThrow('boom');
+
+      expect(chrome.action.setBadgeText).toHaveBeenLastCalledWith({ text: '' });
+    });
+
+    it('never sends the string "undefined" for a missing description', async () => {
+      getData.mockResolvedValue({ ...mockData, description: undefined });
+      load_data.mockResolvedValue(undefined);
+      apiCall.mockResolvedValue({ status: 'success' });
+
+      await zenMode();
+
+      const body = new URLSearchParams(apiCall.mock.calls[0][2]);
+      expect(body.get('description')).toBe('');
+    });
+  });
+
   describe('Basic zen mode functionality', () => {
     it('should save bookmark with basic data', async () => {
       getData.mockResolvedValue(mockData);

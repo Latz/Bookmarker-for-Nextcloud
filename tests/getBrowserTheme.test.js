@@ -124,6 +124,27 @@ describe('getBrowserTheme module', () => {
       expect(theme).toBe('light');
     });
 
+    it('should not cache the fallback, so a later call can detect the real theme', async () => {
+      chrome.offscreen.hasDocument.mockResolvedValue(false);
+      chrome.runtime.getContexts.mockResolvedValue([]);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      chrome.runtime.sendMessage
+        .mockRejectedValueOnce(new Error('offscreen not ready')) // ready check
+        .mockResolvedValue(true); // browser is light -> dark icon
+
+      const first = await getBrowserTheme();
+      const second = await getBrowserTheme();
+
+      expect(first).toBe('light'); // fallback for that call only
+      expect(second).toBe('dark'); // detected once the offscreen doc responds
+      // Nothing was persisted for the failed attempt
+      expect(chrome.storage.session.set).toHaveBeenCalledTimes(1);
+      expect(chrome.storage.session.set).toHaveBeenCalledWith({
+        browserTheme: 'dark',
+      });
+      consoleError.mockRestore();
+    });
+
     it('should handle timeout errors', async () => {
       chrome.runtime.getContexts.mockResolvedValue([]);
 

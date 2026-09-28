@@ -22,6 +22,7 @@ globalThis.chrome = {
   },
   notifications: {
     create: vi.fn(),
+    clear: vi.fn(),
   },
   i18n: {
     getMessage: vi.fn((key) => {
@@ -45,6 +46,7 @@ globalThis.chrome = {
 import {
   notifyUser,
   cacheRefreshNotification,
+  dismissNotification,
   initializeErrorIconCache,
   _resetErrorIconCacheForTesting,
 } from '../src/background/modules/browser/notification.js';
@@ -332,6 +334,36 @@ describe('notifyUser', () => {
         'BookmarkSuccessfullySaved',
       );
     });
+  });
+});
+
+describe('dismissNotification', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('clears the notification it was called for', () => {
+    chrome.notifications.clear.mockResolvedValue(true);
+
+    dismissNotification('abc123');
+
+    expect(chrome.notifications.clear).toHaveBeenCalledWith('abc123');
+  });
+
+  it('ignores a rejection (notification already gone)', async () => {
+    chrome.notifications.clear.mockRejectedValue(new Error('gone'));
+
+    expect(() => dismissNotification('abc123')).not.toThrow();
+    // no unhandled rejection: the handler swallows it
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  it('ignores a synchronous failure', () => {
+    chrome.notifications.clear.mockImplementation(() => {
+      throw new Error('unavailable');
+    });
+
+    expect(() => dismissNotification('abc123')).not.toThrow();
   });
 });
 

@@ -456,3 +456,49 @@ describe('getData - URL validation', () => {
     expect(cacheBookmarkCheck).not.toHaveBeenCalled();
   });
 });
+
+describe('getData robustness', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns ok:false instead of throwing when no tab is active', async () => {
+    // e.g. a DevTools window has focus
+    chrome.tabs.query.mockResolvedValue([]);
+
+    const result = await getData();
+
+    expect(result.ok).toBe(false);
+    expect(chrome.scripting.executeScript).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'CHROME://extensions',
+    'view-source:https://example.com',
+    'devtools://devtools/bundled/inspector.html',
+    'edge://settings',
+    'file:///C:/notes.txt',
+  ])('rejects %s without injecting a script', async (url) => {
+    chrome.tabs.query.mockResolvedValue([{ id: 1, url, title: 'x' }]);
+
+    const result = await getData();
+
+    expect(result).toMatchObject({ ok: false, retryable: false });
+    expect(chrome.scripting.executeScript).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['an empty result list', []],
+    ['a missing result value', [{}]],
+  ])('reports %s from executeScript as ok:false', async (_label, injected) => {
+    chrome.tabs.query.mockResolvedValue([
+      { id: 1, url: 'https://example.com/', title: 'x' },
+    ]);
+    chrome.scripting.executeScript.mockResolvedValue(injected);
+
+    const result = await getData();
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/No result from the page/);
+  });
+});

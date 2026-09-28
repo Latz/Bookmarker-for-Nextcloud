@@ -101,8 +101,33 @@ describe('contextMenu', () => {
   });
 
   describe('createContextMenus', () => {
-    it('recreates the zen checkbox and the refresh entry', () => {
-      createContextMenus(true);
+    it('waits for removeAll before creating the items', async () => {
+      const order = [];
+      chrome.contextMenus.removeAll.mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        order.push('removed');
+      });
+      chrome.contextMenus.create.mockImplementation(() => order.push('created'));
+
+      await createContextMenus(false);
+
+      // create() ahead of an unfinished removeAll() hits duplicate ids
+      expect(order[0]).toBe('removed');
+      expect(order.filter((o) => o === 'created')).toHaveLength(2);
+    });
+
+    it('still creates the items when removeAll rejects', async () => {
+      chrome.contextMenus.removeAll.mockRejectedValue(new Error('nope'));
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      await createContextMenus(false);
+
+      expect(chrome.contextMenus.create).toHaveBeenCalledTimes(2);
+      warn.mockRestore();
+    });
+
+    it('recreates the zen checkbox and the refresh entry', async () => {
+      await createContextMenus(true);
 
       expect(chrome.contextMenus.removeAll).toHaveBeenCalledTimes(1);
       expect(chrome.contextMenus.create).toHaveBeenCalledWith({
@@ -123,12 +148,12 @@ describe('contextMenu', () => {
       });
     });
 
-    it('keeps going when creating a menu item throws', () => {
+    it('keeps going when creating a menu item throws', async () => {
       chrome.contextMenus.create.mockImplementation(() => {
         throw new Error('duplicate id');
       });
 
-      expect(() => createContextMenus(false)).not.toThrow();
+      await expect(createContextMenus(false)).resolves.toBeUndefined();
       expect(chrome.contextMenus.create).toHaveBeenCalledTimes(2);
     });
   });

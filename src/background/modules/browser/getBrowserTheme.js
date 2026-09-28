@@ -116,6 +116,10 @@ export default async function getBrowserTheme() {
 
   try {
     const result = await inflightThemeRequest;
+    // null = detection failed. Use the default for this call only: caching the
+    // fallback would pin the wrong icon for the whole browser session after a
+    // single hiccup (e.g. the offscreen document being slow on a cold start).
+    if (result === null) return 'light';
     cachedTheme = result;
     // Persist to session storage for next cold start
     if (chrome.storage?.session) {
@@ -154,7 +158,7 @@ async function detectTheme() {
     // Validate response - default to light on unexpected results
     if (typeof isLight !== 'boolean') {
       console.warn('Unexpected theme response:', isLight);
-      return 'light';
+      return null;
     }
     // Return the icon theme that contrasts with the browser theme:
     // - If browser is light, use dark icon (for visibility)
@@ -162,7 +166,6 @@ async function detectTheme() {
     return isLight ? 'dark' : 'light';
   } catch (error) {
     console.error('Failed to detect browser theme:', error);
-    // Fallback to light theme on error
-    return 'light';
+    return null;
   }
 }

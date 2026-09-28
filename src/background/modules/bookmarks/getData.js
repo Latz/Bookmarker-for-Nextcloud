@@ -35,14 +35,22 @@ function isValidBookmarkableUrl(url) {
   const nonBookmarkableProtocols = [
     'chrome://',
     'chrome-extension://',
+    'chrome-error://',
+    'chrome-untrusted://',
+    'devtools://',
+    'edge://',
+    'view-source:',
     'about:',
     'data:',
     'blob:',
     'javascript:',
+    'file:',
   ];
 
+  // URL schemes are case-insensitive ("Chrome://...", "JavaScript:...").
+  const lowerUrl = url.toLowerCase();
   for (const protocol of nonBookmarkableProtocols) {
-    if (url.startsWith(protocol)) return false;
+    if (lowerUrl.startsWith(protocol)) return false;
   }
 
   return true;
@@ -58,6 +66,11 @@ export default async function getData() {
 
   // --- get active tab info first (fast operation)
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  // Empty result: no normal window is focused (e.g. a DevTools window).
+  if (!activeTab) {
+    return { ok: false, error: 'No active tab found' };
+  }
 
   data.url = activeTab.url;
   data.title = activeTab.title;
@@ -182,7 +195,10 @@ async function getContent(tabId, headingLevel) {
     args: [headingLevel],
   });
 
-  return injectionResults[0].result;
+  // No result when the tab navigated or closed while the script was running.
+  return (
+    injectionResults?.[0]?.result ?? { error: 'No result from the page' }
+  );
 }
 
 // ---------------------------------------------------------------------------------------------------

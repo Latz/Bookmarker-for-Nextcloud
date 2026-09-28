@@ -1,5 +1,6 @@
 // @ts-check
 import { getOption, load_data } from './storage.js';
+import { timeoutMilliseconds } from './networkTimeout.js';
 
 // OPTIMIZATION: Cache network timeout to avoid repeated storage reads
 let cachedNetworkTimeout = null;
@@ -24,18 +25,13 @@ async function timeoutFetch(resource, options = {}) {
   // OPTIMIZATION: Use cached timeout if available and not expired
   const now = Date.now();
   if (cachedNetworkTimeout === null || now > timeoutCacheExpiry) {
-    cachedNetworkTimeout = (await getOption('input_networkTimeout')) * 1000;
+    cachedNetworkTimeout = timeoutMilliseconds(
+      await getOption('input_networkTimeout'),
+    );
     timeoutCacheExpiry = now + TIMEOUT_CACHE_TTL;
   }
 
-  let networkTimeout = cachedNetworkTimeout;
-
-  // default networkTimeout to 10 seconds if not set
-  if (Number.isNaN(networkTimeout) || networkTimeout === 0) {
-    networkTimeout = 10000;
-  }
-
-  const { timeout = networkTimeout, signal: externalSignal } = options;
+  const { timeout = cachedNetworkTimeout, signal: externalSignal } = options;
 
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -87,6 +83,10 @@ export default async function apiCall(
 ) {
   let { server, authHeader } = await resolveServerAndAuth(data);
 
+  if (!server || (!authHeader && !data?.loginflow)) {
+    return { status: 'error', statusText: 'Not configured' };
+  }
+
   // Add trailing slash to the server URL if not provided
   if (server && !server.endsWith('/')) {
     server += '/';
@@ -94,6 +94,7 @@ export default async function apiCall(
 
   // Set the headers for the API call
   const headers = {
+    Accept: 'application/json',
     'OCS-APIREQUEST': 'true',
     'User-Agent': 'Bookmarker4Nextcloud',
   };
@@ -108,7 +109,6 @@ export default async function apiCall(
     method,
     headers,
     credentials: 'omit',
-    Accept: 'application/json',
   };
 
   // Add abort signal if provided
@@ -119,29 +119,24 @@ export default async function apiCall(
   // Construct the API call URL
   const url = `${server}${endpoint}?${typeof data === 'string' ? data : ''}`;
 
-  let result = {};
+  // Every failure resolves to { status: 'error', statusText }: callers such as
+  // notifyUser() only test for 'error' and would report a failed save as done.
   try {
     const response = await timeoutFetch(url, fetchInfo);
-    if (response.ok) {
-      result = await response.json();
-    } else {
-      result = {
+    if (!response.ok) {
+      return {
         status: 'error',
-        statusText: response.statusText,
+        // HTTP/2 responses carry no reason phrase
+        statusText: response.statusText || `HTTP ${response.status}`,
       };
-      throw new Error(result.statusText);
     }
-    return result;
+    return await response.json();
   } catch (error) {
-    if (error instanceof TypeError) {
-      result = {
-        status: -1,
-        statusText: error.message,
-      };
-    }
+    let statusText = error?.message || String(error);
+    if (error?.name === 'AbortError') statusText = 'Timeout';
+    else if (error instanceof SyntaxError) statusText = 'Invalid response';
+    return { status: 'error', statusText };
   }
-
-  return result;
 }
 
 const AUTH_CACHE_TTL = 60000; // 1 minute
@@ -158,12 +153,22 @@ async function authentication() {
     // Load the credentials data from the database
     const data = await load_data('credentials', 'loginname', 'appPassword');
 
+    // Incomplete credentials must not become "Basic base64('undefined:undefined')"
+    // -- that header would be cached and sent (and counted by Nextcloud's
+    // brute-force throttle) on every request.
+    if (!data?.loginname || !data?.appPassword) return null;
+
     // Generate the authentication token using the loginname and appPassword
-    // OPTIMIZATION: Removed unnecessary Promise.resolve
-    const credentials = `${data.loginname}:${data.appPassword}`;
-    cachedAuthHeader = `Basic ${btoa(credentials)}`;
+    cachedAuthHeader = `Basic ${toBase64(`${data.loginname}:${data.appPassword}`)}`;
     authCacheExpiry = now + AUTH_CACHE_TTL;
   }
 
   return cachedAuthHeader;
+}
+
+// btoa() throws on anything above Latin-1 (e.g. an umlaut in the login name);
+// Nextcloud expects the credentials UTF-8 encoded.
+function toBase64(text) {
+  const bytes = new TextEncoder().encode(text);
+  return btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));
 }

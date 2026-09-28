@@ -20,11 +20,21 @@ export async function saveBookmark(data, folderIDs, bookmarkID) {
       : 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const method = bookmarkID > 0 ? 'PUT' : 'POST';
 
+  let response;
   chrome.action.setBadgeText({ text: '💾' });
-  const response = await apiCall(endpoint, method, data);
-
-  await store_data('options', { folderIDs });
+  try {
+    response = await apiCall(endpoint, method, data);
+    // The save itself is done; failing to remember the folders must not turn it
+    // into a reported failure.
+    await store_data('options', { folderIDs }).catch((error) => {
+      console.error('Error storing last folders:', error);
+    });
+  } catch (error) {
+    response = { status: 'error', statusText: error?.message ?? String(error) };
+  } finally {
+    // Always cleared, otherwise a throw leaves the badge stuck on the disk icon.
     chrome.action.setBadgeText({ text: '' });
+  }
   notifyUser(response);
 
   if (response.status === 'success') {

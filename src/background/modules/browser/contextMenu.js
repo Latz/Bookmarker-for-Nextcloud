@@ -6,17 +6,19 @@ import { cacheGet } from '../../../lib/cache.js';
 function setZenModeMenu(zenModeEnabled) {
   console.log('zenModeEnabled', zenModeEnabled);
   try {
-    if (zenModeEnabled) {
-      chrome.contextMenus.update('menuEnableZen', {
+    // update() returns a promise in MV3 and rejects when the item does not
+    // exist yet (SW cold-started for this event). A try/catch cannot see that
+    // rejection, so it is handled on the promise.
+    const updating = zenModeEnabled
+      ? chrome.contextMenus.update('menuEnableZen', {
           title: '⭢Zen Mode',
           checked: true,
-        });
-    } else {
-      chrome.contextMenus.update('menuEnableZen', {
+        })
+      : chrome.contextMenus.update('menuEnableZen', {
           title: 'Zen Mode',
           checked: false,
-      });
-    }
+        });
+    updating?.catch?.(() => {});
   } catch (error) {
     // Menu item may not exist yet if SW cold-started for this event
   }
@@ -31,8 +33,11 @@ function setZenModeMenu(zenModeEnabled) {
  */
 export function handleContextMenuClick(info) {
   if (info.menuItemId === 'menuRefreshCache') {
-    cacheGet('keywords', true);
-    cacheGet('folders', true);
+    for (const type of ['keywords', 'folders']) {
+      Promise.resolve(cacheGet(type, true)).catch((error) => {
+        console.error(`[contextMenu] refreshing ${type} failed:`, error);
+      });
+    }
   }
   if (info.menuItemId === 'menuOldDatabase') {
     createOldDatabase();
@@ -50,10 +55,16 @@ export function handleContextMenuClick(info) {
 /**
  * (Re)creates the toolbar-icon context menu.
  * @param {boolean} zenModeEnabled - Initial state of the Zen Mode checkbox.
- * @returns {void}
+ * @returns {Promise<void>}
  */
-export function createContextMenus(zenModeEnabled) {
-  chrome.contextMenus.removeAll();
+export async function createContextMenus(zenModeEnabled) {
+  // Awaited: create() straight after an unfinished removeAll() can hit a
+  // duplicate id and leave the item missing or stale.
+  try {
+    await chrome.contextMenus.removeAll();
+  } catch (error) {
+    console.warn('[contextMenu] removeAll failed:', error);
+  }
   try {
     chrome.contextMenus.create({
       id: 'menuEnableZen',
