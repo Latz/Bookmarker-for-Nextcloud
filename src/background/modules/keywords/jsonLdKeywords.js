@@ -1,22 +1,51 @@
 // @ts-check
 
+// schema.org Article and its subtypes. News sites mostly use NewsArticle,
+// blogs BlogPosting (https://www.sciencenews.org/article/true-blue-rose-pigment-copigment).
+const ARTICLE_TYPES = new Set([
+  'Article',
+  'AdvertiserContentArticle',
+  'AnalysisNewsArticle',
+  'APIReference',
+  'AskPublicNewsArticle',
+  'BackgroundNewsArticle',
+  'BlogPosting',
+  'DiscussionForumPosting',
+  'LiveBlogPosting',
+  'MedicalScholarlyArticle',
+  'NewsArticle',
+  'OpinionNewsArticle',
+  'Report',
+  'ReportageNewsArticle',
+  'ReviewNewsArticle',
+  'SatiricalArticle',
+  'ScholarlyArticle',
+  'SocialMediaPosting',
+  'TechArticle',
+]);
+
+/**
+ * @returns {boolean} Whether a JSON-LD node is an Article (or subtype); `@type` may be a string or an array.
+ */
+function isArticle(node) {
+  const type = node?.['@type'];
+  const types = Array.isArray(type) ? type : [type];
+  return types.some((t) => ARTICLE_TYPES.has(t));
+}
+
 /**
  * Finds keywords on a JSON-LD `@graph`-wrapped Article node.
  * https://harpers.org/archive/2024/07/art-and-artifice-donna-tartt/
  * @returns {Array|null} Keywords, or null if this shape doesn't apply.
  */
 function extractKeywordsFromGraphArticle(jsonld) {
-  if (jsonld['@graph'] && Array.isArray(jsonld['@graph'])) {
-    for (const element of jsonld['@graph']) {
-      if (element['@type'] === 'Article') {
-        return element['keywords'] || [];
-      }
-    }
-  }
-  if (jsonld['@graph']?.['@type'] === 'Article') {
-    return jsonld['@graph']['keywords'] || [];
-  }
-  return null;
+  const graph = jsonld['@graph'];
+  const nodes = Array.isArray(graph) ? graph : [graph];
+  const article = nodes.find(isArticle);
+  if (!article) return null;
+  // Route through the keywords-field parser so a plain string ("blue rose")
+  // becomes an array instead of being handed on as a string.
+  return extractKeywordsFromKeywordsField(article) ?? [];
 }
 
 /**
@@ -117,7 +146,6 @@ export function extractKeywordsFromJsonLd(jsonld) {
  * @returns {Array} Keywords, or [] if none were found.
  */
 export function extractJsonLdKeywords(document) {
-  let keywords = [];
   const jsonlds = document.querySelectorAll(
     'script[type="application/ld+json"]',
   );
@@ -130,11 +158,13 @@ export function extractJsonLdKeywords(document) {
       // must not take down keyword extraction for the whole page -- move
       // on to the next script instead.
       const parsed = JSON.parse(jsonldEl.innerText);
-      keywords = extractKeywordsFromJsonLd(parsed);
+      const keywords = extractKeywordsFromJsonLd(parsed);
+      // Pages usually carry several blocks (Organization, WebSite, Article,
+      // ...); the first one that has keywords wins.
+      if (keywords.length > 0) return keywords;
     } catch {
       continue;
     }
-    if (keywords.length === 0) break;
   }
-  return keywords;
+  return [];
 }

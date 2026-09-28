@@ -105,6 +105,47 @@ describe('extractKeywordsFromJsonLd', () => {
   it('returns [] when nothing applies', () => {
     expect(extractKeywordsFromJsonLd({ '@type': 'Thing' })).toEqual([]);
   });
+
+  it('reads keywords from a NewsArticle inside @graph (sciencenews.org)', () => {
+    const jsonld = {
+      '@graph': [
+        { '@type': 'Organization' },
+        { '@type': 'NewsArticle', keywords: 'blue rose' },
+      ],
+    };
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['blue rose']);
+  });
+
+  it('reads keywords from a BlogPosting inside @graph', () => {
+    const jsonld = {
+      '@graph': [{ '@type': 'BlogPosting', keywords: ['a', 'b'] }],
+    };
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['a', 'b']);
+  });
+
+  it('accepts an @type array that includes an Article type', () => {
+    const jsonld = {
+      '@graph': [{ '@type': ['WebPage', 'NewsArticle'], keywords: ['x'] }],
+    };
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['x']);
+  });
+
+  it('returns a string keywords field on a @graph Article as an array', () => {
+    const jsonld = { '@graph': [{ '@type': 'Article', keywords: 'a,b' }] };
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['a', 'b']);
+  });
+
+  it('ignores null nodes inside @graph', () => {
+    const jsonld = {
+      '@graph': [null, { '@type': 'Article', keywords: ['x'] }],
+    };
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['x']);
+  });
 });
 
 describe('extractJsonLdKeywords', () => {
@@ -142,5 +183,32 @@ describe('extractJsonLdKeywords', () => {
 
   it('returns [] when there are no JSON-LD blocks', () => {
     expect(extractJsonLdKeywords(documentWith())).toEqual([]);
+  });
+
+  it('keeps looking after a block without keywords', () => {
+    const document = documentWith(
+      JSON.stringify({ '@type': 'Organization', name: 'x' }),
+      JSON.stringify({ '@type': 'Article', keywords: ['a', 'b'] }),
+    );
+
+    expect(extractJsonLdKeywords(document)).toEqual(['a', 'b']);
+  });
+
+  it('keeps found keywords when a later block has none', () => {
+    const document = documentWith(
+      JSON.stringify({ '@type': 'Article', keywords: ['a', 'b'] }),
+      JSON.stringify({ '@type': 'Organization', name: 'x' }),
+    );
+
+    expect(extractJsonLdKeywords(document)).toEqual(['a', 'b']);
+  });
+
+  it('returns the keywords of the first block that has any', () => {
+    const document = documentWith(
+      JSON.stringify({ keywords: ['first'] }),
+      JSON.stringify({ keywords: ['second'] }),
+    );
+
+    expect(extractJsonLdKeywords(document)).toEqual(['first']);
   });
 });

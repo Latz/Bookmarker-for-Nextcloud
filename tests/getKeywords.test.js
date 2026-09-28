@@ -160,6 +160,38 @@ describe('getKeywords', () => {
       expect(result).toEqual(['keyword1', 'keyword2']);
     });
 
+    it('should not split a multi-word article:tag on spaces', async () => {
+      getMeta.mockImplementation((doc, { id }) =>
+        id === 'article:tag' ? ['Fatty Liver Disease'] : [],
+      );
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toEqual(['Fatty Liver Disease']);
+    });
+
+    it('should still split a comma-separated article:tag', async () => {
+      getMeta.mockImplementation((doc, { id }) =>
+        id === 'article:tag' ? ['Space Exploration, SpaceX, moon'] : [],
+      );
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toEqual(['Space Exploration', 'SpaceX', 'moon']);
+    });
+
+    it('should prefer meta keywords over article:tag', async () => {
+      getMeta.mockImplementation((doc, { id }) => {
+        if (id === 'keywords') return ['k1, k2'];
+        if (id === 'article:tag') return ['tag'];
+        return [];
+      });
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toEqual(['k1', 'k2']);
+    });
+
     it('should return empty array when no meta keywords found', async () => {
       getMeta.mockReturnValue([]);
 
