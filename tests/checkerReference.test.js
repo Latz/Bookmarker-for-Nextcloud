@@ -122,6 +122,29 @@ describe('detectReference: tag link hints', () => {
     expect(detectReference(document).hints).toEqual({});
   });
 
+  it('falls back to the URL slug when the link text is a whole card, not a tag label (hackeratlas.com)', () => {
+    document.body.innerHTML = `
+      <a href="/topic/ai-governance-and-societal-impacts/">AI governance and societal impactsAI safety, governance, regulation, rights, trust, employment, and societal consequences.1,366 posts · last 30 days1.</a>
+      <a href="/topic/apple-ecosystem/">Apple ecosystemApple Macs, iPhones, iOS, macOS, Apple Silicon, the App Store, and Apple business and policy.472 posts</a>`;
+
+    expect(detectReference(document).hints['tag links']).toEqual([
+      'ai governance and societal impacts',
+      'apple ecosystem',
+    ]);
+  });
+
+  it('strips a file extension from the slug fallback', () => {
+    document.body.innerHTML = `<a href="/tags/ai.html">${'x'.repeat(61)}</a>`;
+
+    expect(detectReference(document).hints['tag links']).toEqual(['ai']);
+  });
+
+  it('keeps a short tag label as-is, even from a card-shaped link', () => {
+    document.body.innerHTML = '<a href="/tags/ai.html">AI</a>';
+
+    expect(detectReference(document).hints['tag links']).toEqual(['AI']);
+  });
+
   it('ignores tag links to other sites and empty link texts', () => {
     document.body.innerHTML = `
       <a href="https://other.example/tag/x/">external</a>

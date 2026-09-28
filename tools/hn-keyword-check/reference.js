@@ -108,6 +108,18 @@ function inlineScriptKeywords(document) {
 // hierarchy than a single tag, so it's left unmatched.
 const TAG_LINK_PATH = /^\/(?:tags?|topics?|t)\/(?:\d+\/)?[^/]+\/?$/i;
 
+// Above this length, a[href] textContent is more likely a whole card
+// (title + description + stats, all inside one link -- e.g. hackeratlas.com's
+// "AI governance and societal impactsAI safety, governance, regulation...")
+// than a short tag label, so the URL slug is used instead.
+const MAX_TAG_TEXT_LENGTH = 60;
+
+/** @returns {string} The last path segment, extension stripped, - and _ -> space. */
+function slugFromPath(pathname) {
+  const last = pathname.split('/').filter(Boolean).at(-1) ?? '';
+  return last.replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ').trim();
+}
+
 function tagLinkHints(document) {
   const base = document.location?.href || 'https://example.invalid/';
   const host = new URL(base).hostname;
@@ -115,9 +127,12 @@ function tagLinkHints(document) {
   for (const a of document.querySelectorAll('a[href]')) {
     try {
       const url = new URL(a.getAttribute('href'), base);
-      if (url.hostname === host && TAG_LINK_PATH.test(url.pathname)) {
-        texts.push(a.textContent.trim());
-      }
+      if (url.hostname !== host || !TAG_LINK_PATH.test(url.pathname)) continue;
+      const text = a.textContent.trim();
+      if (!text) continue;
+      texts.push(
+        text.length <= MAX_TAG_TEXT_LENGTH ? text : slugFromPath(url.pathname),
+      );
     } catch {
       // unparsable href
     }
