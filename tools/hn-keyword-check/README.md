@@ -1,18 +1,32 @@
 # hn-keyword-check
 
-Loads the Hacker News front page, fetches every linked page, and compares an
-independent keyword/tag/description detector (`reference.js`) against the
-extension's own pipeline (`extractPageData` → `createMockDocument` →
-`getDescription` / `getKeywords` from `../../src`).
+Collects links from Hacker News (or other sources), fetches every linked page,
+and compares an independent keyword/tag/description detector (`reference.js`)
+against the extension's own pipeline (`extractPageData` → `createMockDocument`
+→ `getDescription` / `getKeywords` from `../../src`).
 
 ```sh
-npm run check:hn                                  # all front-page stories
+npm run check:hn                                  # HN front page (default)
 npm run check:hn -- --limit 10                    # flags go after --
-node tools/hn-keyword-check/check.js              # same, without npm
-node tools/hn-keyword-check/check.js --limit 10
-node tools/hn-keyword-check/check.js --url <url>  # one page (repeatable)
-node tools/hn-keyword-check/check.js --verbose --json results.json
+npm run check:hn -- --source lobsters --source devto --pages 2
+npm run check:hn -- --feed https://github.blog/feed/atom/
+npm run check:hn -- --url <url>                   # one page (repeatable)
+npm run check:hn -- --verbose --json results.json
+npm run check:hn -- --source algolia --pages 3 --exclude results.json
 ```
+
+| Option | Meaning |
+| ------ | ------- |
+| `--source <name>` | `hn` (default), `lobsters`, `devto` or `algolia` (HN stories via Algolia, far past the front page); repeatable |
+| `--feed <url>` | Any RSS 2.0 / Atom feed; repeatable |
+| `--pages N` | Pages to read per `--source` (default 1; ~30 links each) |
+| `--url <url>` | Check exactly these pages, ignoring sources |
+| `--exclude <file>` | Skip URLs already in an earlier `--json` result |
+| `--limit N` | Check at most N pages (after removing duplicates) |
+| `--json <file>` | Write the full per-page results |
+| `--verbose` | Print keyword lists for every page, not only problems |
+
+Reddit is not supported: it answers scripted requests with 403/429.
 
 Pages are parsed with happy-dom (scripts disabled), so client-rendered
 metadata is not seen. `src/lib/storage.js` and `src/lib/cache.js` are swapped

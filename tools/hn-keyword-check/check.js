@@ -1,14 +1,24 @@
 #!/usr/bin/env node
-// Loads the Hacker News front page, checks every linked page for keywords,
-// tags and descriptions with an independent detector, and verifies that
-// Bookmarker for Nextcloud's own extraction code (../../src) finds them too.
+// Collects links from Hacker News (or Lobsters, dev.to, Algolia HN, any RSS/
+// Atom feed), checks every linked page for keywords, tags and descriptions
+// with an independent detector, and verifies that Bookmarker for Nextcloud's
+// own extraction code (../../src) finds them too.
 //
-// Usage: node check.js [--url <url>] [--limit N] [--json <file>] [--verbose]
+// Usage: node check.js [--source hn|lobsters|devto|algolia]... [--feed <url>]...
+//        [--pages N] [--url <url>]... [--exclude <results.json>] [--limit N]
+//        [--json <file>] [--verbose]
 import './stubs.js';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { Window } from 'happy-dom';
 import { detectReference } from './reference.js';
+import {
+  SOURCE_NAMES,
+  collectUrls,
+  dedupeUrls,
+  excludeUrls,
+  fetchWithUa,
+} from './sources.js';
 
 const src = new URL('../../src/background/modules/', import.meta.url);
 const { extractPageData } = await import(new URL('extractPageData.js', src));
@@ -19,15 +29,15 @@ const { default: getDescription } = await import(
 const { default: getKeywords } = await import(new URL('getKeywords.js', src));
 const { OPTIONS } = await import('./stub-storage.js');
 
-const HN_URL = 'https://news.ycombinator.com/';
-const USER_AGENT =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
-const TIMEOUT_MS = 15000;
 const CONCURRENCY = 5;
 
 const { values: args } = parseArgs({
   options: {
     url: { type: 'string', multiple: true },
+    source: { type: 'string', multiple: true },
+    feed: { type: 'string', multiple: true },
+    pages: { type: 'string', default: '1' },
+    exclude: { type: 'string' },
     limit: { type: 'string' },
     json: { type: 'string' },
     verbose: { type: 'boolean', short: 'v', default: false },
@@ -35,12 +45,7 @@ const { values: args } = parseArgs({
 });
 
 async function fetchHtml(url) {
-  const response = await fetch(url, {
-    headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,*/*;q=0.8' },
-    redirect: 'follow',
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const response = await fetchWithUa(url);
   const type = response.headers.get('content-type') ?? '';
   if (!type.includes('html')) return { skipped: `content-type ${type}` };
   return { html: await response.text(), finalUrl: response.url };
@@ -61,14 +66,37 @@ function parseDocument(html, url) {
   return { window, document };
 }
 
-async function getStoryUrls() {
-  const { html } = await fetchHtml(HN_URL);
-  const { window, document } = parseDocument(html, HN_URL);
-  const urls = Array.from(document.querySelectorAll('.titleline > a'))
-    .map((a) => new URL(a.getAttribute('href'), HN_URL).href)
-    // Ask/Show HN text posts link back to HN itself and carry no metadata.
-    .filter((url) => !url.startsWith(`${HN_URL}item?`));
-  await window.happyDOM.close();
+// --url bypasses the sources; otherwise every --source/--feed is collected
+// (default: hn), deduplicated, and optionally filtered against a previous run.
+async function getUrls() {
+  if (args.url) return args.url;
+
+  const pages = Math.max(1, Number.parseInt(args.pages, 10) || 1);
+  const sources = args.source ?? (args.feed ? [] : ['hn']);
+  const unknown = sources.filter((name) => !SOURCE_NAMES.includes(name));
+  if (unknown.length) {
+    throw new Error(
+      `Unknown --source ${unknown.join(', ')} (choose from ${SOURCE_NAMES.join(', ')})`,
+    );
+  }
+
+  const results = await collectUrls({ sources, feeds: args.feed ?? [], pages });
+  for (const { name, urls, error } of results) {
+    console.log(
+      `${name}: ${urls.length} link(s)${error ? ` (stopped: ${error})` : ''}`,
+    );
+  }
+
+  let urls = dedupeUrls(results.flatMap((result) => result.urls));
+  if (args.exclude) {
+    const previous = JSON.parse(await readFile(args.exclude, 'utf8'));
+    const before = urls.length;
+    urls = excludeUrls(
+      urls,
+      previous.map((entry) => entry.url),
+    );
+    console.log(`--exclude: skipped ${before - urls.length} already checked`);
+  }
   return urls;
 }
 
@@ -178,7 +206,7 @@ function printResult(r) {
   }
 }
 
-let urls = args.url ?? (await getStoryUrls());
+let urls = await getUrls();
 if (args.limit) urls = urls.slice(0, Number(args.limit));
 console.log(`Checking ${urls.length} page(s)…\n`);
 
