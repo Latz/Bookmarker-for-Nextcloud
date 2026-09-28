@@ -56,6 +56,39 @@ describe('extractGtmKeywords', () => {
     expect(extractGtmKeywords(document)).toEqual(['NASA', 'space', 'rocket']);
   });
 
+  it('skips an unrelated dataLayer.push script and reads the next one (Ars Technica)', () => {
+    const consent = scriptWith(
+      'function f(name){ dataLayer.push({\n event: name, consent: Math.round(1) }); }',
+    );
+    const data = scriptWith(
+      'window.dataLayer=[];dataLayer.push({"event":"loaded","user":{"id":undefined},"content":{"keywords":"canadarm2|NASA|space"}})',
+    );
+    const document = documentWith({ script: [consent, data] });
+
+    expect(extractGtmKeywords(document)).toEqual(['canadarm2', 'NASA', 'space']);
+  });
+
+  it('tries every push call within a script', () => {
+    const script = scriptWith(
+      'dataLayer.push({"event":"a"});dataLayer.push({"content":{"keywords":"x|y"}})',
+    );
+    const document = documentWith({ script: [script] });
+
+    expect(extractGtmKeywords(document)).toEqual(['x', 'y']);
+  });
+
+  it('skips a push whose content has no keywords or an empty string', () => {
+    const document = documentWith({
+      script: [
+        scriptWith('dataLayer.push({"content":{"keywords":""}})'),
+        scriptWith('dataLayer.push({"content":{}})'),
+        scriptWith('dataLayer.push({"content":{"keywords":"ok"}})'),
+      ],
+    });
+
+    expect(extractGtmKeywords(document)).toEqual(['ok']);
+  });
+
   it('returns [] when the dataLayer JSON is malformed', () => {
     const document = documentWith({
       script: [scriptWith('dataLayer.push({not json)')],

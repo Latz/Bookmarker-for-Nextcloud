@@ -52,9 +52,6 @@ export default async function getKeywords(parsedData, document) {
     // Extraction (including the JSON.parse and error handling) now runs
     // in-page inside extractPageData -- this is a pure field read.
     () => parsedData.xplKeywords ?? [],
-    // Brute force search for pattern /keywords: "keyword1, keyword2, keyword3"/
-    // Same as above: the regex now runs in-page.
-    () => parsedData.bruteForceKeywords ?? [],
   ];
 
   // OPTIMIZATION: Batch fetch all options upfront to avoid multiple storage reads
@@ -80,7 +77,12 @@ export default async function getKeywords(parsedData, document) {
     }
   }
 
-  const keywords = mergeKeywords(found);
+  // Brute force search for a keywords property in inline script data (see
+  // extractPageData). It is loose enough to pick up unrelated config values,
+  // so it only counts when no real source found anything.
+  const keywords = mergeKeywords(
+    found.length > 0 ? found : (parsedData.bruteForceKeywords ?? []),
+  );
   if (keywords.length > 0) {
     // use only keywords that are already stored in Bookmarks
     // switchable by Options/Advanced

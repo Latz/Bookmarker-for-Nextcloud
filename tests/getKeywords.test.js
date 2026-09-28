@@ -741,12 +741,30 @@ describe('getKeywords', () => {
       expect(result).not.toContain('openai');
     });
 
-    it('should include pre-extracted keywords alongside page sources', async () => {
-      mockParsedData = { bruteForceKeywords: ['extra'] };
+    it('should include xplGlobal keywords alongside page sources', async () => {
+      mockParsedData = { xplKeywords: ['extra'] };
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['OpenAI', 'security', 'Privacy', 'AI', 'extra']);
+    });
+
+    it('should ignore brute-force keywords when a real source found some', async () => {
+      mockParsedData = { bruteForceKeywords: ['noise'] };
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).not.toContain('noise');
+    });
+
+    it('should fall back to brute-force keywords when nothing else found any', async () => {
+      getMeta.mockReturnValue([]);
+      mockDocument.querySelectorAll.mockReturnValue([]);
+      mockParsedData = { bruteForceKeywords: ['UK news', ' Military ', 'uk NEWS'] };
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toEqual(['UK news', 'Military']);
     });
 
     it('should keep the other sources when one throws', async () => {

@@ -251,7 +251,7 @@ describe('extractPageData', () => {
       expect(result.error).toBeUndefined();
     });
 
-    it('extracts brute-force keywords: "..." pattern', () => {
+    it('extracts brute-force keywords: "..." pattern, splitting on | too', () => {
       document.body.innerHTML = `
         <script>var x = { keywords: "Dream Chaser|NASA|spaceplane" };</script>
       `;
@@ -259,8 +259,55 @@ describe('extractPageData', () => {
       const result = extractPageData(3);
 
       expect(result.bruteForceKeywords).toEqual([
-        'Dream Chaser|NASA|spaceplane',
+        'Dream Chaser',
+        'NASA',
+        'spaceplane',
       ]);
+    });
+
+    it('extracts a comma-separated string under a quoted JSON key (Guardian)', () => {
+      document.body.innerHTML = `
+        <script>window.config = {"byline":"Ben","keywords":"UK news, Military,Police","id":1};</script>
+      `;
+
+      const result = extractPageData(3);
+
+      expect(result.bruteForceKeywords).toEqual([
+        'UK news',
+        'Military',
+        'Police',
+      ]);
+    });
+
+    it('extracts a JSON array of keywords (Variety)', () => {
+      document.body.innerHTML = `
+        <script>var cfg = {"keywords":["Hulu","Kid Detective"],"categories":["News"]};</script>
+      `;
+
+      const result = extractPageData(3);
+
+      expect(result.bruteForceKeywords).toEqual(['Hulu', 'Kid Detective']);
+    });
+
+    it('skips empty keywords values and uses the next real one', () => {
+      document.body.innerHTML = `
+        <script>
+          var a = {"keywords":"","x":1, "keywords":[], "keywords":null};
+          var b = {"keywords":"real, ones"};
+        </script>
+      `;
+
+      const result = extractPageData(3);
+
+      expect(result.bruteForceKeywords).toEqual(['real', 'ones']);
+    });
+
+    it('ignores keywords mentioned only as plain text', () => {
+      document.body.innerHTML = '<p>Enter keywords and press search</p>';
+
+      const result = extractPageData(3);
+
+      expect(result.bruteForceKeywords).toEqual([]);
     });
 
     it('returns an empty array when the brute-force pattern is absent', () => {

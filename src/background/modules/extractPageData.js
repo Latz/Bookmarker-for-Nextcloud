@@ -140,11 +140,25 @@ export function extractPageData(headingLevel) {
       }
     }
 
+    // Last-resort search for a keywords property in inline script/config data:
+    //   keywords: "a, b"          (JS object literal)
+    //   "keywords":"a,b" / "a|b"  (JSON config, e.g. the Guardian, Ars Technica)
+    //   "keywords":["a","b"]      (JSON array, e.g. Variety)
+    // Empty values ("keywords":"", []) are skipped so a later, real one can win.
     let bruteForceKeywords = [];
-    const bruteRegex = /keywords:\s*"([^"]*)"/g;
-    const bruteMatch = bruteRegex.exec(outerHtml);
-    if (bruteMatch) {
-      bruteForceKeywords = bruteMatch[1].split(',');
+    const bruteRegex = /["']?keywords["']?\s*:\s*(?:"([^"]*)"|\[([^\]]*)\])/g;
+    let bruteTries = 0;
+    for (const bruteMatch of outerHtml.matchAll(bruteRegex)) {
+      if (++bruteTries > 50) break;
+      const found =
+        bruteMatch[1] === undefined
+          ? Array.from(bruteMatch[2].matchAll(/"([^"]*)"/g), (m) => m[1])
+          : bruteMatch[1].split(/[,|]/);
+      const cleaned = found.map((k) => k.trim()).filter(Boolean);
+      if (cleaned.length > 0) {
+        bruteForceKeywords = cleaned;
+        break;
+      }
     }
 
     return {

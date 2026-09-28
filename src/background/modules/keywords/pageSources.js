@@ -32,35 +32,45 @@ export function extractRelCategoryKeywords(document) {
 // ------------------------------------------------------------------------------------------
 // Google Tags Manager
 // ------------------------------------------------------------------------------------------
-/** @returns {Array<string>} */
+// Upper bound on push( calls tried per script (see the scan bound below).
+const MAX_PUSHES_PER_SCRIPT = 20;
+
+/**
+ * Reads `content.keywords` (pipe-separated) from the first dataLayer.push({...})
+ * whose JSON parses and carries it. Pages often have several dataLayer.push
+ * scripts, and the first is frequently unrelated (consent handling, events
+ * with non-JSON arguments), so a call that fails is skipped, not fatal
+ * (https://arstechnica.com/).
+ * @returns {Array<string>}
+ */
 export function extractGtmKeywords(document) {
   log(DEBUG, 'Google Tags Manager');
-  let keywords = [];
   const nodeList = document.querySelectorAll('script');
 
-  let i = 0;
-  while (i < nodeList.length && keywords.length === 0) {
-    const script = nodeList[i].text;
-    if (script?.includes('dataLayer.push')) {
-      // Bound the scan: an untrusted page with many unclosed "push("
-      // occurrences would otherwise make the lazy quantifier retry from
-      // every one of them, an O(n^2) cost on attacker-controlled input.
-      const boundedScript =
-        script.length > 5000 ? script.slice(0, 5000) : script;
-      const regex = /push\((.*?)\)/g;
-      const match = regex.exec(boundedScript);
+  for (const node of nodeList) {
+    const script = node.text;
+    if (!script?.includes('dataLayer.push')) continue;
+
+    // Bound the scan: an untrusted page with many unclosed "push("
+    // occurrences would otherwise make the lazy quantifier retry from
+    // every one of them, an O(n^2) cost on attacker-controlled input.
+    const boundedScript = script.length > 5000 ? script.slice(0, 5000) : script;
+    let tried = 0;
+    for (const match of boundedScript.matchAll(/push\((.*?)\)/g)) {
+      if (++tried > MAX_PUSHES_PER_SCRIPT) break;
       try {
-        // JSON might be broken, so be carful
+        // JSON might be broken, so be careful
         const json = JSON.parse(match[1].replaceAll('undefined', '"x"'));
-        keywords = json.content.keywords.split('|');
+        const keywords = json.content.keywords;
+        if (typeof keywords === 'string' && keywords.trim()) {
+          return keywords.split('|');
+        }
       } catch (e) {
-        log(DEBUG, 'GTM dataLayer JSON was malformed, skipping:', e);
-        return [];
+        log(DEBUG, 'GTM dataLayer push was not usable JSON, skipping:', e);
       }
     }
-    i++;
   }
-  return keywords;
+  return [];
 }
 
 // ------------------------------------------------------------------------------------------
