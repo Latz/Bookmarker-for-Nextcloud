@@ -16,7 +16,7 @@
 
 **Not covered:**
 
-- No runtime profiling was performed — there is no live Nextcloud instance available in this environment. All timing claims below are structural (bytes moved, round trips taken, algorithmic complexity), not measured wall-clock.
+- No runtime profiling was performed — there is no live Nextcloud instance available in this environment. All timing claims below are structural (bytes moved, round trips taken, algorithmic complexity), not measured wall-clock. *(Update 2026-09-29: §13 adds wall-clock measurements of the pure-function and IndexedDB paths in Node, before/after the robustness pass. Browser-level profiling is still outstanding.)*
 - No cross-browser behaviour (Vivaldi, Edge) was verified.
 
 **Prior context:** three optimisation passes already landed (2026-02-23 perf pass, 2026-02-24 session cache, 2026-03-01 SW warm-up). Those tuned *within* the existing architecture. Most of what follows is architectural or was missed by those passes — see §5 for what is already working well, including one prior optimisation that turns out to be inert.
@@ -308,6 +308,8 @@ Read the entries from the popup's DevTools console (right-click the popup → In
 
 **Payload sizes.** For P0-1, log `content.length` in `getData.js` and `JSON.stringify(result).length` in `offscreen.js` before and after. That directly quantifies the bytes removed.
 
+**Node benchmark (added 2026-09-29).** `npm run perf:compare` builds a worktree for two revisions, runs the cases in `tools/perf/` against both and prints a comparison including the `dist/` sizes; `npm run perf -- <case>` runs one case on the current tree. See §13 for what it covers and what it does not.
+
 **Bundle and CSS.** `npm run build` then `ls -laS dist/assets` — compare `popup-*.css` and the Tagify chunk before and after P0-3 and P1-5.
 
 **Algorithmic.** For P1-7, seed the keyword cache with a few thousand tags, enable `cbx_extendedKeywords`, and time `getKeywords` on a heading-dense page (a long documentation page works well).
@@ -360,6 +362,18 @@ Measured outcomes:
 | **Eager popup payload** | **~165 KB** | **~69 KB** |
 | Sourcemaps in `dist` | ~350 KB | 0 |
 | Full test run | 540 s, 15 files never started | ~75 s, 26 files run |
+
+**Status update, 2026-09-29.** This table and §12 predate later work. Checked
+against the current code: **P0-1 is applied** (`extractPageData` is injected
+with `chrome.scripting.executeScript` and only the small `parsedData` returns;
+the offscreen document is used for theme detection only), and so are **N1**
+(`init()` runs its independent steps together and starts `warmupConnection()`
+first), **N2** (both error-icon probes in one `Promise.all`), **N3** (16/32/64/128
+px icons), **N4** (`prefetchFormOptions` overlaps the `getData` round trip) and
+**N6** (`createMockDocument` indexes meta tags). **N5** is not applied as
+described: the save handler still reads its three options individually, now
+inside one `Promise.all`. N7 and N8 were not re-checked. The measured full test
+run is now 975 tests in 43 files (~16 s with `--pool=threads`).
 
 ## 9. What the first pass missed, and why
 
@@ -504,3 +518,109 @@ Also still open from `security.md`, and cheap: **S2** is closed (`79a99ba`), but
 **S1** (folder-title HTML injection) and **S3** (parameter injection on save)
 remain. S3 in particular overlaps N5 — both are in `saveBookmarks.js` and would
 naturally be fixed in one pass.
+
+---
+
+# Third Pass — 2026-09-29: measured before/after
+
+The first measurements in this document. They compare the tree before the
+robustness pass (`1ec3016`) with the tree after it (`c425456`).
+
+## 13. What was measured, and how
+
+`tools/perf/compare.js` builds a git worktree per revision and runs every case
+of `tools/perf/case-runner.js` against both: one process per case, with a
+timeout, interleaved so drift hits both sides equally, 5 runs per case, value =
+median of the per-run medians. A difference counts as **real** only if it is
+above 10 % *and* the min–max ranges of the 5 runs do not overlap; anything else
+is reported as noise. Comparing `HEAD` with itself gives the noise floor:
+about ±13 % on sub-millisecond cases, +3 % on `startup:init`.
+
+Machine: Intel Core i5-3570K, Windows, Node 25.2. Reproduce with
+`npm run perf:compare -- --base 1ec3016 --head HEAD --runs 5`.
+
+**What this does not measure:** script injection, the offscreen document, popup
+rendering, the network, or a real browser. It runs pure functions and the
+IndexedDB logic under Node with jsdom, `fake-indexeddb` and a `chrome.*` mock.
+Absolute numbers will differ in Chrome; the service worker start in particular
+depends on what the mock answers instantly. Only the *difference between the two
+revisions* is meaningful. `extract:big-dom` mostly measures jsdom's selector
+speed.
+
+## 14. Results
+
+Faster (above the noise floor):
+
+| Case | before | after |
+|---|---:|---:|
+| `extractPageData`, saved Ars Technica page | 9.7 ms | 4.7 ms (−51 %) |
+| `extractPageData`, saved heise page | 54.8 ms | 30.1 ms (−45 %) |
+| `extractPageData`, 3 MB DOM | 2.96 s | 2.08 s (−30 %) |
+| extraction + keywords, Ars Technica page | 9.5 ms | 5.5 ms (−42 %) |
+| extraction + keywords, keyword-rich page (90 keywords, 2000 stored tags) | 4.6 ms | 3.7 ms (−21 %) |
+| payload to the service worker, Ars Technica page | 28.9 KB | 9.4 KB |
+| payload to the service worker, heise page | 326 KB | 167 KB |
+| hostile page: repeated unclosed `keywords:[` | > 45 s (aborted) | 0.63 s |
+| hostile page: repeated unclosed `xplGlobal.document.metadata=` | 13.1 s | 42 ms |
+| `mergeKeywords`, 10 000 entries | 1.22 ms | 14.5 µs |
+
+The cause is what the robustness pass changed in `extractPageData`: it no longer
+serialises the whole page with `outerHTML`, only scripts containing
+`dataLayer.push` are sent to the service worker, and the regexes have bounded
+value classes. For the first hostile case the old code was still running at the
+45 s limit, so its real time is unknown. The `mergeKeywords` gain comes from the
+new cap of 100 keywords; the old code kept 4000 of the 10 000 inputs.
+
+Slower (above the noise floor):
+
+| Case | before | after |
+|---|---:|---:|
+| `startup:init` (service worker start, mocked) | 58 µs | 100 µs (+81 %) |
+
+Most likely the new non-blocking `ensureDefaults()` read. The absolute cost is
+~45 µs in the mock and the read is not awaited, so it does not delay the first
+`getData` answer; it is real but negligible.
+
+No measurable change: all four `apiCall` paths (success, network error, HTTP 500,
+unparsable body, each about 0.22–0.27 ms), `getOption` (cache hit and miss),
+`getOptions`, `store_data`, `cacheGet`, JSON-LD extraction, and `cacheTempAdd`
+(+5 to +7 %, inside the noise floor). The lightest extraction case
+(`extract:light`, −24 %) and `pipeline:light-extended` (−11 %) are also inside
+the noise, so no gain is claimed there.
+
+Not the same work, on purpose:
+
+- `cacheTempAdd`, 100 concurrent calls with distinct tags: before, **206** tags
+  survived (updates were lost); after, all **305**.
+- `apiCall` on a network error or an unparsable body returns the new error shape
+  (`status: 'error'`) instead of `-1` / `{}`.
+- Keywords on real pages are identical before and after: both saved pages, the
+  keyword-rich page and the extended-keywords page give the same results.
+
+A hypothesis that did **not** hold: a repeated unclosed `keywords:"` was
+expected to be quadratic in the old code. It was not (36.8 ms before, 38.0 ms
+after); only its payload shrinks (645 KB → 0.2 KB).
+
+## 15. Bundle (`dist/`)
+
+Total 571.7 KB → 576.9 KB raw (+5.2 KB, +0.9 %), 352.2 KB → 354.2 KB gzip
+(+2.0 KB). The growth is new code, not new dependencies:
+
+| File | raw before | raw after |
+|---|---:|---:|
+| `background.js` | 20.3 KB | 21.5 KB |
+| `cache.js` chunk | 11.7 KB | 13.3 KB |
+| `login.js` | 4.3 KB | 5.2 KB |
+| `options.html.js` | 3.7 KB | 4.2 KB |
+| `storage.js` chunk | 2.4 KB | 2.7 KB |
+
+The other 15 js/css/html files, including `popup.css` and the Tagify chunk, are
+byte-identical.
+
+## 16. Still open
+
+- No browser-level measurement: popup open to filled form, service worker cold
+  start in Chrome, and the `getData` round trip are unmeasured. The marks
+  proposed in §8 (`popup-start` … `form-hydrated`) are not in the code.
+- The saved test pages contain no keywords, so the real-page cases do not
+  exercise merging or reducing; the keyword-rich case is synthetic.
