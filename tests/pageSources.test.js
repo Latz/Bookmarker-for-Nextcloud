@@ -102,6 +102,83 @@ describe('extractGtmKeywords', () => {
 
     expect(extractGtmKeywords(document)).toEqual([]);
   });
+
+  describe('object literals the old push\\((.*?)\\) regex could not read', () => {
+    const keywordsOf = (text) =>
+      extractGtmKeywords(documentWith({ script: [scriptWith(text)] }));
+
+    it('reads a push spread over several lines', () => {
+      expect(
+        keywordsOf(`dataLayer.push({
+          "event": "pageview",
+          "content": {
+            "keywords": "a|b"
+          }
+        });`),
+      ).toEqual(['a', 'b']);
+    });
+
+    it('is not cut off by a ")" inside a string', () => {
+      expect(
+        keywordsOf(
+          'dataLayer.push({"title":"Foo (bar)","content":{"keywords":"x|y"}})',
+        ),
+      ).toEqual(['x', 'y']);
+    });
+
+    it('is not confused by braces inside strings or escaped quotes', () => {
+      expect(
+        keywordsOf(
+          'dataLayer.push({"t":"a } b { \\" }","content":{"keywords":"k1|k2"}})',
+        ),
+      ).toEqual(['k1', 'k2']);
+    });
+
+    it('does not rewrite the word "undefined" inside a string value', () => {
+      expect(
+        keywordsOf(
+          'dataLayer.push({"user":undefined,"content":{"keywords":"undefined behaviour|c++"}})',
+        ),
+      ).toEqual(['undefined behaviour', 'c++']);
+    });
+
+    it('finds a push far into a large script (was limited to the first 5000 chars)', () => {
+      const filler = 'var x = 1;\n'.repeat(2000); // ~22 kB
+      expect(
+        keywordsOf(`${filler}dataLayer.push({"content":{"keywords":"late|push"}})`),
+      ).toEqual(['late', 'push']);
+    });
+
+    it('skips a push that is not an object literal', () => {
+      expect(
+        keywordsOf(
+          'dataLayer.push(arguments);dataLayer.push({"content":{"keywords":"ok"}})',
+        ),
+      ).toEqual(['ok']);
+    });
+  });
+
+  describe('hostile scripts', () => {
+    it('stays fast with many unclosed pushes', () => {
+      const text = 'dataLayer.push({"a":'.repeat(50000);
+      const document = documentWith({ script: [scriptWith(text)] });
+
+      const start = performance.now();
+      expect(extractGtmKeywords(document)).toEqual([]);
+
+      expect(performance.now() - start).toBeLessThan(1000);
+    });
+
+    it('gives up on an object that never closes instead of scanning to the end', () => {
+      const text = `dataLayer.push({${'"k":"v",'.repeat(20000)}`; // ~160 kB, no }
+      const document = documentWith({ script: [scriptWith(text)] });
+
+      const start = performance.now();
+      expect(extractGtmKeywords(document)).toEqual([]);
+
+      expect(performance.now() - start).toBeLessThan(1000);
+    });
+  });
 });
 
 describe('extractGithubKeywords', () => {

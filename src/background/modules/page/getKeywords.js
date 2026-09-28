@@ -18,9 +18,15 @@ const DEBUG = false;
 // Keyword sources that still need finding are listed in
 // docs/keyword-sources-todo.md.
 
+// Sanity bounds. Sources like a[rel=tag] can yield whole card texts or hundreds
+// of links on listing pages, which are not tags and would flood Tagify.
+const MAX_KEYWORDS = 100;
+const MAX_KEYWORD_LENGTH = 100;
+
 /**
- * Trims keywords and drops empty entries, non-strings, and case-insensitive
- * duplicates, keeping the first spelling seen.
+ * Trims keywords and drops empty entries, non-strings, over-long entries
+ * (not tags) and case-insensitive duplicates, keeping the first spelling
+ * seen. At most MAX_KEYWORDS are returned.
  * @param {Array<any>} keywords
  * @returns {Array<string>}
  */
@@ -31,9 +37,12 @@ export function mergeKeywords(keywords) {
     if (typeof keyword !== 'string') continue;
     const trimmed = keyword.trim();
     const key = trimmed.toLowerCase();
-    if (!trimmed || seen.has(key)) continue;
+    if (!trimmed || trimmed.length > MAX_KEYWORD_LENGTH || seen.has(key)) {
+      continue;
+    }
     seen.add(key);
     merged.push(trimmed);
+    if (merged.length >= MAX_KEYWORDS) break;
   }
   return merged;
 }

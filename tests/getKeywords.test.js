@@ -573,6 +573,35 @@ describe('getKeywords', () => {
       expect(result).toBeDefined();
     });
 
+    it('should match stored keywords with umlauts and accents in the description', async () => {
+      getMeta.mockReturnValue([]);
+      mockDocument.querySelectorAll.mockReturnValue([]);
+      getDescription.mockReturnValue('Neue Bücher über Köln und café');
+      cacheGet.mockResolvedValue(['Bücher', 'Köln', 'café', 'Berlin']);
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      // /[\W_]+/ split "Bücher" into "B" and "cher", so none of these matched
+      expect(result.map((k) => k.toLowerCase()).sort()).toEqual([
+        'bücher',
+        'café',
+        'köln',
+      ]);
+    });
+
+    it('should split headlines on non-ASCII letters correctly too', async () => {
+      getMeta.mockReturnValue([]);
+      getDescription.mockReturnValue('');
+      mockDocument.querySelectorAll.mockImplementation((selector) =>
+        selector === 'h1' ? [{ innerText: 'Größe und Maße' }] : [],
+      );
+      cacheGet.mockResolvedValue(['Größe']);
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result.map((k) => k.toLowerCase())).toEqual(['größe']);
+    });
+
     it('should use headlines for extended keywords when description is empty', async () => {
       getMeta.mockReturnValue([]);
       mockDocument.querySelectorAll.mockReturnValue([]);
@@ -794,6 +823,24 @@ describe('getKeywords', () => {
 
     it('should return [] for no keywords', () => {
       expect(mergeKeywords([])).toEqual([]);
+    });
+
+    it('should drop entries that are too long to be tags (e.g. whole card texts)', () => {
+      const cardText = 'word '.repeat(40).trim(); // 199 characters
+      expect(mergeKeywords(['tag', cardText, 'x'.repeat(100), 'x'.repeat(101)])).toEqual([
+        'tag',
+        'x'.repeat(100),
+      ]);
+    });
+
+    it('should return at most 100 keywords', () => {
+      const many = Array.from({ length: 500 }, (_, i) => `tag${i}`);
+
+      const merged = mergeKeywords(many);
+
+      expect(merged).toHaveLength(100);
+      expect(merged[0]).toBe('tag0');
+      expect(merged[99]).toBe('tag99');
     });
   });
 

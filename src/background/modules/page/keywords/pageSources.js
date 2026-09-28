@@ -32,8 +32,40 @@ export function extractRelCategoryKeywords(document) {
 // ------------------------------------------------------------------------------------------
 // Google Tags Manager
 // ------------------------------------------------------------------------------------------
-// Upper bound on push( calls tried per script (see the scan bound below).
+// Bounds for the scan below, which runs over untrusted page text.
 const MAX_PUSHES_PER_SCRIPT = 20;
+const MAX_PUSH_OBJECT_CHARS = 50000;
+const PUSH_CALL = 'dataLayer.push(';
+
+/**
+ * Returns the `{...}` object literal starting at `start`, or null if it is not
+ * closed within MAX_PUSH_OBJECT_CHARS. Braces and parentheses inside string
+ * literals do not count, so `"title":"Foo (bar) {baz}"` is handled -- the old
+ * `push\((.*?)\)` regex cut the object at the first `)`, and `.` also stopped
+ * at line breaks, so multi-line pushes never matched.
+ * @param {string} text
+ * @param {number} start - Index of the opening `{`.
+ * @returns {string|null}
+ */
+function readBalancedObject(text, start) {
+  const limit = Math.min(text.length, start + MAX_PUSH_OBJECT_CHARS);
+  let depth = 0;
+  let quote = null;
+  for (let i = start; i < limit; i++) {
+    const ch = text[i];
+    if (quote) {
+      if (ch === '\\') i++;
+      else if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '{') {
+      depth++;
+    } else if (ch === '}' && --depth === 0) {
+      return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
 
 /**
  * Reads `content.keywords` (pipe-separated) from the first dataLayer.push({...})
@@ -51,16 +83,27 @@ export function extractGtmKeywords(document) {
     const script = node.text;
     if (!script?.includes('dataLayer.push')) continue;
 
-    // Bound the scan: an untrusted page with many unclosed "push("
-    // occurrences would otherwise make the lazy quantifier retry from
-    // every one of them, an O(n^2) cost on attacker-controlled input.
-    const boundedScript = script.length > 5000 ? script.slice(0, 5000) : script;
-    let tried = 0;
-    for (const match of boundedScript.matchAll(/push\((.*?)\)/g)) {
-      if (++tried > MAX_PUSHES_PER_SCRIPT) break;
+    // Each push is located with indexOf and read with a bounded scanner, so the
+    // cost is linear in the script size however many unclosed "push(" a
+    // hostile page repeats (a lazy regex retried from every one of them).
+    let from = 0;
+    for (let tried = 0; tried < MAX_PUSHES_PER_SCRIPT; tried++) {
+      const call = script.indexOf(PUSH_CALL, from);
+      if (call === -1) break;
+      from = call + PUSH_CALL.length;
+
+      let start = from;
+      while (/\s/.test(script[start] ?? '')) start++;
+      if (script[start] !== '{') continue;
+      const literal = readBalancedObject(script, start);
+      if (!literal) continue;
+
       try {
-        // JSON might be broken, so be careful
-        const json = JSON.parse(match[1].replaceAll('undefined', '"x"'));
+        // JSON might be broken, so be careful. Only a bare `undefined` value is
+        // replaced, not the word inside a string ("undefined behaviour").
+        const json = JSON.parse(
+          literal.replace(/([:,[]\s*)undefined(?=\s*[,}\]])/g, '$1"x"'),
+        );
         const keywords = json.content.keywords;
         if (typeof keywords === 'string' && keywords.trim()) {
           return keywords.split('|');

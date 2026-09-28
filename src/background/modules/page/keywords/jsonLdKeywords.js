@@ -44,73 +44,50 @@ function extractKeywordsFromGraphArticle(jsonld) {
   const article = nodes.find(isArticle);
   if (!article) return null;
   // Route through the keywords-field parser so a plain string ("blue rose")
-  // becomes an array instead of being handed on as a string.
-  return extractKeywordsFromKeywordsField(article) ?? [];
+  // becomes an array instead of being handed on as a string. null (an Article
+  // without usable keywords) must stay null: turning it into [] made the `??`
+  // chain in extractKeywordsFromJsonLd skip the mainEntity fallback.
+  return extractKeywordsFromKeywordsField(article);
 }
 
 /**
- * Extracts keywords from the various shapes a JSON-LD `keywords` field
- * appears in across sites: array, plain string, CNN's termCode objects,
- * comma-separated string, or `tag:value` prefixed entries.
- * @returns {Array|null} Keywords, or null when `jsonld.keywords` is absent.
+ * The text of one entry of a keywords array: a string as-is, CNN's
+ * `{ termCode: { label } }`, or a schema.org DefinedTerm `{ name }`.
+ * @returns {string|null}
  */
-function extractKeywordsFromKeywordsField(jsonld) {
-  if (!jsonld.keywords) return null;
-
-  //https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
-  // CNN lists keywords as `[{ termCode: { label } }]`. This has to be checked
-  // before the plain-array case below: that one returns any array as-is, which
-  // handed these objects on to reduceKeywords (`keyword.toLowerCase()` on an
-  // object throws). The `typeof` guard keeps Object.hasOwn away from
-  // primitives, and `keywords[0]` can be undefined when `keywords` is an
-  // object with a truthy `length` but no index 0.
-  const first = jsonld.keywords[0];
-  if (first && typeof first === 'object' && Object.hasOwn(first, 'termCode')) {
-    const terms = [];
-    jsonld.keywords.forEach((term) => {
-      if (term?.termCode?.label) terms.push(term.termCode.label);
-    });
-    return terms;
+function keywordText(entry) {
+  if (typeof entry === 'string') return entry;
+  if (!entry || typeof entry !== 'object') return null;
+  const text = entry.termCode?.label ?? entry.name;
+  return typeof text === 'string' ? text : null;
 }
 
-  if (jsonld.keywords.length > 0) {
-    if (Array.isArray(jsonld.keywords)) {
-      return jsonld.keywords;
-    }
-    if (typeof jsonld.keywords === 'string') {
-      return jsonld.keywords.split(',');
-    }
+/**
+ * Extracts keywords from the shapes a JSON-LD `keywords` field appears in
+ * across sites: an array (of strings, CNN termCode objects
+ * https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
+ * or DefinedTerm objects) or a comma-separated string. Anything else (a number,
+ * an object, an empty array) is not keywords.
+ * @returns {Array<string>|null} Keywords, or null when there are none.
+ */
+function extractKeywordsFromKeywordsField(jsonld) {
+  const value = jsonld?.keywords;
+  let keywords = null;
+  if (Array.isArray(value)) {
+    keywords = value.map(keywordText).filter((text) => text?.trim());
+  } else if (typeof value === 'string') {
+    keywords = value.split(',');
   }
-  const keywords = jsonld.keywords.split(',').map((keyword) => keyword.trim());
-  if (Array.isArray(keywords)) {
-    return keywords;
-  }
-  const tags = [];
-  jsonld.keywords?.forEach((keyword) => {
-    const [id, value] = keyword.split(':');
-    if (id.toLowerCase() === 'tag') tags.push(value);
-  });
-  if (tags.length > 0) {
-    return tags;
-  }
-  // keywords are only comma separated Array
-  // https://www.vox.com/platform/amp/down-to-earth/22679378/tree-planting-forest-restoration-climate-solutions
-  return jsonld.keywords;
+  return keywords?.length > 0 ? keywords : null;
 }
 
 /**
  * Finds keywords on `mainEntity.keywords` (schema.org's alternate location).
  * https://www.nature.com/articles/d41586-024-00169-7
- * @returns {Array|null} Keywords, or null if this shape doesn't apply.
+ * @returns {Array<string>|null} Keywords, or null if this shape doesn't apply.
  */
 function extractKeywordsFromMainEntity(jsonld) {
-  if (
-    jsonld?.mainEntity?.keywords?.length > 0 &&
-    Array.isArray(jsonld.mainEntity.keywords)
-  ) {
-    return jsonld.mainEntity.keywords;
-  }
-  return null;
+  return extractKeywordsFromKeywordsField(jsonld?.mainEntity);
 }
 
 /**

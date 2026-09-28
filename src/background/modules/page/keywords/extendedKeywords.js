@@ -7,6 +7,12 @@ import { buildKeywordLookup, reduceKeywords } from './reduceKeywords.js';
 
 const DEBUG = false;
 
+// Splits on anything that is not a letter or digit, in any script. The former
+// /[\W_]+/ treats every non-ASCII letter as a separator, so "Bücher" became
+// ["B", "cher"] and stored keywords with umlauts, accents, Cyrillic or CJK
+// could never match.
+const WORD_SEPARATORS = /[^\p{L}\p{N}]+/u;
+
 /**
  * Scans headlines from h1 up to hMaxLevel for words matching stored
  * keywords, level by level, stopping at the first headline that matches.
@@ -23,7 +29,7 @@ async function findKeywordsInHeadlines(
     const headlines = document.querySelectorAll(`h${level}`);
 
     for (const headline of headlines) {
-      const words = headline.innerText.split(/[\W_]+/g);
+      const words = headline.innerText.split(WORD_SEPARATORS);
       const reducedKw = await reduceKeywords(
         words,
         true,
@@ -59,7 +65,7 @@ export async function findExtendedKeywords(document, maxHeadingLevel) {
   log(DEBUG, 'Description');
   const description = getDescription(document);
   if (description.length > 0) {
-    const words = description.split(/[\W_]+/g);
+    const words = description.split(WORD_SEPARATORS);
     const keywords = await reduceKeywords(
       words,
       true,

@@ -62,12 +62,82 @@ describe('extractKeywordsFromJsonLd', () => {
     expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['Space', 'Japan']);
   });
 
-  it('skips array entries that are not termCode objects', () => {
+  it('skips unusable array entries but keeps termCode labels and plain strings', () => {
     const jsonld = {
-      keywords: [{ termCode: { label: 'Space' } }, null, 'plain'],
+      keywords: [{ termCode: { label: 'Space' } }, null, 'plain', 42, {}],
     };
 
-    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['Space']);
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['Space', 'plain']);
+  });
+
+  it('reads schema.org DefinedTerm keywords by name', () => {
+    const jsonld = {
+      keywords: [
+        { '@type': 'DefinedTerm', name: 'Physics' },
+        { '@type': 'DefinedTerm', name: 'Chemistry' },
+      ],
+    };
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['Physics', 'Chemistry']);
+  });
+
+  describe('keywords of an unexpected type', () => {
+    it.each([
+      ['an empty array', []],
+      ['a number', 42],
+      ['an object without length', { a: 1 }],
+      ['true', true],
+      ['an array of unusable entries', [null, 1, {}]],
+    ])('yields no keywords, without throwing, for %s', (_label, keywords) => {
+      expect(() => extractKeywordsFromJsonLd({ keywords })).not.toThrow();
+      expect(extractKeywordsFromJsonLd({ keywords })).toEqual([]);
+    });
+
+    it('does not lose the mainEntity keywords of the same block', () => {
+      const jsonld = {
+        keywords: 42,
+        mainEntity: { keywords: ['a', 'b'] },
+      };
+
+      expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['a', 'b']);
+    });
+
+    it('does not let an empty-keywords Article in @graph mask mainEntity', () => {
+      const jsonld = {
+        '@graph': [{ '@type': 'NewsArticle', keywords: [] }],
+        mainEntity: { keywords: ['from', 'entity'] },
+      };
+
+      // An Article without keywords used to return [] here, which the ?? chain
+      // treated as "found" and stopped.
+      expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['from', 'entity']);
+    });
+
+    it('does not let an Article without keywords in @graph mask top-level keywords', () => {
+      const jsonld = {
+        '@graph': [{ '@type': 'Article', headline: 'x' }],
+        keywords: 'top, level',
+      };
+
+      expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['top', ' level']);
+    });
+  });
+
+  it('reads mainEntity.keywords given as a comma-separated string', () => {
+    const jsonld = { mainEntity: { keywords: 'one,two' } };
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['one', 'two']);
+  });
+
+  it('lets a later block win when an earlier one has only unusable keywords', () => {
+    const document = {
+      querySelectorAll: () => [
+        { innerText: JSON.stringify({ '@type': 'Article', keywords: [{}] }) },
+        { innerText: JSON.stringify({ '@type': 'Article', keywords: ['real'] }) },
+      ],
+    };
+
+    expect(extractJsonLdKeywords(document)).toEqual(['real']);
   });
 
   it('reads keywords from a top-level array of objects', () => {

@@ -417,4 +417,51 @@ describe('Mock Document Interface', () => {
       expect(twitterDescription).toEqual(['Twitter description']);
     });
   });
+
+  describe('http-equiv meta tags', () => {
+    // extractPageData stores the attribute as `httpEquiv`; selectors use the DOM
+    // name `http-equiv`. The two never matched, so the http-equiv sources of
+    // getDescription and extractMetaKeywords were dead in the extension (though
+    // they work against a real DOM).
+    const docWith = (metaTags) =>
+      createMockDocument({
+        metaTags,
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        headlines: {},
+      });
+
+    it('matches [http-equiv=...] selectors against httpEquiv data', () => {
+      const doc = docWith([
+        { httpEquiv: 'Description', content: 'from http-equiv' },
+        { name: 'other', content: 'x' },
+      ]);
+
+      const results = doc.querySelectorAll('[http-equiv="description" i]');
+
+      expect(results).toHaveLength(1);
+      expect(results[0].content).toBe('from http-equiv');
+      expect(results[0].getAttribute('http-equiv')).toBe('Description');
+    });
+
+    it('lets getDescription and extractMetaKeywords use their http-equiv sources', async () => {
+      const { default: getDescription } = await import(
+        '../src/background/modules/page/getDescription.js'
+      );
+      const { extractMetaKeywords } = await import(
+        '../src/background/modules/page/keywords/metaKeywords.js'
+      );
+      const doc = docWith([
+        { httpEquiv: 'description', content: 'A described page' },
+        { httpEquiv: 'keywords', content: 'one, two' },
+      ]);
+
+      expect(getDescription(doc)).toBe('A described page');
+      expect(extractMetaKeywords(doc)).toEqual(['one', 'two']);
+    });
+  });
 });

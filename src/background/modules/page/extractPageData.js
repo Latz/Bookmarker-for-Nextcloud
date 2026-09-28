@@ -26,7 +26,6 @@
  *   scripts: string[],
  *   githubTopics: string[],
  *   nextData: string,
- *   description: string[],
  *   headlines: {h1: string[], h2: string[], h3: string[], h4: string[], h5: string[], h6: string[]},
  *   xplKeywords: string[],
  *   bruteForceKeywords: string[],
@@ -59,14 +58,30 @@ export function extractPageData(headingLevel) {
       document.querySelectorAll('script[type="application/ld+json"]'),
     ).map((script) => script.textContent);
 
-    // Feeds a single `.includes('dataLayer.push')` test in getKeywords.js --
-    // .text (not .textContent) matches the property the offscreen extractor
-    // used, and what getKeywords.js's mockDoc-fed closure expects.
-    const scripts = Array.from(document.querySelectorAll('script')).map(
-      (script) => script.text,
+    // Inline script text, capped per script: the regex searches further down
+    // run over all of it, and one bundled script can be megabytes.
+    // .text (not .textContent) matches the property the offscreen extractor used.
+    const MAX_SCRIPT_CHARS = 300000;
+    const scriptTexts = Array.from(document.querySelectorAll('script')).map(
+      (script) => script.text.slice(0, MAX_SCRIPT_CHARS),
+    );
+
+    // Only extractGtmKeywords reads scripts, and only those with a
+    // dataLayer.push. The rest (framework state, analytics bundles: often
+    // several MB) no longer crosses the structured-clone boundary.
+    const scripts = scriptTexts.filter((text) =>
+      text.includes('dataLayer.push'),
     );
 
     // GitHub's current topic selectors (updated 2025), same union as before.
+    // The bare a[href^="/topics/"] link matches navigation on other sites too
+    // (any site with a /topics/ section), so it is only used on GitHub; the
+    // other selectors are GitHub-specific markup and stay unconditional.
+    // document.location rather than the `location` global: same object in a
+    // page, but it also exists on a bare document (jsdom, the keyword checker).
+    const onGithub = /(^|\.)github\.com$/i.test(
+      document.location?.hostname ?? '',
+    );
     const githubTopics = [
       ...new Set(
         [
@@ -76,9 +91,11 @@ export function extractPageData(headingLevel) {
           ...Array.from(document.querySelectorAll('span.topic-tag-name')).map(
             (span) => span.textContent.trim(),
           ),
-          ...Array.from(document.querySelectorAll('a[href^="/topics/"]')).map(
+          ...(onGithub
+            ? Array.from(document.querySelectorAll('a[href^="/topics/"]')).map(
                 (a) => a.textContent.trim(),
-          ),
+              )
+            : []),
           ...Array.from(document.querySelectorAll('a[class*="topic-tag"]')).map(
             (a) => a.textContent.trim(),
           ),
@@ -99,14 +116,6 @@ export function extractPageData(headingLevel) {
     const nextData =
       document.getElementById('__NEXT_DATA__')?.textContent || '';
 
-    const description = Array.from(
-      document.querySelectorAll(
-        'meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]',
-      ),
-    )
-      .map((meta) => meta.getAttribute('content'))
-      .filter(Boolean);
-
     // Only walk up to headingLevel (input_headings_slider, default 3) rather
     // than always all six -- the offscreen extractor used to grab h1-h6
     // unconditionally regardless of what the user configured.
@@ -121,17 +130,25 @@ export function extractPageData(headingLevel) {
 
     // The two raw-regex keyword extractors formerly in getKeywords.js, moved
     // here so they run against the live page instead of a full HTML string
-    // shipped to the service worker. outerHtml is built, scanned, and
-    // discarded entirely inside this page context -- only the small result
-    // arrays below cross the structured-clone boundary.
-    const outerHtml = document.documentElement.outerHTML;
+    // shipped to the service worker. Both look for data in inline scripts, so
+    // they scan the script texts -- not document.documentElement.outerHTML,
+    // which serialised the whole page (megabytes, synchronously on the page's
+    // main thread) on every popup open. Only the small result arrays below
+    // cross the structured-clone boundary.
+    const scriptText = scriptTexts.join('\n');
 
     let xplKeywords = [];
-    const xplRegex = /xplGlobal\.document\.metadata=([^;]*);/g;
-    const xplMatch = xplRegex.exec(outerHtml);
-    if (xplMatch) {
+    // indexOf instead of /xplGlobal\.document\.metadata=([^;]*);/: same result
+    // (first occurrence up to the next ';'), but linear on any input.
+    const xplPrefix = 'xplGlobal.document.metadata=';
+    const xplStart = scriptText.indexOf(xplPrefix);
+    const xplEnd =
+      xplStart === -1 ? -1 : scriptText.indexOf(';', xplStart + xplPrefix.length);
+    if (xplEnd !== -1) {
       try {
-        const xplJson = JSON.parse(xplMatch[1]);
+        const xplJson = JSON.parse(
+          scriptText.slice(xplStart + xplPrefix.length, xplEnd),
+        );
         xplJson.keywords.forEach((tags) => {
           tags.kwd.forEach((tag) => xplKeywords.push(tag));
         });
@@ -146,9 +163,14 @@ export function extractPageData(headingLevel) {
     //   "keywords":["a","b"]      (JSON array, e.g. Variety)
     // Empty values ("keywords":"", []) are skipped so a later, real one can win.
     let bruteForceKeywords = [];
-    const bruteRegex = /["']?keywords["']?\s*:\s*(?:"([^"]*)"|\[([^\]]*)\])/g;
+    // The value classes are length-bounded. Unbounded, an unclosed `keywords:[`
+    // (or a `"` without partner) makes every attempt scan to the end of the
+    // text, so a page repeating it 100 000 times costs O(n^2) and freezes its
+    // own tab. bruteTries only counts matches, it cannot limit failed attempts.
+    const bruteRegex =
+      /["']?keywords["']?\s*:\s*(?:"([^"]{0,5000})"|\[([^\]]{0,5000})\])/g;
     let bruteTries = 0;
-    for (const bruteMatch of outerHtml.matchAll(bruteRegex)) {
+    for (const bruteMatch of scriptText.matchAll(bruteRegex)) {
       if (++bruteTries > 50) break;
       const found =
         bruteMatch[1] === undefined
@@ -169,7 +191,6 @@ export function extractPageData(headingLevel) {
       scripts,
       githubTopics,
       nextData,
-      description,
       headlines,
       xplKeywords,
       bruteForceKeywords,

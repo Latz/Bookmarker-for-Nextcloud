@@ -204,8 +204,9 @@ describe('getMeta', () => {
 
     const result = getMeta(mockDocument, { type: 'name', id: 'description' });
 
-    // Note: getMeta doesn't filter out null, it only filters out empty string and undefined
-    expect(result).toEqual([null, 'Valid']);
+    // null (meta tag without a content attribute) is dropped: callers run
+    // string methods on every value and would throw on it.
+    expect(result).toEqual(['Valid']);
   });
 
   it('should return all valid contents when multiple meta tags have valid content', () => {
@@ -220,7 +221,7 @@ describe('getMeta', () => {
 
     const result = getMeta(mockDocument, { type: 'name', id: 'keywords' });
 
-    // Note: getMeta filters out empty string and undefined, but not null
-    expect(result).toEqual(['First', 'Second', null, 'Third']);
+    // Empty strings, undefined and null are all dropped
+    expect(result).toEqual(['First', 'Second', 'Third']);
   });
 });

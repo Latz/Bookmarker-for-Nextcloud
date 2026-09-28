@@ -16,7 +16,7 @@
  * real function, so this is a coverage improvement, not just a migration.
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { extractPageData } from '../src/background/modules/page/extractPageData.js';
 import { createMockDocument } from '../src/background/modules/page/mockDocument.js';
 import {
@@ -56,13 +56,9 @@ describe('extractPageData', () => {
         content: 'OG description',
       }),
     );
-    // description: name="description", property="og:description",
-    // name="twitter:description" -- in that selector order.
-    expect(result.description).toEqual([
-      'Page description',
-      'OG description',
-      'Twitter description',
-    ]);
+    // Descriptions are read from these metaTags by getDescription; a separate
+    // `description` array used to be extracted and shipped, but nothing read it.
+    expect(result).not.toHaveProperty('description');
   });
 
   it('extracts a[rel=tag] and a[rel=category] links', () => {
@@ -168,6 +164,101 @@ describe('extractPageData', () => {
     expect(result.scripts[0]).toContain('dataLayer.push');
   });
 
+  it('ships only scripts with a dataLayer.push, not unrelated (possibly huge) ones', () => {
+    document.body.innerHTML = `
+      <script>window.__STATE__ = {"big":"${'x'.repeat(50000)}"};</script>
+      <script>dataLayer.push({"content":{"keywords":"a|b"}});</script>
+      <script>console.log('analytics');</script>`;
+
+    const result = extractPageData(3);
+
+    expect(result.scripts).toHaveLength(1);
+    expect(result.scripts[0]).toContain('dataLayer.push');
+  });
+
+  it('caps the text of a single script', () => {
+    document.body.innerHTML = `<script>dataLayer.push({});${'x'.repeat(400000)}</script>`;
+
+    const result = extractPageData(3);
+
+    expect(result.scripts[0].length).toBe(300000);
+  });
+
+  it('does not serialise the whole page (outerHTML) to search it', () => {
+    const outerHTML = vi.spyOn(
+      document.documentElement.constructor.prototype,
+      'outerHTML',
+      'get',
+    );
+    document.body.innerHTML = '<p>hi</p><script>var a = 1;</script>';
+
+    extractPageData(3);
+
+    expect(outerHTML).not.toHaveBeenCalled();
+    outerHTML.mockRestore();
+  });
+
+  describe('GitHub topics', () => {
+    const html = `
+      <a href="/topics/rust">rust</a>
+      <a href="/topics/cli">cli</a>`;
+
+    it('ignores bare /topics/ links on other sites (navigation, not tags)', () => {
+      document.body.innerHTML = html;
+
+      // happy-dom's default origin is not github.com
+      expect(extractPageData(3).githubTopics).toEqual([]);
+    });
+
+    it('still reads the GitHub-specific topic markup anywhere', () => {
+      document.body.innerHTML = `<span class="topic-tag-name">rust</span>`;
+
+      expect(extractPageData(3).githubTopics).toEqual(['rust']);
+    });
+  });
+
+  describe('regex budget on hostile input', () => {
+    it('stays fast with many unclosed keywords:[ occurrences', () => {
+      // Each unclosed `keywords:[` used to scan to the end of the text.
+      const bait = 'keywords:['.repeat(60000);
+      document.body.innerHTML = `<script>${bait}</script>`;
+
+      const start = performance.now();
+      const result = extractPageData(3);
+      const elapsed = performance.now() - start;
+
+      expect(result.bruteForceKeywords).toEqual([]);
+      expect(elapsed).toBeLessThan(1500);
+    });
+
+    it('stays fast with many unpaired quotes', () => {
+      const bait = 'keywords:"'.repeat(60000);
+      document.body.innerHTML = `<script>${bait}</script>`;
+
+      const start = performance.now();
+      extractPageData(3);
+
+      expect(performance.now() - start).toBeLessThan(1500);
+    });
+
+    it('does not find keywords outside of scripts', () => {
+      document.body.innerHTML = `<p>"keywords": "not, a, script"</p>`;
+
+      expect(extractPageData(3).bruteForceKeywords).toEqual([]);
+    });
+
+    it('locates the xplGlobal metadata without a regex scan', () => {
+      const filler = 'xplGlobal.document.metadata='.repeat(20000); // never closed by ;
+      document.body.innerHTML = `<script>${filler}</script>`;
+
+      const start = performance.now();
+      const result = extractPageData(3);
+
+      expect(result.xplKeywords).toEqual([]);
+      expect(performance.now() - start).toBeLessThan(1500);
+    });
+  });
+
   describe('headingLevel bounding', () => {
     const html = `
       <h1>Main Title</h1>
@@ -217,7 +308,6 @@ describe('extractPageData', () => {
       scripts: [],
       githubTopics: [],
       nextData: '',
-      description: [],
       headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       xplKeywords: [],
       bruteForceKeywords: [],

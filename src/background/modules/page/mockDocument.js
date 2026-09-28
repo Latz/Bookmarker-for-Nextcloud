@@ -44,6 +44,11 @@ export function createMockDocument(parsedData) {
   // one bucket per attribute name turns the repeats into hash lookups.
   const metaIndex = new Map();
 
+  // extractPageData stores a meta tag's http-equiv attribute as `httpEquiv`,
+  // but selectors (and getAttribute) use the DOM name. Without the mapping the
+  // http-equiv sources in getDescription and metaKeywords never matched.
+  const metaKey = (attrName) => (attrName === 'http-equiv' ? 'httpEquiv' : attrName);
+
   /**
    * @param {string} attrName - Meta attribute to match on (name, property, ...).
    * @param {string} attrValue - Value to look up; matched case-insensitively.
@@ -55,7 +60,7 @@ export function createMockDocument(parsedData) {
     if (!byValue) {
       byValue = new Map();
       for (const meta of parsedData.metaTags) {
-        const actual = meta[attrName];
+        const actual = meta[metaKey(attrName)];
         if (!actual) continue;
         const key = actual.toLowerCase();
         const bucket = byValue.get(key);
@@ -138,10 +143,10 @@ export function createMockDocument(parsedData) {
           const bucket = metaBucket(attrName, attrValue);
           const filtered = isCaseInsensitive
             ? bucket
-            : bucket.filter((meta) => meta[attrName] === attrValue);
+            : bucket.filter((meta) => meta[metaKey(attrName)] === attrValue);
 
           return filtered.map((meta) => ({
-            getAttribute: (attr) => meta[attr],
+            getAttribute: (attr) => meta[metaKey(attr)],
             content: meta.content,
           }));
         }

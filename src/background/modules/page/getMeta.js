@@ -24,8 +24,11 @@ export default function getMeta(document, ...metaNames) {
     const metas = [];
     for (const meta of metaNodelist) {
       const { content } = meta;
-      // OPTIMIZATION 3: Filter out only empty string and undefined (keep null for backward compatibility)
-      if (content !== '' && content !== undefined) {
+      // OPTIMIZATION 3: Keep only non-empty strings. A meta tag without a content
+      // attribute arrives as null, and every consumer calls string methods
+      // (trim, replaceAll) on the values -- null would throw and take the
+      // whole extraction down with it.
+      if (typeof content === 'string' && content !== '') {
         metas.push(content);
       }
     }
