@@ -10,7 +10,7 @@
 import './stubs.js';
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { JSDOM } from 'jsdom';
+import { JSDOM, VirtualConsole } from 'jsdom';
 import { detectReference } from './reference.js';
 import {
   SOURCE_NAMES,
@@ -57,9 +57,13 @@ async function fetchHtml(url) {
 // does (found on domainnamewire.com -- lost 58 of 79 <a> elements after a
 // stray `<meta ></span>`), which this tool -- parsing arbitrary external
 // pages -- depends on getting right. No `runScripts`/`resources` options are
-// set, so jsdom never executes scripts or fetches subresources.
+// set, so jsdom never executes scripts or fetches subresources. An empty
+// VirtualConsole keeps jsdom's own parse warnings (e.g. malformed inline CSS
+// on real-world pages -- harmless, this tool never touches CSS) off stderr.
+const silentConsole = new VirtualConsole();
+
 function parseDocument(html, url) {
-  const dom = new JSDOM(html, { url });
+  const dom = new JSDOM(html, { url, virtualConsole: silentConsole });
   return { window: dom.window, document: dom.window.document };
 }
 

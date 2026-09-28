@@ -9,7 +9,13 @@
 // slower but implements the HTML5 parsing spec's error recovery, which this
 // tool depends on since it parses arbitrary external pages, not controlled
 // fixtures.
-import { JSDOM } from 'jsdom';
+import { JSDOM, VirtualConsole } from 'jsdom';
+
+// An empty VirtualConsole, not wired to sendTo(console) -- jsdom's default
+// console forwards its own parse warnings (e.g. "Could not parse CSS
+// stylesheet" on real-world pages with malformed inline <style> content) to
+// the real console. Harmless and expected; this tool never touches CSS.
+const silentConsole = new VirtualConsole();
 
 export const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
@@ -53,7 +59,7 @@ function withDocument(html, base, fn) {
   // No `runScripts`/`resources` options set -- jsdom then never executes
   // scripts or fetches subresources, matching the old disableJavaScript*/
   // disableCSSFileLoading happy-dom settings.
-  const dom = new JSDOM(html, { url: base });
+  const dom = new JSDOM(html, { url: base, virtualConsole: silentConsole });
   try {
     return fn(dom.window.document);
   } catch {
