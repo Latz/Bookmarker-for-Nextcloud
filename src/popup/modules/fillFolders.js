@@ -46,8 +46,13 @@ export default async function fillFolders(selectbox, folders) {
       Array.from(selectbox.options).forEach((option) => {
         option.selected = folderIDs.includes(option.value);
       });
-    } else {
-      selectbox.options.selected = folderIDs;
+    } else if (typeof folderIDs === 'string' || typeof folderIDs === 'number') {
+      // A single stored ID: select the matching option. (The previous version
+      // assigned to selectbox.options.selected, which selects nothing.)
+      const id = String(folderIDs);
+      for (const option of selectbox.options) {
+        option.selected = option.value === id;
+      }
     }
   }
 }

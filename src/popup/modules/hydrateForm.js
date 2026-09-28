@@ -111,8 +111,15 @@ export async function hydrateForm(data) {
   }
   document.getElementById('bookmarkID').value = data.bookmarkID;
 
-  fillKeywords(data.keywords);
-  fillFolders(document.getElementById('folders'), data.folders);
+  // Both are async and independent: start them together, render the status
+  // message meanwhile, and await them at the end so a failure reaches the
+  // caller instead of becoming an unhandled rejection.
+  const filling = Promise.all([
+    fillKeywords(data.keywords),
+    fillFolders(document.getElementById('folders'), data.folders),
+  ]);
+  // Observed by the await below; this only covers an early throw in between.
+  filling.catch(() => {});
   const message = document.getElementById('sub_message');
   // If the the data object contains tags, it has been loaded from the server
   if (data.found) {
@@ -142,4 +149,6 @@ export async function hydrateForm(data) {
   } else {
     message.replaceChildren();
   }
+
+  await filling;
 }

@@ -85,9 +85,9 @@ describe('fillFolders', () => {
         { value: '2', name: 'Folder 2' },
       ]);
 
-      // When folderIDs is not an array, it sets selectbox.options.selected directly
-      // (which doesn't actually select individual options - this is a quirk of the implementation)
-      expect(mockSelectbox.options.selected).toBe('1');
+      // A single ID selects the matching option only
+      expect(option1.selected).toBe(true);
+      expect(option2.selected).toBe(false);
     });
 
     it('should select multiple folders when folderIDs is an array', async () => {
@@ -220,7 +220,7 @@ describe('fillFolders', () => {
     });
 
     it('should handle folderIDs as number (not array)', async () => {
-      // The code checks Array.isArray, so a number should be treated as non-array
+      // A number is compared with the option values as a string
       const option1 = { value: '1', selected: false };
       const option2 = { value: '2', selected: false };
       mockSelectbox.options = [option1, option2];
@@ -232,9 +232,8 @@ describe('fillFolders', () => {
         { value: '2', name: 'Folder 2' },
       ]);
 
-      // When folderIDs is not an array, it sets selectbox.options.selected directly
-      // (which doesn't actually select individual options - this is a quirk of the implementation)
-      expect(mockSelectbox.options.selected).toBe(1);
+      expect(option1.selected).toBe(true);
+      expect(option2.selected).toBe(false);
     });
 
     it('should handle folderIDs as boolean', async () => {
@@ -245,9 +244,8 @@ describe('fillFolders', () => {
 
       await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }]);
 
-      // When folderIDs is not an array, it sets selectbox.options.selected directly
-      // (which doesn't actually select individual options - this is a quirk of the implementation)
-      expect(mockSelectbox.options.selected).toBe(true);
+      // A boolean is not a folder ID: nothing is selected
+      expect(option1.selected).toBe(false);
     });
 
     it('should handle folderIDs as empty string', async () => {

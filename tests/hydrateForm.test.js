@@ -602,6 +602,21 @@ describe('hydrateForm', () => {
     expect(fillFolders).toHaveBeenCalledWith(mockFoldersSelect, ['1', '2']);
   });
 
+  it('should reject when fillKeywords or fillFolders fails', async () => {
+    getOption.mockResolvedValue(false);
+    fillKeywords.mockRejectedValueOnce(new Error('tagify failed'));
+
+    const data = {
+      url: 'https://example.com',
+      title: 'Test',
+      bookmarkID: 1,
+      folders: [],
+      checkBookmark: { ok: true },
+    };
+
+    await expect(hydrateForm(data)).rejects.toThrow('tagify failed');
+  });
+
   it('should show already bookmarked message when data.found is true', async () => {
     getOption.mockResolvedValue(false);
 
