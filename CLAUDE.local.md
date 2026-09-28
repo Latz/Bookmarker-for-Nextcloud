@@ -59,6 +59,10 @@
 
 **2026-09-28 (evening)**: Verified checker results by hand against raw HTML (19-page sample identical; of 92 "empty" pages 13 had keywords both tools missed). Fixed: `extractGtmKeywords` no longer stops at the first unparsable `dataLayer.push` script (Ars Technica); brute-force search in `extractPageData` now handles quoted keys, JSON arrays and `|` (Guardian, Variety) and is only a *fallback* in `getKeywords` (used when no real source finds anything, else it adds config noise). Checker reference gained the same inline-script fallback plus non-counted `hint: tag links` (`/tag/x/`); tag links deliberately NOT used as extension keywords (navigation noise, e.g. Cloudflare blog).
 
+**2026-09-28 (later still)**: Workflow change for the checker, per user request: added `--review` to `check.js` (forces full detail for every page in a batch, labels the status `guess:` instead of a verdict). `classify()`'s ok/MISS/partial is now explicitly a hint, not authoritative -- workflow is small batches (`--source X --limit 15 --exclude <prior>.json --review`), a human/Claude reads each block and, when unclear, fetches the real page to decide. User explicitly said not to use RSS/Atom feeds for finding new links (see memory/hn-checker-no-feeds.md) -- use --source crawlers only.
+
+**2026-09-28 (final)**: Ran the `--review` workflow on a fresh 14-page batch (had to widen to `--pages 6` per source -- 577 unique URLs already covered this session). Manually verified all 14 against raw HTML; no extension bugs. Found a tool-only gap: `reference.js`'s tag-link hint regex missed `/tags/{id}/{slug}` (NPR's shape, numeric id segment) -- widened `TAG_LINK_PATH` to allow one numeric segment, 2 new tests. Does not add tag links as extension keywords (that stays deliberately out of scope, per [[hn-checker-no-feeds]]-adjacent decision).
+
 ---
 *For detailed history, see memory/registers/*
 *For daily logs, see memory/daily/*

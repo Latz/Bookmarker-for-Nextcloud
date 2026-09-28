@@ -95,10 +95,13 @@ function inlineScriptKeywords(document) {
   return [];
 }
 
-// Links like /tag/agents/ or /topics/ai/ on the page's own site. Many sites
+// Links like /tag/agents/, /topics/ai/, or NPR's /tags/133775819/schools
+// (a numeric id segment before the slug) on the page's own site. Many sites
 // list their tags this way without rel="tag"; too noisy to count as keywords
-// (navigation, related topics), so they are only reported as a hint.
-const TAG_LINK_PATH = /^\/(?:tags?|topics?|t)\/[^/]+\/?$/i;
+// (navigation, related topics), so they are only reported as a hint. A
+// non-numeric middle segment (e.g. /tags/foo/bar) is more likely a category
+// hierarchy than a single tag, so it's left unmatched.
+const TAG_LINK_PATH = /^\/(?:tags?|topics?|t)\/(?:\d+\/)?[^/]+\/?$/i;
 
 function tagLinkHints(document) {
   const base = document.location?.href || 'https://example.invalid/';

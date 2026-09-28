@@ -79,6 +79,23 @@ describe('detectReference: tag link hints', () => {
     expect(result.keywords).toEqual({});
   });
 
+  it('reports /tags/{id}/{slug} links too (NPR)', () => {
+    document.body.innerHTML = `
+      <a class="tag tag--story" href="/tags/133775819/artificial-intelligence">Artificial Intelligence</a>
+      <a class="tag tag--story" href="/tags/479274800/ai">AI</a>`;
+
+    expect(detectReference(document).hints['tag links']).toEqual([
+      'Artificial Intelligence',
+      'AI',
+    ]);
+  });
+
+  it('does not treat a non-numeric middle segment as a tag link (category hierarchy)', () => {
+    document.body.innerHTML = '<a href="/tags/electronics/phones">Phones</a>';
+
+    expect(detectReference(document).hints).toEqual({});
+  });
+
   it('ignores tag links to other sites and empty link texts', () => {
     document.body.innerHTML = `
       <a href="https://other.example/tag/x/">external</a>
