@@ -21,6 +21,7 @@ package-lock.json
 /.claude-dev-helper
 /.qwen
 /x.html
+/perf-results/
 /performance_review.md
 /anything_else.md
 /AGENTS.md
