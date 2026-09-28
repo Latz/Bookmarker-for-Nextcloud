@@ -16,6 +16,11 @@ const DESCRIPTION_METAS = [
   ['name', 'description'],
   ['property', 'og:description'],
   ['name', 'twitter:description'],
+  // getDescription.js also checks these two (plus a couple of rarer,
+  // non-meta-scoped fallbacks left out here). Some sites use `name` where
+  // `property` is standard, e.g. jimmyhmiller.com's <meta name="og:description">.
+  ['name', 'og:description'],
+  ['http-equiv', 'description'],
 ];
 
 function metaValues(document, attr, value) {

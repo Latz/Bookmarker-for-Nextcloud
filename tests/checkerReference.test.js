@@ -12,6 +12,32 @@ afterEach(() => {
 
 const inline = () => detectReference(document).keywords['inline-script keywords'];
 
+describe('detectReference: description metas', () => {
+  it('reads a non-standard name="og:description" (jimmyhmiller.com)', () => {
+    document.head.innerHTML =
+      '<meta name="og:description" content="It’s time we stopped treating languages as sacred.">';
+
+    expect(detectReference(document).descriptions['meta[name=og:description]']).toBe(
+      "It’s time we stopped treating languages as sacred.",
+    );
+  });
+
+  it('reads http-equiv="description"', () => {
+    document.head.innerHTML =
+      '<meta http-equiv="description" content="An old-style description.">';
+
+    expect(
+      detectReference(document).descriptions['meta[http-equiv=description]'],
+    ).toBe('An old-style description.');
+  });
+
+  it('has no description when none of the sources match', () => {
+    document.head.innerHTML = '<meta name="author" content="Someone">';
+
+    expect(detectReference(document).descriptions).toEqual({});
+  });
+});
+
 describe('detectReference: inline script keywords', () => {
   it('reads a comma-separated string under a quoted key', () => {
     document.body.innerHTML =

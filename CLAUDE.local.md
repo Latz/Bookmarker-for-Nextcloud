@@ -63,6 +63,8 @@
 
 **2026-09-28 (final)**: Ran the `--review` workflow on a fresh 14-page batch (had to widen to `--pages 6` per source -- 577 unique URLs already covered this session). Manually verified all 14 against raw HTML; no extension bugs. Found a tool-only gap: `reference.js`'s tag-link hint regex missed `/tags/{id}/{slug}` (NPR's shape, numeric id segment) -- widened `TAG_LINK_PATH` to allow one numeric segment, 2 new tests. Does not add tag links as extension keywords (that stays deliberately out of scope, per [[hn-checker-no-feeds]]-adjacent decision).
 
+**2026-09-28 (final, jsdom)**: Ran 3 more `--review` batches (42 pages hand-checked, no extension bugs) -- one real fix: `reference.js`'s `DESCRIPTION_METAS` was missing `name="og:description"` (non-standard but real, jimmyhmiller.com) and `http-equiv=description`, both of which `getDescription.js` already checks; added, mirrors the real code now. Bigger finding: happy-dom's HTML parser silently truncates the DOM on real-world malformed markup (domainnamewire.com -- lost 58/79 `<a>` elements after a stray `<meta ></span>`) instead of recovering like a real browser. Switched `tools/hn-keyword-check/{sources,check}.js` from happy-dom to jsdom (new devDep, `^30.1.1`; Node 25 triggers an EBADENGINE warning on install but works fine) per explicit user instruction ("correctness is more important than speed") -- jsdom recovers correctly on the same page. Scoped to the checker tool only; the project's `@vitest-environment happy-dom` test setup is untouched (small controlled fixtures, not wild external HTML -- no evidence of the same failure mode there). 833 tests still pass.
+
 ---
 *For detailed history, see memory/registers/*
 *For daily logs, see memory/daily/*
