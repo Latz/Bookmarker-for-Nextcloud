@@ -48,10 +48,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 chrome.contextMenus.onClicked.addListener(handleContextMenuClick);
 
 // ------------------------------------------------------------------------------------------------
-// Initialize extension -- awaited at top level now that both listeners above
-// are registered synchronously first (MV3 requires that on SW cold start).
-try {
-  await init();
-} catch (error) {
+// Initialize extension. Not top-level awaited: service workers disallow top-level
+// await. Both listeners above are registered synchronously first, so events
+// arriving during init are still delivered (MV3 requires that on SW cold start).
+init().catch((error) => {
   console.error('[background] init failed:', error);
-}
+});

@@ -9,6 +9,13 @@
     dark --prefersdark;
 }
 
+/* daisyUI's noise texture is a data: SVG, which the extension CSP
+   (img-src 'self') blocks -- and both themes have --noise: 0 anyway, so drop
+   the image instead of loosening the CSP. */
+:root {
+  --fx-noise: none;
+}
+
 /* Tagify dropdown dark mode support */
 :root {
   --tagify-dd-bg-color: light-dark(white, oklch(25.33% 0.016 252.42));

@@ -34,6 +34,10 @@ export default defineConfig(({ mode }) => ({
     sourcemap: mode !== 'production',
     minify: true,
     target: 'esnext',
+    // Vite's <link rel="modulepreload" crossorigin> tags never match the
+    // extension-page fetches (Chrome: "cross-world extension resource
+    // mismatch") and only add console warnings; the files are local anyway.
+    modulePreload: false,
     rollupOptions: {
       input: {
         // CRXJS auto-discovers from manifest
