@@ -45,24 +45,24 @@
     "sonar:scan": "npm run test:coverage && sonar-scanner"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.4.0",
+    "@crxjs/vite-plugin": "^2.7.1",
     "@linthtml/linthtml": "^0.10.2",
-    "@tailwindcss/cli": "^4.2.2",
-    "@vitest/coverage-v8": "^4.1.0",
-    "@vitest/ui": "^4.1.0",
-    "daisyui": "^5.5.19",
+    "@tailwindcss/cli": "^4.3.3",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
+    "daisyui": "^5.7.46",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.14.5",
-    "prettier": "^3.8.1",
-    "prettier-plugin-tailwindcss": "^0.7.2",
-    "rollup": "^4.60.0",
-    "sonarqube-scanner": "^4.3.0",
-    "tailwindcss": "^4.2.2",
-    "vite": "^8.0.2",
-    "vitest": "^4.1.0"
+    "prettier": "^3.9.9",
+    "prettier-plugin-tailwindcss": "^0.7.4",
+    "rollup": "^4.63.5",
+    "sonarqube-scanner": "^4.4.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.1",
+    "vitest": "^4.1.11"
   },
   "dependencies": {
-    "@yaireo/tagify": "^4.36.0",
+    "@yaireo/tagify": "^4.39.0",
     "idb": "^8.0.3",
     "textfit": "^2.4.0"
   }
