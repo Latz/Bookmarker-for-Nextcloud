@@ -20,7 +20,7 @@ import {
   fetchWithUa,
 } from './sources.js';
 
-const src = new URL('../../src/background/modules/', import.meta.url);
+const src = new URL('../../src/background/modules/page/', import.meta.url);
 const { extractPageData } = await import(new URL('extractPageData.js', src));
 const { createMockDocument } = await import(new URL('mockDocument.js', src));
 const { default: getDescription } = await import(

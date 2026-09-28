@@ -1,5 +1,5 @@
 // @ts-check
-import log from '../../../lib/log.js';
+import log from '../../../../lib/log.js';
 
 const DEBUG = false;
 

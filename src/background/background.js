@@ -1,8 +1,8 @@
 // @ts-check
-import getData from './modules/getData.js';
-import { zenMode } from './modules/zenMode.js';
-import { saveBookmark } from './modules/saveBookmark.js';
-import { handleContextMenuClick } from './modules/contextMenu.js';
+import getData from './modules/bookmarks/getData.js';
+import { zenMode } from './modules/bookmarks/zenMode.js';
+import { saveBookmark } from './modules/bookmarks/saveBookmark.js';
+import { handleContextMenuClick } from './modules/browser/contextMenu.js';
 import { maxAttemptsError } from './modules/loginTimeout.js';
 import { init } from './modules/startup.js';
 
@@ -31,7 +31,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     case 'authorize':
       chrome.tabs.create({
-        url: 'login/login.html',
+          url: 'login/login.html',
       });
       break;
     case 'maxAttempts':

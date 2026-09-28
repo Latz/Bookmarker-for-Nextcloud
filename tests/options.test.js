@@ -38,7 +38,7 @@ vi.mock('../src/lib/storage.js', () => ({
   createOldDatabase: vi.fn(),
 }));
 
-vi.mock('../src/background/modules/getFolders.js', () => ({
+vi.mock('../src/background/modules/bookmarks/getFolders.js', () => ({
   getFolders: vi.fn(() =>
     Promise.resolve('<option value="1">Folder 1</option>'),
   ),
@@ -64,7 +64,7 @@ import {
   clearData,
   createOldDatabase,
 } from '../src/lib/storage.js';
-import { getFolders } from '../src/background/modules/getFolders.js';
+import { getFolders } from '../src/background/modules/bookmarks/getFolders.js';
 
 describe('options.js', () => {
   let mockDocument;

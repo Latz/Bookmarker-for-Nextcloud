@@ -1,8 +1,8 @@
 // @ts-check
-import { getOption } from '../../lib/storage.js';
-import apiCall from '../../lib/apiCall.js';
-import { cacheGet, cacheAdd } from '../../lib/cache.js';
-import log from '../../lib/log.js';
+import { getOption } from '../../../lib/storage.js';
+import apiCall from '../../../lib/apiCall.js';
+import { cacheGet, cacheAdd } from '../../../lib/cache.js';
+import log from '../../../lib/log.js';
 
 const DEBUG = false;
 

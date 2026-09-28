@@ -1,8 +1,8 @@
 // @ts-check
-import { load_data } from '../../lib/storage.js';
+import { load_data } from '../../../lib/storage.js';
 import getData from './getData.js';
-import apiCall from '../../lib/apiCall.js';
-import { notifyUser } from './notification.js';
+import apiCall from '../../../lib/apiCall.js';
+import { notifyUser } from '../browser/notification.js';
 
 export async function zenMode() {
   const data = await getData();
@@ -25,7 +25,7 @@ export async function zenMode() {
 
   chrome.action.setBadgeText({ text: '💾' });
   const response = await apiCall(endpoint, 'POST', params.toString());
-  chrome.action.setBadgeText({ text: '' });
+    chrome.action.setBadgeText({ text: '' });
   const zenNotify = await load_data('options', 'cbx_zenDisplayNotification');
   if (response.status === 'error' || zenNotify !== false) {
     notifyUser(response);

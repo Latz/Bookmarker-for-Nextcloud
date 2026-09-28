@@ -173,7 +173,7 @@ describe('displayJson module', () => {
         location: {
           search: '?type=cache',
         },
-      };
+    };
 
       const mockCache = ['keyword1', 'keyword2', 'keyword3'];
       openDB.mockResolvedValue({

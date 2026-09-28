@@ -6,11 +6,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock dependencies
-vi.mock('../src/background/modules/getMeta.js', () => ({
+vi.mock('../src/background/modules/page/getMeta.js', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('../src/background/modules/getDescription.js', () => ({
+vi.mock('../src/background/modules/page/getDescription.js', () => ({
   default: vi.fn(),
 }));
 
@@ -28,13 +28,13 @@ vi.mock('../src/lib/log.js', () => ({
 }));
 
 // Import the module after mocking
-import getMeta from '../src/background/modules/getMeta.js';
-import getDescription from '../src/background/modules/getDescription.js';
+import getMeta from '../src/background/modules/page/getMeta.js';
+import getDescription from '../src/background/modules/page/getDescription.js';
 import { cacheGet } from '../src/lib/cache.js';
 import { getOption, getOptions } from '../src/lib/storage.js';
 import getKeywords, {
   mergeKeywords,
-} from '../src/background/modules/getKeywords.js';
+} from '../src/background/modules/page/getKeywords.js';
 
 describe('getKeywords', () => {
   let mockDocument;

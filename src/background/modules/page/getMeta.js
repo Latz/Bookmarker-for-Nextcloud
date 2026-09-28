@@ -1,4 +1,4 @@
-import log from '../../lib/log.js';
+import log from '../../../lib/log.js';
 /**
 + * Returns an array containing the values of specified meta tags in the given document, 
 + * based on the passed meta tag names.

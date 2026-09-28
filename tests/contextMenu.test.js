@@ -14,7 +14,7 @@ import { cacheGet } from '../src/lib/cache.js';
 import {
   createContextMenus,
   handleContextMenuClick,
-} from '../src/background/modules/contextMenu.js';
+} from '../src/background/modules/browser/contextMenu.js';
 
 describe('contextMenu', () => {
   beforeEach(() => {

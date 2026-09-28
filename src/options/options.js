@@ -10,7 +10,7 @@ import {
 } from '../lib/storage.js';
 import Tagify from '@yaireo/tagify';
 import '@yaireo/tagify/dist/tagify.css';
-import { getFolders } from '../background/modules/getFolders.js';
+import { getFolders } from '../background/modules/bookmarks/getFolders.js';
 import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
 const OPTION_STORE = 'options';
@@ -200,7 +200,7 @@ async function setOptions() {
   input_networkTimeout.addEventListener('input', () => {
     store_data(OPTION_STORE, {
       input_networkTimeout: Number.parseInt(input_networkTimeout.value),
-    });
+  });
   });
 
   options.addEventListener('click', async (event) => {
@@ -211,19 +211,19 @@ async function setOptions() {
     }
     if (event.target.type === 'submit') {
       switch (event.target.id) {
-        case 'btn_clear_all_data':
+          case 'btn_clear_all_data':
           clearData('all');
-          break;
-        case 'btn_reset_options':
+            break;
+          case 'btn_reset_options':
           initDefaults();
-          break;
-        case 'btn_clear_cache':
+            break;
+          case 'btn_clear_cache':
           clearData('cache');
-          break;
-        case 'btn_forget_credentials':
+            break;
+          case 'btn_forget_credentials':
           clearData('credentials');
-          break;
-        case 'btn_create_db':
+            break;
+          case 'btn_create_db':
           createDB();
       }
     }

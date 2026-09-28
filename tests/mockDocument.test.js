@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 // (it had never picked up the 2025 GitHub topic selectors, and did not cover
 // the indexed meta lookup at all). The function now lives in its own module so
 // it can be imported directly without getData.js's dependency graph.
-import { createMockDocument } from '../src/background/modules/mockDocument.js';
+import { createMockDocument } from '../src/background/modules/page/mockDocument.js';
 
 describe('Mock Document Interface', () => {
   describe('querySelectorAll', () => {

@@ -8,21 +8,21 @@ vi.mock('../src/lib/storage.js', () => ({
   getOption: vi.fn(),
   load_data: vi.fn(),
 }));
-vi.mock('../src/background/modules/notification.js', () => ({
+vi.mock('../src/background/modules/browser/notification.js', () => ({
   initializeErrorIconCache: vi.fn(),
 }));
-vi.mock('../src/background/modules/getBrowserTheme.js', () => ({
+vi.mock('../src/background/modules/browser/getBrowserTheme.js', () => ({
   default: vi.fn(),
 }));
-vi.mock('../src/background/modules/contextMenu.js', () => ({
+vi.mock('../src/background/modules/browser/contextMenu.js', () => ({
   createContextMenus: vi.fn(),
 }));
 
 import apiCall from '../src/lib/apiCall.js';
 import { getOption, load_data } from '../src/lib/storage.js';
-import { initializeErrorIconCache } from '../src/background/modules/notification.js';
-import getBrowserTheme from '../src/background/modules/getBrowserTheme.js';
-import { createContextMenus } from '../src/background/modules/contextMenu.js';
+import { initializeErrorIconCache } from '../src/background/modules/browser/notification.js';
+import getBrowserTheme from '../src/background/modules/browser/getBrowserTheme.js';
+import { createContextMenus } from '../src/background/modules/browser/contextMenu.js';
 import { init } from '../src/background/modules/startup.js';
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));

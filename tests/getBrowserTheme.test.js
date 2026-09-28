@@ -28,7 +28,7 @@ globalThis.chrome = {
 // Import the module
 import getBrowserTheme, {
   _resetCacheForTesting,
-} from '../src/background/modules/getBrowserTheme.js';
+} from '../src/background/modules/browser/getBrowserTheme.js';
 
 describe('getBrowserTheme module', () => {
   beforeEach(() => {
@@ -56,7 +56,7 @@ describe('getBrowserTheme module', () => {
 
       // Verify offscreen document was created
       expect(chrome.offscreen.createDocument).toHaveBeenCalledWith({
-        url: 'chrome-extension://mock-id/src/background/modules/offscreen/offscreen.html',
+        url: 'chrome-extension://mock-id/src/background/modules/browser/offscreen/offscreen.html',
         reasons: ['MATCH_MEDIA'],
         justification: 'matchmedia request for browser theme detection',
       });

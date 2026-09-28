@@ -1,8 +1,8 @@
 // @ts-check
 import { openDB } from 'idb';
 import apiCall from './apiCall.js';
-import { preRenderFolders } from '../background/modules/getFolders.js';
-import { cacheRefreshNotification } from '../background/modules/notification.js';
+import { preRenderFolders } from '../background/modules/bookmarks/getFolders.js';
+import { cacheRefreshNotification } from '../background/modules/browser/notification.js';
 import { getOption } from './storage.js';
 import { cacheDbVersion, initCacheStores } from './cacheSchema.js';
 
@@ -147,9 +147,9 @@ async function getDBConnection() {
   dbConnectionPromise = openDB(dbName, cacheDbVersion, {
     upgrade: initCacheStores,
   }).then((db) => {
-    dbConnectionPool = db;
-    dbConnectionPromise = null;
-    return db;
+      dbConnectionPool = db;
+      dbConnectionPromise = null;
+      return db;
   });
 
   return dbConnectionPromise;

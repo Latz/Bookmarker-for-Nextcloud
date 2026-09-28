@@ -11,7 +11,7 @@ vi.mock('../src/lib/storage.js', () => ({
   load_data: vi.fn(),
 }));
 
-vi.mock('../src/background/modules/getData.js', () => ({
+vi.mock('../src/background/modules/bookmarks/getData.js', () => ({
   default: vi.fn(),
 }));
 
@@ -19,7 +19,7 @@ vi.mock('../src/lib/apiCall.js', () => ({
   default: vi.fn(),
 }));
 
-vi.mock('../src/background/modules/notification.js', () => ({
+vi.mock('../src/background/modules/browser/notification.js', () => ({
   notifyUser: vi.fn(),
 }));
 
@@ -31,10 +31,10 @@ globalThis.chrome = {
 };
 
 // Import the module after mocking
-import { zenMode } from '../src/background/modules/zenMode.js';
-import getData from '../src/background/modules/getData.js';
+import { zenMode } from '../src/background/modules/bookmarks/zenMode.js';
+import getData from '../src/background/modules/bookmarks/getData.js';
 import apiCall from '../src/lib/apiCall.js';
-import { notifyUser } from '../src/background/modules/notification.js';
+import { notifyUser } from '../src/background/modules/browser/notification.js';
 import { load_data } from '../src/lib/storage.js';
 
 describe('zenMode', () => {

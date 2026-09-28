@@ -77,7 +77,7 @@ export function extractPageData(headingLevel) {
             (span) => span.textContent.trim(),
           ),
           ...Array.from(document.querySelectorAll('a[href^="/topics/"]')).map(
-            (a) => a.textContent.trim(),
+                (a) => a.textContent.trim(),
           ),
           ...Array.from(document.querySelectorAll('a[class*="topic-tag"]')).map(
             (a) => a.textContent.trim(),

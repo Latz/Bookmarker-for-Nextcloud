@@ -1,6 +1,6 @@
 // @ts-check
-import { cacheGet } from '../../../lib/cache.js';
-import { getOption } from '../../../lib/storage.js';
+import { cacheGet } from '../../../../lib/cache.js';
+import { getOption } from '../../../../lib/storage.js';
 
 /**
  * Builds a lookup Set of lowercased stored keywords.

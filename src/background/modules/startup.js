@@ -1,9 +1,9 @@
 // @ts-check
 import apiCall from '../../lib/apiCall.js';
 import { getOption, load_data } from '../../lib/storage.js';
-import { initializeErrorIconCache } from './notification.js';
-import getBrowserTheme from './getBrowserTheme.js';
-import { createContextMenus } from './contextMenu.js';
+import { initializeErrorIconCache } from './browser/notification.js';
+import getBrowserTheme from './browser/getBrowserTheme.js';
+import { createContextMenus } from './browser/contextMenu.js';
 
 /**
  * Sets the toolbar icon to match the browser theme.

@@ -1,6 +1,6 @@
 // @ts-check
-import { store_data, createOldDatabase } from '../../lib/storage.js';
-import { cacheGet } from '../../lib/cache.js';
+import { store_data, createOldDatabase } from '../../../lib/storage.js';
+import { cacheGet } from '../../../lib/cache.js';
 
 // This function is only necessary because Vivaldi does not display the check mark in context menus.
 function setZenModeMenu(zenModeEnabled) {
@@ -8,13 +8,13 @@ function setZenModeMenu(zenModeEnabled) {
   try {
     if (zenModeEnabled) {
       chrome.contextMenus.update('menuEnableZen', {
-        title: '⭢Zen Mode',
-        checked: true,
-      });
+          title: '⭢Zen Mode',
+          checked: true,
+        });
     } else {
       chrome.contextMenus.update('menuEnableZen', {
-        title: 'Zen Mode',
-        checked: false,
+          title: 'Zen Mode',
+          checked: false,
       });
     }
   } catch (error) {

@@ -198,7 +198,7 @@ async function loginPoll(request) {
       chrome.i18n.getMessage('OpenLoginPage');
     document.getElementById('serverName').focus();
   } else {
-    // Otherwise, save login credentials.
+  // Otherwise, save login credentials.
     let response = await authCheck.json();
     store_data('credentials', {
       appPassword: response.appPassword,

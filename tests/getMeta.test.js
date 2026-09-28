@@ -12,7 +12,7 @@ vi.mock('../src/lib/log.js', () => ({
 }));
 
 // Import the module after mocking
-import getMeta from '../src/background/modules/getMeta.js';
+import getMeta from '../src/background/modules/page/getMeta.js';
 
 describe('getMeta', () => {
   let mockDocument;

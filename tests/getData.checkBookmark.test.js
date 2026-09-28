@@ -11,13 +11,13 @@ globalThis.chrome = {
   scripting: { executeScript: vi.fn() },
 };
 
-vi.mock('../src/background/modules/getDescription.js', () => ({
+vi.mock('../src/background/modules/page/getDescription.js', () => ({
   default: vi.fn(() => 'desc'),
 }));
-vi.mock('../src/background/modules/getKeywords.js', () => ({
+vi.mock('../src/background/modules/page/getKeywords.js', () => ({
   default: vi.fn(() => Promise.resolve(['kw'])),
 }));
-vi.mock('../src/background/modules/getFolders.js', () => ({
+vi.mock('../src/background/modules/bookmarks/getFolders.js', () => ({
   getFolders: vi.fn(() => Promise.resolve([1])),
 }));
 vi.mock('../src/lib/apiCall.js', () => ({ default: vi.fn() }));
@@ -32,7 +32,7 @@ vi.mock('../src/lib/stringSimilarity.js', () => ({
   batchSimilarityCheck: vi.fn(),
 }));
 
-import getData from '../src/background/modules/getData.js';
+import getData from '../src/background/modules/bookmarks/getData.js';
 import apiCall from '../src/lib/apiCall.js';
 import { getOptions } from '../src/lib/storage.js';
 import { normalizeUrl } from '../src/lib/urlNormalizer.js';

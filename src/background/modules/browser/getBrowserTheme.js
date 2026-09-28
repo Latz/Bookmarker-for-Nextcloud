@@ -49,7 +49,7 @@ export async function ensureOffscreenDocument() {
 
     // Create the offscreen document
     // Use the correct path that Vite will bundle
-    const offscreenPath = 'src/background/modules/offscreen/offscreen.html';
+    const offscreenPath = 'src/background/modules/browser/offscreen/offscreen.html';
 
     try {
       await chrome.offscreen.createDocument({

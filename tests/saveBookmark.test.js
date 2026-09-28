@@ -9,15 +9,15 @@ vi.mock('../src/lib/cache.js', () => ({
   cacheGet: vi.fn(),
   cacheTempAdd: vi.fn(),
 }));
-vi.mock('../src/background/modules/notification.js', () => ({
+vi.mock('../src/background/modules/browser/notification.js', () => ({
   notifyUser: vi.fn(),
 }));
 
 import apiCall from '../src/lib/apiCall.js';
 import { store_data } from '../src/lib/storage.js';
 import { cacheGet, cacheTempAdd } from '../src/lib/cache.js';
-import { notifyUser } from '../src/background/modules/notification.js';
-import { saveBookmark } from '../src/background/modules/saveBookmark.js';
+import { notifyUser } from '../src/background/modules/browser/notification.js';
+import { saveBookmark } from '../src/background/modules/bookmarks/saveBookmark.js';
 
 const BASE = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));

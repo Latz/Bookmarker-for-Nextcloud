@@ -16,7 +16,7 @@ import { getOption } from '../src/lib/storage.js';
 import {
   buildKeywordLookup,
   reduceKeywords,
-} from '../src/background/modules/keywords/reduceKeywords.js';
+} from '../src/background/modules/page/keywords/reduceKeywords.js';
 
 describe('buildKeywordLookup', () => {
   it('lowercases the stored keywords into a Set', () => {

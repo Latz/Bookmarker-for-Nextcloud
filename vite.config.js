@@ -44,7 +44,7 @@ export default defineConfig(({ mode }) => ({
         // Manually add files not in manifest
         displayJson: 'src/options/displayJson.html',
         login: 'src/login/login.html',
-        offscreen: 'src/background/modules/offscreen/offscreen.html',
+        offscreen: 'src/background/modules/browser/offscreen/offscreen.html',
       },
     },
   },

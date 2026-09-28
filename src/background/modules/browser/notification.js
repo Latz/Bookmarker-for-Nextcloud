@@ -1,4 +1,4 @@
-import { getOption } from '../../lib/storage.js';
+import { getOption } from '../../../lib/storage.js';
 import getBrowserTheme from './getBrowserTheme.js';
 
 // OPTIMIZATION: Constant for notification title (avoid repetition)

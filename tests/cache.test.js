@@ -17,11 +17,11 @@ vi.mock('../src/lib/apiCall.js', () => ({
   default: vi.fn(() => Promise.resolve({ data: [] })),
 }));
 
-vi.mock('../src/background/modules/getFolders.js', () => ({
+vi.mock('../src/background/modules/bookmarks/getFolders.js', () => ({
   preRenderFolders: vi.fn((data) => data),
 }));
 
-vi.mock('../src/background/modules/notification.js', () => ({
+vi.mock('../src/background/modules/browser/notification.js', () => ({
   cacheRefreshNotification: vi.fn(),
 }));
 
@@ -31,8 +31,8 @@ vi.mock('../src/lib/storage.js', () => ({
 
 // Import after mocking
 import apiCall from '../src/lib/apiCall.js';
-import { preRenderFolders } from '../src/background/modules/getFolders.js';
-import { cacheRefreshNotification } from '../src/background/modules/notification.js';
+import { preRenderFolders } from '../src/background/modules/bookmarks/getFolders.js';
+import { cacheRefreshNotification } from '../src/background/modules/browser/notification.js';
 import { getOption } from '../src/lib/storage.js';
 import {
   cacheGet,

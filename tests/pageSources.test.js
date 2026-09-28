@@ -13,7 +13,7 @@ import {
   extractNextDataKeywords,
   extractRelCategoryKeywords,
   extractRelTagKeywords,
-} from '../src/background/modules/keywords/pageSources.js';
+} from '../src/background/modules/page/keywords/pageSources.js';
 
 /** Builds a document whose querySelectorAll answers by selector. */
 const documentWith = (bySelector = {}, byId = {}) => ({

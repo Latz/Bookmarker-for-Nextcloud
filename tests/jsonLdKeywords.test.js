@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import {
   extractJsonLdKeywords,
   extractKeywordsFromJsonLd,
-} from '../src/background/modules/keywords/jsonLdKeywords.js';
+} from '../src/background/modules/page/keywords/jsonLdKeywords.js';
 
 const documentWith = (...scripts) => ({
   querySelectorAll: () => scripts.map((innerText) => ({ innerText })),

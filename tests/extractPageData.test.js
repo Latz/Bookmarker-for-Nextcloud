@@ -17,12 +17,12 @@
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { extractPageData } from '../src/background/modules/extractPageData.js';
-import { createMockDocument } from '../src/background/modules/mockDocument.js';
+import { extractPageData } from '../src/background/modules/page/extractPageData.js';
+import { createMockDocument } from '../src/background/modules/page/mockDocument.js';
 import {
   extractRelCategoryKeywords,
   extractRelTagKeywords,
-} from '../src/background/modules/keywords/pageSources.js';
+} from '../src/background/modules/page/keywords/pageSources.js';
 
 describe('extractPageData', () => {
   afterEach(() => {

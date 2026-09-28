@@ -1,7 +1,7 @@
 // @ts-check
-import { cacheGet } from '../../../lib/cache.js';
-import { getOption } from '../../../lib/storage.js';
-import log from '../../../lib/log.js';
+import { cacheGet } from '../../../../lib/cache.js';
+import { getOption } from '../../../../lib/storage.js';
+import log from '../../../../lib/log.js';
 import getDescription from '../getDescription.js';
 import { buildKeywordLookup, reduceKeywords } from './reduceKeywords.js';
 

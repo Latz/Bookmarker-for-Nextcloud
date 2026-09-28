@@ -1,8 +1,8 @@
 // @ts-check
-import apiCall from '../../lib/apiCall.js';
-import { store_data } from '../../lib/storage.js';
-import { cacheGet, cacheTempAdd } from '../../lib/cache.js';
-import { notifyUser } from './notification.js';
+import apiCall from '../../../lib/apiCall.js';
+import { store_data } from '../../../lib/storage.js';
+import { cacheGet, cacheTempAdd } from '../../../lib/cache.js';
+import { notifyUser } from '../browser/notification.js';
 
 /**
  * Saves a bookmark by making an API call to create a new bookmark or update an existing one.
@@ -24,7 +24,7 @@ export async function saveBookmark(data, folderIDs, bookmarkID) {
   const response = await apiCall(endpoint, method, data);
 
   await store_data('options', { folderIDs });
-  chrome.action.setBadgeText({ text: '' });
+    chrome.action.setBadgeText({ text: '' });
   notifyUser(response);
 
   if (response.status === 'success') {

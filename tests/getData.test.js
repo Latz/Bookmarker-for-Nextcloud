@@ -31,15 +31,15 @@ globalThis.chrome = {
 };
 
 // Mock the modules
-vi.mock('../src/background/modules/getDescription.js', () => ({
+vi.mock('../src/background/modules/page/getDescription.js', () => ({
   default: vi.fn(() => 'Test description'),
 }));
 
-vi.mock('../src/background/modules/getKeywords.js', () => ({
+vi.mock('../src/background/modules/page/getKeywords.js', () => ({
   default: vi.fn(() => Promise.resolve(['keyword1', 'keyword2'])),
 }));
 
-vi.mock('../src/background/modules/getFolders.js', () => ({
+vi.mock('../src/background/modules/bookmarks/getFolders.js', () => ({
   getFolders: vi.fn(() => Promise.resolve([1])),
 }));
 
@@ -92,7 +92,7 @@ vi.mock('../src/lib/stringSimilarity.js', () => ({
 }));
 
 // Import after mocking
-import getData from '../src/background/modules/getData.js';
+import getData from '../src/background/modules/bookmarks/getData.js';
 
 // Shape returned by extractPageData for a page with nothing to extract.
 // Extraction now runs inside chrome.scripting.executeScript's injected
@@ -296,7 +296,7 @@ describe('getData with offscreen document parsing', () => {
 
   it('should handle abort signal during processing', async () => {
     // This tests the abort controller functionality
-    const getDataModule = await import('../src/background/modules/getData.js');
+    const getDataModule = await import('../src/background/modules/bookmarks/getData.js');
 
     chrome.tabs.query.mockResolvedValue([{
       id: 1,

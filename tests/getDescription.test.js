@@ -6,13 +6,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock the getMeta module
-vi.mock('../src/background/modules/getMeta.js', () => ({
+vi.mock('../src/background/modules/page/getMeta.js', () => ({
   default: vi.fn(),
 }));
 
 // Import the module after mocking
-import getMeta from '../src/background/modules/getMeta.js';
-import getDescription from '../src/background/modules/getDescription.js';
+import getMeta from '../src/background/modules/page/getMeta.js';
+import getDescription from '../src/background/modules/page/getDescription.js';
 
 describe('getDescription', () => {
   let mockDocument;

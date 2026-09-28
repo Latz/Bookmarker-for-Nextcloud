@@ -1,15 +1,15 @@
 // @ts-check
-import getDescription from './getDescription.js';
-import getKeywords from './getKeywords.js';
+import getDescription from '../page/getDescription.js';
+import getKeywords from '../page/getKeywords.js';
 import { getFolders } from './getFolders.js';
-import apiCall from '../../lib/apiCall.js';
-import { getOptions } from '../../lib/storage.js';
-import log from '../../lib/log.js';
-import { normalizeUrl } from '../../lib/urlNormalizer.js';
-import { getCachedBookmarkCheck, cacheBookmarkCheck } from '../../lib/cache.js';
-import { batchSimilarityCheck } from '../../lib/stringSimilarity.js';
-import { createMockDocument } from './mockDocument.js';
-import { extractPageData } from './extractPageData.js';
+import apiCall from '../../../lib/apiCall.js';
+import { getOptions } from '../../../lib/storage.js';
+import log from '../../../lib/log.js';
+import { normalizeUrl } from '../../../lib/urlNormalizer.js';
+import { getCachedBookmarkCheck, cacheBookmarkCheck } from '../../../lib/cache.js';
+import { batchSimilarityCheck } from '../../../lib/stringSimilarity.js';
+import { createMockDocument } from '../page/mockDocument.js';
+import { extractPageData } from '../page/extractPageData.js';
 
 const DEBUG = false;
 

@@ -27,7 +27,7 @@ vi.mock('../src/lib/log.js', () => ({
 import {
   getFolders,
   preRenderFolders,
-} from '../src/background/modules/getFolders.js';
+} from '../src/background/modules/bookmarks/getFolders.js';
 import { getOption } from '../src/lib/storage.js';
 import apiCall from '../src/lib/apiCall.js';
 import { cacheGet, cacheAdd } from '../src/lib/cache.js';

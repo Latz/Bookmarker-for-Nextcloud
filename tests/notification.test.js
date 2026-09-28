@@ -11,7 +11,7 @@ vi.mock('../src/lib/storage.js', () => ({
   getOption: vi.fn(),
 }));
 
-vi.mock('../src/background/modules/getBrowserTheme.js', () => ({
+vi.mock('../src/background/modules/browser/getBrowserTheme.js', () => ({
   default: vi.fn(),
 }));
 
@@ -47,9 +47,9 @@ import {
   cacheRefreshNotification,
   initializeErrorIconCache,
   _resetErrorIconCacheForTesting,
-} from '../src/background/modules/notification.js';
+} from '../src/background/modules/browser/notification.js';
 import { getOption } from '../src/lib/storage.js';
-import getBrowserTheme from '../src/background/modules/getBrowserTheme.js';
+import getBrowserTheme from '../src/background/modules/browser/getBrowserTheme.js';
 
 describe('notifyUser', () => {
   beforeEach(() => {

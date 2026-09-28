@@ -58,7 +58,7 @@ vi.mock('../src/lib/apiCall.js', () => ({
   default: vi.fn(() => Promise.resolve({ status: 'success', data: [] })),
 }));
 
-vi.mock('../src/background/modules/getData.js', () => ({
+vi.mock('../src/background/modules/bookmarks/getData.js', () => ({
   default: vi.fn(() => Promise.resolve({ ok: true })),
 }));
 
@@ -78,12 +78,12 @@ vi.mock('../src/lib/storage.js', () => ({
   load_data: vi.fn(() => Promise.resolve(undefined)),
 }));
 
-vi.mock('../src/background/modules/notification.js', () => ({
+vi.mock('../src/background/modules/browser/notification.js', () => ({
   notifyUser: vi.fn(),
   initializeErrorIconCache: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('../src/background/modules/getBrowserTheme.js', () => ({
+vi.mock('../src/background/modules/browser/getBrowserTheme.js', () => ({
   default: vi.fn(() => Promise.resolve('light')),
 }));
 
@@ -92,23 +92,23 @@ vi.mock('../src/lib/cache.js', () => ({
   cacheTempAdd: vi.fn(() => Promise.resolve()),
 }));
 
-vi.mock('../src/background/modules/zenMode.js', () => ({
+vi.mock('../src/background/modules/bookmarks/zenMode.js', () => ({
   zenMode: vi.fn(),
   enableZenMode: vi.fn(),
 }));
 
 // Import after mocking
 import apiCall from '../src/lib/apiCall.js';
-import getData from '../src/background/modules/getData.js';
+import getData from '../src/background/modules/bookmarks/getData.js';
 import {
   store_data,
   getOption,
   createOldDatabase,
 } from '../src/lib/storage.js';
-import { notifyUser } from '../src/background/modules/notification.js';
-import getBrowserTheme from '../src/background/modules/getBrowserTheme.js';
+import { notifyUser } from '../src/background/modules/browser/notification.js';
+import getBrowserTheme from '../src/background/modules/browser/getBrowserTheme.js';
 import { cacheGet, cacheTempAdd } from '../src/lib/cache.js';
-import { zenMode } from '../src/background/modules/zenMode.js';
+import { zenMode } from '../src/background/modules/bookmarks/zenMode.js';
 
 describe('background.js', () => {
   let messageListener;
@@ -307,7 +307,7 @@ describe('background.js', () => {
 
       // Import zenMode module to mock it properly
       const zenModeModule =
-        await import('../src/background/modules/zenMode.js');
+        await import('../src/background/modules/bookmarks/zenMode.js');
 
       await import('../src/background/background.js');
       const result = messageListener(request, sender, sendResponse);
@@ -1010,7 +1010,7 @@ describe('background.js', () => {
     it('should handle multiple message types in sequence', async () => {
       // Import zenMode module to spy on it
       const zenModeModule =
-        await import('../src/background/modules/zenMode.js');
+        await import('../src/background/modules/bookmarks/zenMode.js');
 
       chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
         messageListener = callback;

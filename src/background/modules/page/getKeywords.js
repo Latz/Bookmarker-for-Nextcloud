@@ -1,6 +1,6 @@
 // @ts-check
-import { getOptions } from '../../lib/storage.js';
-import log from '../../lib/log.js';
+import { getOptions } from '../../../lib/storage.js';
+import log from '../../../lib/log.js';
 import { reduceKeywords } from './keywords/reduceKeywords.js';
 import { extractJsonLdKeywords } from './keywords/jsonLdKeywords.js';
 import { extractMetaKeywords } from './keywords/metaKeywords.js';

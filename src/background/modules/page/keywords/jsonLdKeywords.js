@@ -71,7 +71,7 @@ function extractKeywordsFromKeywordsField(jsonld) {
       if (term?.termCode?.label) terms.push(term.termCode.label);
     });
     return terms;
-  }
+}
 
   if (jsonld.keywords.length > 0) {
     if (Array.isArray(jsonld.keywords)) {
