@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 /**
  * Unit tests for extractPageData.
  *
@@ -6,7 +6,7 @@
  * directly against the live page DOM (S5 fix: replaces the old
  * offscreen-document DOMParser round trip, which shipped the entire page
  * HTML to a service worker and back). It reads only global `document`, so it
- * can be tested directly against real DOM built in jsdom -- no chrome mocking
+ * can be tested directly against real DOM built in happy-dom -- no chrome mocking
  * needed at all.
  *
  * The file it replaces (tests/offscreen.test.js) never actually exercised

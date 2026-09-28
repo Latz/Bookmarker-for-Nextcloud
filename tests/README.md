@@ -51,7 +51,7 @@ Handling unusual inputs:
 
 ### Install Dependencies
 ```bash
-npm install --save-dev vitest @vitest/ui jsdom fake-indexeddb
+npm install --save-dev vitest @vitest/ui happy-dom fake-indexeddb
 ```
 
 ### Run All Tests

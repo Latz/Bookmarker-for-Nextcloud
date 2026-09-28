@@ -1,4 +1,4 @@
-// @vitest-environment jsdom
+// @vitest-environment happy-dom
 /**
  * Unit tests for hydrateForm module
  * Tests the functions that create and hydrate the popup form
