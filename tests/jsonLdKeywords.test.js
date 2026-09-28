@@ -50,6 +50,26 @@ describe('extractKeywordsFromJsonLd', () => {
     ]);
   });
 
+  it('reads termCode labels (CNN) instead of returning the objects', () => {
+    const jsonld = {
+      keywords: [
+        { termCode: { label: 'Space' } },
+        { termCode: {} },
+        { termCode: { label: 'Japan' } },
+      ],
+    };
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['Space', 'Japan']);
+  });
+
+  it('skips array entries that are not termCode objects', () => {
+    const jsonld = {
+      keywords: [{ termCode: { label: 'Space' } }, null, 'plain'],
+    };
+
+    expect(extractKeywordsFromJsonLd(jsonld)).toEqual(['Space']);
+  });
+
   it('falls back to mainEntity.keywords', () => {
     const jsonld = { mainEntity: { keywords: ['n1', 'n2'] } };
 

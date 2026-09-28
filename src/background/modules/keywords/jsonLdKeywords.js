@@ -28,6 +28,22 @@ function extractKeywordsFromGraphArticle(jsonld) {
 function extractKeywordsFromKeywordsField(jsonld) {
   if (!jsonld.keywords) return null;
 
+  //https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
+  // CNN lists keywords as `[{ termCode: { label } }]`. This has to be checked
+  // before the plain-array case below: that one returns any array as-is, which
+  // handed these objects on to reduceKeywords (`keyword.toLowerCase()` on an
+  // object throws). The `typeof` guard keeps Object.hasOwn away from
+  // primitives, and `keywords[0]` can be undefined when `keywords` is an
+  // object with a truthy `length` but no index 0.
+  const first = jsonld.keywords[0];
+  if (first && typeof first === 'object' && Object.hasOwn(first, 'termCode')) {
+    const terms = [];
+    jsonld.keywords.forEach((term) => {
+      if (term?.termCode?.label) terms.push(term.termCode.label);
+    });
+    return terms;
+  }
+
   if (jsonld.keywords.length > 0) {
     if (Array.isArray(jsonld.keywords)) {
       return jsonld.keywords;
@@ -35,19 +51,6 @@ function extractKeywordsFromKeywordsField(jsonld) {
     if (typeof jsonld.keywords === 'string') {
       return jsonld.keywords.split(',');
     }
-  }
-  //https://edition.cnn.com/2023/04/25/world/lunar-lander-japan-uae-hakuto-r-scn/index.html
-  // `Object.prototype.hasOwn` does not exist (the static method is
-  // `Object.hasOwn`), and `keywords[0]` can be undefined when `keywords` is
-  // an object with a truthy `length` but no index 0 -- both previously threw
-  // a TypeError that propagated out of getKeywords, crashing the whole
-  // extraction pipeline for any page with such JSON-LD.
-  if (jsonld.keywords[0] && Object.hasOwn(jsonld.keywords[0], 'termCode')) {
-    const terms = [];
-    jsonld.keywords.forEach((term) => {
-      if (term.termCode.label) terms.push(term.termCode.label);
-    });
-    return terms;
   }
   const keywords = jsonld.keywords.split(',').map((keyword) => keyword.trim());
   if (Array.isArray(keywords)) {
