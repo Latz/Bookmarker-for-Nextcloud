@@ -43,3 +43,14 @@ off) and extended keywords are disabled.
 | `skipped` / `error` | Non-HTML response, HTTP error, or timeout                  |
 
 Exits with code 1 if any page has a `MISS-*` status.
+
+What the reference detector looks at: keyword meta tags, `rel="tag"` /
+`rel="category"` links (also inside multi-token `rel` values) and JSON-LD
+`keywords`. Only when none of those has keywords does it fall back to a
+`keywords` property in inline scripts (`"keywords":"a,b"`, `["a","b"]`,
+`a|b`), the same rule as the extension's brute-force search.
+
+Links such as `/tag/agents/` or `/topics/ai/` are reported as a `hint:` line
+for pages where the extension found no keywords. They are not counted as
+keywords (they are often navigation or related topics), so they never cause a
+`MISS-*` status.

@@ -70,9 +70,57 @@ function collectKey(node, key, out = []) {
   return out;
 }
 
+// Inline config such as {"keywords":"a,b"}, {"keywords":["a","b"]} or
+// keywords: "a|b" inside a <script> (Guardian, Variety, Ars Technica).
+const INLINE_KEYWORDS = /["']?keywords["']?\s*:\s*(?:"([^"]*)"|\[([^\]]*)\])/g;
+
+function inlineScriptKeywords(document) {
+  const scripts = document.querySelectorAll(
+    'script:not([type="application/ld+json"])',
+  );
+  for (const script of scripts) {
+    for (const [, text, list] of (script.textContent ?? '').matchAll(
+      INLINE_KEYWORDS,
+    )) {
+      const found = (
+        text === undefined
+          ? Array.from(list.matchAll(/"([^"]*)"/g), (m) => m[1])
+          : text.split(/[,;|]/)
+      )
+        .map((keyword) => keyword.trim())
+        .filter(Boolean);
+      if (found.length) return found;
+    }
+  }
+  return [];
+}
+
+// Links like /tag/agents/ or /topics/ai/ on the page's own site. Many sites
+// list their tags this way without rel="tag"; too noisy to count as keywords
+// (navigation, related topics), so they are only reported as a hint.
+const TAG_LINK_PATH = /^\/(?:tags?|topics?|t)\/[^/]+\/?$/i;
+
+function tagLinkHints(document) {
+  const base = document.location?.href || 'https://example.invalid/';
+  const host = new URL(base).hostname;
+  const texts = [];
+  for (const a of document.querySelectorAll('a[href]')) {
+    try {
+      const url = new URL(a.getAttribute('href'), base);
+      if (url.hostname === host && TAG_LINK_PATH.test(url.pathname)) {
+        texts.push(a.textContent.trim());
+      }
+    } catch {
+      // unparsable href
+    }
+  }
+  return [...new Set(texts.filter(Boolean))];
+}
+
 /**
- * @returns {{keywords: Object<string, string[]>, descriptions: Object<string, string>}}
+ * @returns {{keywords: Object<string, string[]>, descriptions: Object<string, string>, hints: Object<string, string[]>}}
  *   Found keywords and descriptions, grouped by the source they came from.
+ *   `hints` lists weak signals that are not counted as keywords.
  */
 export function detectReference(document) {
   const keywords = {};
@@ -103,8 +151,19 @@ export function detectReference(document) {
   );
   if (jsonLdDescription) descriptions['json-ld description'] = jsonLdDescription;
 
+  // Loose, so only a fallback when nothing else declared keywords -- the same
+  // rule the extension applies to its brute-force search.
+  if (Object.keys(keywords).length === 0) {
+    const inline = inlineScriptKeywords(document);
+    if (inline.length) keywords['inline-script keywords'] = inline;
+  }
+
+  const hints = {};
+  const tagLinks = tagLinkHints(document);
+  if (tagLinks.length) hints['tag links'] = tagLinks;
+
   for (const source of Object.keys(keywords)) {
     keywords[source] = [...new Set(keywords[source])];
   }
-  return { keywords, descriptions };
+  return { keywords, descriptions, hints };
 }

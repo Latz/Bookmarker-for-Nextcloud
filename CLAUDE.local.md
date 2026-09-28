@@ -16,7 +16,7 @@
 - 2026-02-23: 16 commits — 4 DB write fixes + 15-commit perf pass + test suite overhaul
 - 2026-02-24: +5 commits — vite config `assert`→`with`, rollup@4 explicit pin, session cache for SW cold-start (chrome.storage.session)
 - 2026-02-24 evening: +6 commits — fixed all 4 code review bugs (items 2–5)
-- 810 tests passing across 36 files (`npx vitest run --pool=threads`)
+- 828 tests passing across 37 files (`npx vitest run --pool=threads`)
 - **Keyword coverage tool**: `npm run check:hn -- [--url <u>] [--limit N] [--json f] [-v]` — runs real `src` extraction (storage/cache stubbed via `module.registerHooks`) on links from HN/lobsters/dev.to/algolia (`--source`) or any RSS/Atom `--feed` vs. an independent detector; exit 1 on `MISS-*`. getKeywords merges all sources, so `partial` points to a real gap.
 - SonarCloud: 308 issues total; 33 critical in `critical.md`; S4123 (10 issues) all false positives
 - **Environment**: Native Windows (no longer WSL2) — no disk-cache pre-warm needed. Suite uses `node` env by default, `happy-dom` per file via `// @vitest-environment happy-dom` (branch `happydom`, 2026-09-28). `isolate: false` breaks tests — keep isolation on.
@@ -56,6 +56,8 @@
 **2026-09-28**: Added `tools/hn-keyword-check/` (commit 14e4401). First run found a real bug: a single meta keyword without dividers (e.g. `article:tag` = `self-hosting`) was dropped in `keywords/metaKeywords.js` — fixed + tests updated (64da78c; old test had pinned the bug). Pushed to main.
 
 **2026-09-28 (later)**: Merged keywords from *all* sources into Tagify (getKeywords no longer first-wins; `mergeKeywords` dedupes case-insensitively), JSON-LD fixes (all Article subtypes in `@graph`, first block with keywords wins), lone `article:tag` not split on spaces, `a[rel~="tag"]`/`a[rel~="category"]` so WordPress `rel="category tag"` links are found. Checker gained `--source hn|lobsters|devto|algolia`, `--feed`, `--pages`, `--exclude` (`tools/hn-keyword-check/sources.js`; feed parsing is regex-based because happy-dom's XML parser drops items). Pushed to main.
+
+**2026-09-28 (evening)**: Verified checker results by hand against raw HTML (19-page sample identical; of 92 "empty" pages 13 had keywords both tools missed). Fixed: `extractGtmKeywords` no longer stops at the first unparsable `dataLayer.push` script (Ars Technica); brute-force search in `extractPageData` now handles quoted keys, JSON arrays and `|` (Guardian, Variety) and is only a *fallback* in `getKeywords` (used when no real source finds anything, else it adds config noise). Checker reference gained the same inline-script fallback plus non-counted `hint: tag links` (`/tag/x/`); tag links deliberately NOT used as extension keywords (navigation noise, e.g. Cloudflare blog).
 
 ---
 *For detailed history, see memory/registers/*

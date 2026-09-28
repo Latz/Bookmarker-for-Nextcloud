@@ -120,7 +120,10 @@ async function runExtension(document) {
   };
 }
 
-const norm = (keyword) => keyword.trim().toLowerCase();
+// Case, surrounding space and -/_ vs. space don't matter: some sites carry
+// both slugs ("robotic-arm") and names ("robotic arm") of the same tag.
+const norm = (keyword) =>
+  keyword.trim().toLowerCase().replace(/[-_\s]+/g, ' ');
 
 function classify(reference, extension) {
   const refKeywords = [...new Set(Object.values(reference.keywords).flat())];
@@ -189,6 +192,13 @@ function printResult(r) {
     `${status} ${host.padEnd(30)} ext kw: ${String(r.extension.keywords.length).padStart(3)}  ref: ${refSources}`,
   );
 
+  const tagLinks = r.reference.hints?.['tag links'];
+  if (tagLinks && r.extension.keywords.length === 0) {
+    console.log(
+      `    hint: tag links (not used as keywords): ${truncate(tagLinks.join(', '), 120)}`,
+    );
+  }
+
   const interesting = r.status !== 'ok' && r.status !== 'none';
   if (!interesting && !args.verbose) return;
 
@@ -217,10 +227,13 @@ const counts = {};
 for (const r of results) {
   for (const status of r.status.split(',')) counts[status] = (counts[status] ?? 0) + 1;
 }
+const hintCount = results.filter(
+  (r) => r.reference?.hints?.['tag links'] && r.extension.keywords.length === 0,
+).length;
 console.log(
   `\nSummary: ${Object.entries(counts)
     .map(([status, n]) => `${status}=${n}`)
-    .join('  ')}`,
+    .join('  ')}${hintCount ? `  (tag-link hints on pages without keywords: ${hintCount})` : ''}`,
 );
 
 if (args.json) {
