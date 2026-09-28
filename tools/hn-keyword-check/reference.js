@@ -10,7 +10,6 @@ const KEYWORD_METAS = [
   ['name', 'parsely-tags'],
   ['name', 'sailthru.tags'],
   ['itemprop', 'keywords'],
-  ['property', 'article:section'],
 ];
 
 const DESCRIPTION_METAS = [

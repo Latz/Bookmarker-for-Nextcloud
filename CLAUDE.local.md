@@ -17,7 +17,7 @@
 - 2026-02-24: +5 commits — vite config `assert`→`with`, rollup@4 explicit pin, session cache for SW cold-start (chrome.storage.session)
 - 2026-02-24 evening: +6 commits — fixed all 4 code review bugs (items 2–5)
 - 774 tests passing across 35 files (`npx vitest run --pool=threads`)
-- **Keyword coverage tool**: `npm run check:hn -- [--url <u>] [--limit N] [--json f] [-v]` — runs real `src` extraction (storage/cache stubbed via `module.registerHooks`) on HN front-page links vs. an independent detector; exit 1 on `MISS-*`. `partial` is usually expected (getKeywords: first source wins).
+- **Keyword coverage tool**: `npm run check:hn -- [--url <u>] [--limit N] [--json f] [-v]` — runs real `src` extraction (storage/cache stubbed via `module.registerHooks`) on HN front-page links vs. an independent detector; exit 1 on `MISS-*`. getKeywords merges all sources, so `partial` points to a real gap.
 - SonarCloud: 308 issues total; 33 critical in `critical.md`; S4123 (10 issues) all false positives
 - **Environment**: Native Windows (no longer WSL2) — no disk-cache pre-warm needed. Suite uses `node` env by default, `happy-dom` per file via `// @vitest-environment happy-dom` (branch `happydom`, 2026-09-28). `isolate: false` breaks tests — keep isolation on.
 

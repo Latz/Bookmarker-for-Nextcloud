@@ -25,7 +25,7 @@ off) and extended keywords are disabled.
 | `none`      | Page has no keywords or description                                |
 | `MISS-KW`   | Reference found keywords, extension found none                     |
 | `MISS-DESC` | Reference found a description, extension found none                |
-| `partial`   | Both found keywords, but the reference has extra ones (often expected: `getKeywords` stops at the first source that returns anything) |
+| `partial`   | Both found keywords, but the reference has extra ones           |
 | `skipped` / `error` | Non-HTML response, HTTP error, or timeout                  |
 
 Exits with code 1 if any page has a `MISS-*` status.
