@@ -10,7 +10,7 @@
 import './stubs.js';
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
-import { Window } from 'happy-dom';
+import { JSDOM } from 'jsdom';
 import { detectReference } from './reference.js';
 import {
   SOURCE_NAMES,
@@ -52,19 +52,15 @@ async function fetchHtml(url) {
   return { html: await response.text(), finalUrl: response.url };
 }
 
+// jsdom, not happy-dom: happy-dom's HTML parser silently truncates the DOM
+// on real-world malformed markup instead of recovering like a real browser
+// does (found on domainnamewire.com -- lost 58 of 79 <a> elements after a
+// stray `<meta ></span>`), which this tool -- parsing arbitrary external
+// pages -- depends on getting right. No `runScripts`/`resources` options are
+// set, so jsdom never executes scripts or fetches subresources.
 function parseDocument(html, url) {
-  const window = new Window({
-    url,
-    settings: {
-      disableJavaScriptEvaluation: true,
-      disableJavaScriptFileLoading: true,
-      disableCSSFileLoading: true,
-      disableIframePageLoading: true,
-      navigation: { disableChildFrameNavigation: true },
-    },
-  });
-  const document = new window.DOMParser().parseFromString(html, 'text/html');
-  return { window, document };
+  const dom = new JSDOM(html, { url });
+  return { window: dom.window, document: dom.window.document };
 }
 
 // --url bypasses the sources; otherwise every --source/--feed is collected
@@ -155,7 +151,7 @@ async function checkUrl(url) {
       result.reference = detectReference(document);
       result.extension = await runExtension(document);
     } finally {
-      await window.happyDOM.close();
+      window.close();
     }
     Object.assign(result, classify(result.reference, result.extension));
   } catch (error) {

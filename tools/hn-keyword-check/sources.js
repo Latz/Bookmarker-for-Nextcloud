@@ -1,7 +1,15 @@
 // Link sources for the keyword checker: each returns absolute http(s) URLs of
 // the pages worth checking. The parse* functions are pure so they can be
 // unit-tested (tests/checkerSources.test.js); collectUrls does the fetching.
-import { Window } from 'happy-dom';
+//
+// Uses jsdom, not happy-dom: happy-dom's HTML parser was found to silently
+// truncate real-world pages with malformed markup (e.g. domainnamewire.com --
+// stopped building the DOM after a stray `<meta ></span>`, losing most of the
+// page's links) instead of recovering the way a real browser does. jsdom is
+// slower but implements the HTML5 parsing spec's error recovery, which this
+// tool depends on since it parses arbitrary external pages, not controlled
+// fixtures.
+import { JSDOM } from 'jsdom';
 
 export const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36';
@@ -41,26 +49,23 @@ function toHttpUrl(value, base) {
 
 const compact = (urls) => urls.filter(Boolean);
 
-function withDocument(text, mimeType, fn) {
-  const window = new Window({
-    settings: {
-      disableJavaScriptEvaluation: true,
-      disableJavaScriptFileLoading: true,
-      disableCSSFileLoading: true,
-    },
-  });
+function withDocument(html, base, fn) {
+  // No `runScripts`/`resources` options set -- jsdom then never executes
+  // scripts or fetches subresources, matching the old disableJavaScript*/
+  // disableCSSFileLoading happy-dom settings.
+  const dom = new JSDOM(html, { url: base });
   try {
-    return fn(new window.DOMParser().parseFromString(text, mimeType));
+    return fn(dom.window.document);
   } catch {
     return [];
   } finally {
-    void window.happyDOM.close();
+    dom.window.close();
   }
 }
 
 /** HN listing page. Ask/Show HN text posts link back to HN and are skipped. */
 export function parseHnHtml(html, base = HN_URL) {
-  return withDocument(html, 'text/html', (document) =>
+  return withDocument(html, base, (document) =>
     compact(
       Array.from(document.querySelectorAll('.titleline > a'))
         .map((a) => toHttpUrl(a.getAttribute('href'), base))

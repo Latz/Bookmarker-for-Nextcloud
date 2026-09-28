@@ -46,9 +46,14 @@ asked) make the actual call, in small batches so each page gets read, not skimme
    page where that's not enough to judge, fetch the actual page and look. Decide the real verdict per
    page yourself rather than trusting `guess:`.
 
-Pages are parsed with happy-dom (scripts disabled), so client-rendered
-metadata is not seen. `src/lib/storage.js` and `src/lib/cache.js` are swapped
-for stubs (`stubs.js`), so keywords are reported unreduced (`cbx_reduceKeywords`
+Pages are parsed with jsdom (scripts disabled), not happy-dom -- happy-dom's
+HTML parser was found to silently truncate the DOM on real-world malformed
+markup instead of recovering the way a real browser does, losing most of a
+page's links past the broken point. jsdom is slower but spec-compliant, which
+matters here since this tool parses arbitrary external pages. Client-rendered
+metadata still isn't seen (no script execution either way). `src/lib/storage.js`
+and `src/lib/cache.js` are swapped for stubs (`stubs.js`), so keywords are
+reported unreduced (`cbx_reduceKeywords`
 off) and extended keywords are disabled.
 
 | Status      | Meaning                                                            |
