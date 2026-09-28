@@ -30,7 +30,9 @@ describe('getMeta', () => {
     const result = getMeta(mockDocument, { type: 'name', id: 'description' });
 
     expect(result).toEqual([]);
-    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('[name="description" i]');
+    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+      '[name="description" i]',
+    );
   });
 
   it('should extract content from a single matching meta tag', () => {
@@ -76,7 +78,7 @@ describe('getMeta', () => {
     const result = getMeta(
       mockDocument,
       { type: 'property', id: 'og:description' },
-      { type: 'name', id: 'description' }
+      { type: 'name', id: 'description' },
     );
 
     expect(result).toEqual(['Open Graph description']);
@@ -89,7 +91,7 @@ describe('getMeta', () => {
     const result = getMeta(
       mockDocument,
       { type: 'property', id: 'og:description' },
-      { type: 'name', id: 'description' }
+      { type: 'name', id: 'description' },
     );
 
     expect(result).toEqual([]);
@@ -101,7 +103,9 @@ describe('getMeta', () => {
 
     getMeta(mockDocument, { type: 'name', id: 'Description' });
 
-    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('[name="Description" i]');
+    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+      '[name="Description" i]',
+    );
   });
 
   it('should handle different attribute types', () => {
@@ -110,7 +114,9 @@ describe('getMeta', () => {
 
     getMeta(mockDocument, { type: 'name', id: 'twitter:description' });
 
-    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('[name="twitter:description" i]');
+    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+      '[name="twitter:description" i]',
+    );
   });
 
   it('should handle property type meta tags', () => {
@@ -119,7 +125,9 @@ describe('getMeta', () => {
 
     getMeta(mockDocument, { type: 'property', id: 'og:description' });
 
-    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('[property="og:description" i]');
+    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+      '[property="og:description" i]',
+    );
   });
 
   it('should handle itemprop type meta tags', () => {
@@ -128,7 +136,9 @@ describe('getMeta', () => {
 
     getMeta(mockDocument, { type: 'itemprop', id: 'description' });
 
-    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('[itemprop="description" i]');
+    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+      '[itemprop="description" i]',
+    );
   });
 
   it('should handle http-equiv type meta tags', () => {
@@ -137,7 +147,9 @@ describe('getMeta', () => {
 
     getMeta(mockDocument, { type: 'http-equiv', id: 'description' });
 
-    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('[http-equiv="description" i]');
+    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+      '[http-equiv="description" i]',
+    );
   });
 
   it('should handle rel type meta tags', () => {
@@ -146,7 +158,9 @@ describe('getMeta', () => {
 
     getMeta(mockDocument, { type: 'rel', id: 'search' });
 
-    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('[rel="search" i]');
+    expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+      '[rel="search" i]',
+    );
   });
 
   it('should return first match and stop checking remaining types', () => {
@@ -159,7 +173,7 @@ describe('getMeta', () => {
       mockDocument,
       { type: 'property', id: 'og:description' },
       { type: 'name', id: 'description' },
-      { type: 'name', id: 'twitter:description' } // Should not be checked
+      { type: 'name', id: 'twitter:description' }, // Should not be checked
     );
 
     expect(result).toEqual(['First match']);
@@ -176,10 +190,7 @@ describe('getMeta', () => {
   });
 
   it('should handle empty content string in meta tag', () => {
-    const mockMetas = [
-      { content: '' },
-      { content: 'Valid' },
-    ];
+    const mockMetas = [{ content: '' }, { content: 'Valid' }];
     mockDocument.querySelectorAll.mockReturnValue(mockMetas);
 
     const result = getMeta(mockDocument, { type: 'name', id: 'description' });
@@ -188,10 +199,7 @@ describe('getMeta', () => {
   });
 
   it('should handle meta tag with null content', () => {
-    const mockMetas = [
-      { content: null },
-      { content: 'Valid' },
-    ];
+    const mockMetas = [{ content: null }, { content: 'Valid' }];
     mockDocument.querySelectorAll.mockReturnValue(mockMetas);
 
     const result = getMeta(mockDocument, { type: 'name', id: 'description' });

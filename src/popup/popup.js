@@ -161,13 +161,15 @@ async function getDataWithRetry() {
   // await still observes the real rejection.
   pending.catch(() => {});
   const maxRetries = await getOption('input_numberOfRetries');
-  const retryCount = Number.isFinite(maxRetries) && maxRetries > 0 ? Math.round(maxRetries) : 5;
+  const retryCount =
+    Number.isFinite(maxRetries) && maxRetries > 0 ? Math.round(maxRetries) : 5;
 
   let lastError = null;
 
   for (let attempt = 0; attempt < retryCount; attempt++) {
     // Exceptions from sendMessage propagate immediately (no retry on throws)
-    const data = await (pending ?? chrome.runtime.sendMessage({ msg: 'getData' }));
+    const data = await (pending ??
+      chrome.runtime.sendMessage({ msg: 'getData' }));
     pending = null;
 
     // If the data is ok, return it immediately
@@ -191,7 +193,7 @@ async function getDataWithRetry() {
         showRetryMessage(attempt + 1, retryCount);
       }
       // Wait 500ms before retrying (exponential backoff could be added)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
 
@@ -227,7 +229,8 @@ function showRetryMessage(currentRetry, maxRetries) {
 // --------------------------------------------------------------------------------------------------
 function createErrorBox(data) {
   const parent = document.createElement('div');
-  parent.className = 'parent w-full justify-items-center items-center border border-sky-500';
+  parent.className =
+    'parent w-full justify-items-center items-center border border-sky-500';
 
   const iconDiv = document.createElement('div');
   iconDiv.className = 'div1';
@@ -239,7 +242,8 @@ function createErrorBox(data) {
   iconDiv.appendChild(img);
 
   const labelDiv = document.createElement('div');
-  labelDiv.className = 'div2 text-left text-3xl font-bold text-sky-500 underline';
+  labelDiv.className =
+    'div2 text-left text-3xl font-bold text-sky-500 underline';
   labelDiv.textContent = `${chrome.i18n.getMessage('error')}:`;
 
   const msgDiv = document.createElement('div');
@@ -256,7 +260,10 @@ function createAuthorizeButton() {
   form.setAttribute('class', 'flex justify-center w-full');
   const button = document.createElement('button');
   button.setAttribute('id', 'authorize');
-  button.setAttribute('aria-label', chrome.i18n.getMessage('authorizeExtension'));
+  button.setAttribute(
+    'aria-label',
+    chrome.i18n.getMessage('authorizeExtension'),
+  );
 
   button.textContent = chrome.i18n.getMessage('authorizeExtension');
   button.setAttribute('class', 'btn btn-primary w-full');
@@ -283,7 +290,10 @@ function zenMode() {
  */
 function createReconnectBanner(server) {
   const form = document.getElementById('bookmarkForm');
-  form.setAttribute('class', 'flex flex-col justify-center items-center w-full gap-2');
+  form.setAttribute(
+    'class',
+    'flex flex-col justify-center items-center w-full gap-2',
+  );
 
   const msg = document.createElement('div');
   msg.textContent = `${chrome.i18n.getMessage('reconnectRequired')} ${server ?? ''}`;
@@ -303,7 +313,9 @@ function createReconnectBanner(server) {
       return;
     }
 
-    const granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
+    const granted = await chrome.permissions.request({
+      origins: [`${origin}/*`],
+    });
     if (!granted) {
       msg.textContent = chrome.i18n.getMessage('reconnectDenied');
       return;

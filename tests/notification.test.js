@@ -84,7 +84,7 @@ describe('notifyUser', () => {
           type: 'basic',
           requireInteraction: true,
           buttons: [{ title: 'Dismiss.' }],
-        })
+        }),
       );
     });
 
@@ -100,7 +100,9 @@ describe('notifyUser', () => {
 
       await notifyUser(response);
 
-      expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-dark-error.png');
+      expect(chrome.runtime.getURL).toHaveBeenCalledWith(
+        '/images/icon-128x128-dark-error.png',
+      );
     });
 
     it('should handle notification creation error gracefully', async () => {
@@ -110,7 +112,9 @@ describe('notifyUser', () => {
       };
 
       getBrowserTheme.mockResolvedValue('light');
-      chrome.notifications.create.mockRejectedValue(new Error('Notification failed'));
+      chrome.notifications.create.mockRejectedValue(
+        new Error('Notification failed'),
+      );
 
       // Should not throw
       await expect(notifyUser(response)).resolves.not.toThrow();
@@ -131,7 +135,9 @@ describe('notifyUser', () => {
       await notifyUser(response);
 
       // Error icon unavailable in cache → fallback to regular icon
-      expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-dark.png');
+      expect(chrome.runtime.getURL).toHaveBeenCalledWith(
+        '/images/icon-128x128-dark.png',
+      );
     });
 
     it('should use regular icon if error icon fetch returns non-OK response', async () => {
@@ -146,14 +152,20 @@ describe('notifyUser', () => {
       globalThis.fetch = vi.fn().mockResolvedValue({ ok: false });
 
       chrome.runtime.getURL
-        .mockReturnValueOnce('chrome-extension://mock-id/images/icon-128x128-dark-error.png')
-        .mockReturnValueOnce('chrome-extension://mock-id/images/icon-128x128-dark.png');
+        .mockReturnValueOnce(
+          'chrome-extension://mock-id/images/icon-128x128-dark-error.png',
+        )
+        .mockReturnValueOnce(
+          'chrome-extension://mock-id/images/icon-128x128-dark.png',
+        );
 
       chrome.notifications.create.mockResolvedValue('notification-id');
 
       await notifyUser(response);
 
-      expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-dark.png');
+      expect(chrome.runtime.getURL).toHaveBeenCalledWith(
+        '/images/icon-128x128-dark.png',
+      );
     });
   });
 
@@ -177,7 +189,7 @@ describe('notifyUser', () => {
           title: 'Bookmarker for Nextcloud',
           message: 'Bookmark successfully saved!',
           type: 'basic',
-        })
+        }),
       );
     });
 
@@ -206,7 +218,9 @@ describe('notifyUser', () => {
 
       await notifyUser(response);
 
-      expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-light.png');
+      expect(chrome.runtime.getURL).toHaveBeenCalledWith(
+        '/images/icon-128x128-light.png',
+      );
     });
 
     it('should use dark theme icon for success notification', async () => {
@@ -220,7 +234,9 @@ describe('notifyUser', () => {
 
       await notifyUser(response);
 
-      expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-dark.png');
+      expect(chrome.runtime.getURL).toHaveBeenCalledWith(
+        '/images/icon-128x128-dark.png',
+      );
     });
 
     it('should handle notification creation error gracefully for success', async () => {
@@ -230,7 +246,9 @@ describe('notifyUser', () => {
 
       getOption.mockResolvedValue(true);
       getBrowserTheme.mockResolvedValue('light');
-      chrome.notifications.create.mockRejectedValue(new Error('Notification failed'));
+      chrome.notifications.create.mockRejectedValue(
+        new Error('Notification failed'),
+      );
 
       // Should not throw
       await expect(notifyUser(response)).resolves.not.toThrow();
@@ -310,7 +328,9 @@ describe('notifyUser', () => {
 
       await notifyUser(response);
 
-      expect(chrome.i18n.getMessage).toHaveBeenCalledWith('BookmarkSuccessfullySaved');
+      expect(chrome.i18n.getMessage).toHaveBeenCalledWith(
+        'BookmarkSuccessfullySaved',
+      );
     });
   });
 });
@@ -339,7 +359,7 @@ describe('cacheRefreshNotification', () => {
         title: 'Bookmarker for Nextcloud',
         message: 'Cache was refreshed',
         type: 'basic',
-      })
+      }),
     );
   });
 
@@ -349,12 +369,16 @@ describe('cacheRefreshNotification', () => {
 
     await cacheRefreshNotification();
 
-    expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-dark.png');
+    expect(chrome.runtime.getURL).toHaveBeenCalledWith(
+      '/images/icon-128x128-dark.png',
+    );
   });
 
   it('should handle notification creation error gracefully', async () => {
     getBrowserTheme.mockResolvedValue('light');
-    chrome.notifications.create.mockRejectedValue(new Error('Notification failed'));
+    chrome.notifications.create.mockRejectedValue(
+      new Error('Notification failed'),
+    );
 
     // Should not throw
     await expect(cacheRefreshNotification()).resolves.not.toThrow();
@@ -366,7 +390,9 @@ describe('cacheRefreshNotification', () => {
 
     await cacheRefreshNotification();
 
-    expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-light.png');
+    expect(chrome.runtime.getURL).toHaveBeenCalledWith(
+      '/images/icon-128x128-light.png',
+    );
   });
 
   it('should work with dark theme', async () => {
@@ -375,7 +401,9 @@ describe('cacheRefreshNotification', () => {
 
     await cacheRefreshNotification();
 
-    expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-dark.png');
+    expect(chrome.runtime.getURL).toHaveBeenCalledWith(
+      '/images/icon-128x128-dark.png',
+    );
   });
 });
 
@@ -389,7 +417,9 @@ describe('initializeErrorIconCache', () => {
 
   it('should restore error icon cache from session storage on cold start', async () => {
     const cached = { light: true, dark: false };
-    chrome.storage.session.get.mockResolvedValue({ errorIconsAvailable: cached });
+    chrome.storage.session.get.mockResolvedValue({
+      errorIconsAvailable: cached,
+    });
 
     await initializeErrorIconCache();
 
@@ -400,15 +430,18 @@ describe('initializeErrorIconCache', () => {
     chrome.notifications.create.mockResolvedValue('id');
     await notifyUser({ status: 'error', statusText: 'test' });
     // light error icon available → should use error icon
-    expect(chrome.runtime.getURL).toHaveBeenCalledWith('/images/icon-128x128-light-error.png');
+    expect(chrome.runtime.getURL).toHaveBeenCalledWith(
+      '/images/icon-128x128-light-error.png',
+    );
   });
 
   it('should save error icon availability to session storage after detection', async () => {
     // Session cache miss
     chrome.storage.session.get.mockResolvedValue({});
-    globalThis.fetch = vi.fn()
-      .mockResolvedValueOnce({ ok: true })   // light-error.png exists
-      .mockResolvedValueOnce({ ok: false });  // dark-error.png does not exist
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true }) // light-error.png exists
+      .mockResolvedValueOnce({ ok: false }); // dark-error.png does not exist
 
     await initializeErrorIconCache();
 
@@ -428,7 +461,9 @@ describe('initializeErrorIconCache', () => {
 
   it('should fall through to fetch when session data is malformed', async () => {
     // Partial object — missing 'dark' key
-    chrome.storage.session.get.mockResolvedValue({ errorIconsAvailable: { light: true } });
+    chrome.storage.session.get.mockResolvedValue({
+      errorIconsAvailable: { light: true },
+    });
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true });
 
     await initializeErrorIconCache();

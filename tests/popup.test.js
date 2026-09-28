@@ -79,7 +79,10 @@ describe('popup.js', () => {
       let s = '';
       if (node.id) s += `id="${node.id}" `;
       if (node.textContent) s += node.textContent + ' ';
-      if (node._children) node._children.forEach((c) => { s += serializeNode(c); });
+      if (node._children)
+        node._children.forEach((c) => {
+          s += serializeNode(c);
+        });
       return s;
     };
 
@@ -178,7 +181,7 @@ describe('popup.js', () => {
       // Verify form was modified
       expect(mockElements.bookmarkForm.setAttribute).toHaveBeenCalledWith(
         'class',
-        'flex justify-center w-full'
+        'flex justify-center w-full',
       );
 
       // Verify button was created and appended
@@ -413,7 +416,7 @@ describe('popup.js', () => {
       const button = mockElements.bookmarkForm.replaceChildren.mock.calls[0][0];
       expect(button.addEventListener).toHaveBeenCalledWith(
         'click',
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -694,7 +697,7 @@ describe('popup.js', () => {
 
       // Mock error response from sendMessage
       globalThis.chrome.runtime.sendMessage.mockRejectedValue(
-        new Error('Message error')
+        new Error('Message error'),
       );
 
       const consoleErrorSpy = vi

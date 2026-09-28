@@ -155,7 +155,10 @@ describe('displayJson module', () => {
         try {
           data = await load_data_all('options');
         } catch (error) {
-          console.warn('[displayJson.test] options load failed:', error.message);
+          console.warn(
+            '[displayJson.test] options load failed:',
+            error.message,
+          );
           data = null;
         }
       }

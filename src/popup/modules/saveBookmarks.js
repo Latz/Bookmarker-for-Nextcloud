@@ -10,9 +10,15 @@ export default function addSaveBookmarkButtonListener() {
 function saveBookmark(event) {
   event.preventDefault();
 
-  const url = /** @type {HTMLInputElement} */ (document.getElementById('url')).value;
-  const title = /** @type {HTMLInputElement} */ (document.getElementById('title')).value;
-  const bookmarkID = Number.parseInt(/** @type {HTMLInputElement} */ (document.getElementById('bookmarkID')).value);
+  const url = /** @type {HTMLInputElement} */ (document.getElementById('url'))
+    .value;
+  const title = /** @type {HTMLInputElement} */ (
+    document.getElementById('title')
+  ).value;
+  const bookmarkID = Number.parseInt(
+    /** @type {HTMLInputElement} */ (document.getElementById('bookmarkID'))
+      .value,
+  );
 
   (async () => {
     const [showDescription, showKeywords, displayFolders] = await Promise.all([
@@ -21,12 +27,17 @@ function saveBookmark(event) {
       getOption('cbx_displayFolders'),
     ]);
 
-    const rawDescription = /** @type {HTMLTextAreaElement} */ (document.getElementById('description')).value;
+    const rawDescription = /** @type {HTMLTextAreaElement} */ (
+      document.getElementById('description')
+    ).value;
 
     let keywords = /** @type {Array<{value: string}>} */ ([]);
     try {
       if (showKeywords) {
-        keywords = JSON.parse(/** @type {HTMLInputElement} */ (document.getElementById('keywords')).value);
+        keywords = JSON.parse(
+          /** @type {HTMLInputElement} */ (document.getElementById('keywords'))
+            .value,
+        );
       }
     } catch {
       keywords = [];
@@ -34,7 +45,10 @@ function saveBookmark(event) {
 
     let folderIDs = /** @type {string[]} */ ([]);
     if (displayFolders) {
-      folderIDs = Array.from(/** @type {HTMLSelectElement} */ (document.getElementById('folders')).options)
+      folderIDs = Array.from(
+        /** @type {HTMLSelectElement} */ (document.getElementById('folders'))
+          .options,
+      )
         .filter((opt) => opt.selected)
         .map((opt) => opt.value);
     }
@@ -66,7 +80,12 @@ function saveBookmark(event) {
 
     const parameters = params.toString();
 
-    chrome.runtime.sendMessage({ msg: 'saveBookmark', parameters, folderIDs, bookmarkID });
+    chrome.runtime.sendMessage({
+      msg: 'saveBookmark',
+      parameters,
+      folderIDs,
+      bookmarkID,
+    });
   })();
 
   // Close popup immediately

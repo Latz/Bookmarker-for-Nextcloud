@@ -241,7 +241,9 @@ describe('cache.js', () => {
 
       expect(mockDB.put).toHaveBeenCalledWith('keywords', {
         item: 'keywords',
-        value: ['tag1', 'tag2', 'tag3', 'tag4'].sort((a, b) => a.localeCompare(b)),
+        value: ['tag1', 'tag2', 'tag3', 'tag4'].sort((a, b) =>
+          a.localeCompare(b),
+        ),
       });
     });
 
@@ -266,7 +268,13 @@ describe('cache.js', () => {
 
       mockDB.get.mockResolvedValue({ item: 'keywords', value: existingTags });
       mockDB.put.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => { putResolved = true; resolve(); }, 10))
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => {
+              putResolved = true;
+              resolve();
+            }, 10),
+          ),
       );
 
       await cacheTempAdd('keywords', ['tag3']);

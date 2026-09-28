@@ -120,9 +120,9 @@ describe('Performance Optimizations Tests', () => {
       const results = await Promise.all(promises);
 
       // All results should have the same keys
-      expect(results.every((r) => Object.keys(r).length === optionNames.length)).toBe(
-        true,
-      );
+      expect(
+        results.every((r) => Object.keys(r).length === optionNames.length),
+      ).toBe(true);
 
       console.log(`✓ ${promises.length} concurrent option batch fetches`);
     });
@@ -253,7 +253,9 @@ describe('Performance Optimizations Tests', () => {
         return 'success';
       };
 
-      expect(() => checkAbortSignal(controller.signal)).toThrow('Request aborted');
+      expect(() => checkAbortSignal(controller.signal)).toThrow(
+        'Request aborted',
+      );
 
       console.log('✓ Abort signal respected in early stage');
     });
@@ -528,7 +530,9 @@ describe('Performance Optimizations Tests', () => {
       expect(result).toBe(0); // Completely different strings should have 0 similarity
       expect(endTime - startTime).toBeLessThan(3000); // Should complete within 3 seconds
 
-      console.log(`✓ Long strings (10000 chars) handled in ${(endTime - startTime).toFixed(2)}ms`);
+      console.log(
+        `✓ Long strings (10000 chars) handled in ${(endTime - startTime).toFixed(2)}ms`,
+      );
     });
 
     it('should handle special characters in URLs', () => {

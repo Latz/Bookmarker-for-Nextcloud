@@ -80,7 +80,10 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue('1');
 
-      await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }]);
+      await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+      ]);
 
       // When folderIDs is not an array, it sets selectbox.options.selected directly
       // (which doesn't actually select individual options - this is a quirk of the implementation)
@@ -95,7 +98,11 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(['1', '3']);
 
-      await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }, { value: '3', name: 'Folder 3' }]);
+      await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+        { value: '3', name: 'Folder 3' },
+      ]);
 
       expect(option1.selected).toBe(true);
       expect(option2.selected).toBe(false);
@@ -109,7 +116,10 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(undefined);
 
-      await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }]);
+      await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+      ]);
 
       expect(option1.selected).toBe(false);
       expect(option2.selected).toBe(false);
@@ -122,7 +132,10 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(null);
 
-      await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }]);
+      await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+      ]);
 
       expect(option1.selected).toBe(false);
       expect(option2.selected).toBe(false);
@@ -135,7 +148,10 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue([]);
 
-      await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }]);
+      await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+      ]);
 
       expect(option1.selected).toBe(false);
       expect(option2.selected).toBe(false);
@@ -148,7 +164,10 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(['1', '2']);
 
-      await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }]);
+      await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+      ]);
 
       expect(option1.selected).toBe(true);
       expect(option2.selected).toBe(true);
@@ -161,7 +180,10 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(['3', '4']);
 
-      await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }]);
+      await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+      ]);
 
       expect(option1.selected).toBe(false);
       expect(option2.selected).toBe(false);
@@ -175,7 +197,11 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(['2', '4', '5']);
 
-      await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }, { value: '3', name: 'Folder 3' }]);
+      await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+        { value: '3', name: 'Folder 3' },
+      ]);
 
       expect(option1.selected).toBe(false);
       expect(option2.selected).toBe(true);
@@ -201,7 +227,10 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(1); // Not an array
 
-      await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }]);
+      await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+      ]);
 
       // When folderIDs is not an array, it sets selectbox.options.selected directly
       // (which doesn't actually select individual options - this is a quirk of the implementation)
@@ -276,7 +305,12 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(['2']);
 
-      const folders = [{ value: '-1', name: 'Root' }, { value: '1', name: 'Parent  Child' }, { value: '2', name: 'Parent  Child  Grandchild' }, { value: '3', name: 'Other' }];
+      const folders = [
+        { value: '-1', name: 'Root' },
+        { value: '1', name: 'Parent  Child' },
+        { value: '2', name: 'Parent  Child  Grandchild' },
+        { value: '3', name: 'Other' },
+      ];
       await fillFolders(mockSelectbox, folders);
 
       expect(option1.selected).toBe(false);
@@ -294,7 +328,10 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(['50', '75', '99']);
 
-      const folders = options.map((opt) => ({ value: opt.value, name: `Folder ${opt.value}` }));
+      const folders = options.map((opt) => ({
+        value: opt.value,
+        name: `Folder ${opt.value}`,
+      }));
       await fillFolders(mockSelectbox, folders);
 
       expect(mockSelectbox.options[50].selected).toBe(true);
@@ -307,7 +344,9 @@ describe('fillFolders', () => {
     it('should resolve after processing', async () => {
       getOption.mockResolvedValue(['1']);
 
-      const result = await fillFolders(mockSelectbox, [{ value: '1', name: 'Folder' }]);
+      const result = await fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder' },
+      ]);
 
       expect(result).toBeUndefined();
     });
@@ -319,8 +358,14 @@ describe('fillFolders', () => {
 
       getOption.mockResolvedValue(['1']);
 
-      const promise1 = fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }]);
-      const promise2 = fillFolders(mockSelectbox, [{ value: '1', name: 'Folder 1' }, { value: '2', name: 'Folder 2' }]);
+      const promise1 = fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+      ]);
+      const promise2 = fillFolders(mockSelectbox, [
+        { value: '1', name: 'Folder 1' },
+        { value: '2', name: 'Folder 2' },
+      ]);
 
       await Promise.all([promise1, promise2]);
 

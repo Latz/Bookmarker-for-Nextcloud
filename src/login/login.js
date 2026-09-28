@@ -25,7 +25,7 @@ const httpStatusReasons = {
   500: 'Internal Server Error',
   502: 'Bad Gateway',
   503: 'Service Unavailable',
-  504: 'Gateway Timeout'
+  504: 'Gateway Timeout',
 };
 
 function getReasonPhrase(statusCode) {
@@ -67,7 +67,9 @@ function isInsecureServerUrl(input) {
  */
 function normalizeServerHost(input) {
   const trimmed = input.trim();
-  return /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
 }
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {

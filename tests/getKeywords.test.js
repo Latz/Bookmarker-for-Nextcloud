@@ -220,12 +220,16 @@ describe('getKeywords', () => {
     it('should extract keywords from a[rel=category] elements', async () => {
       const mockCat1 = { textContent: 'category1' };
       const mockCat2 = { textContent: 'category2' };
-      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([mockCat1, mockCat2]);
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([mockCat1, mockCat2]);
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['category1', 'category2']);
-      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[rel=category]');
+      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+        'a[rel=category]',
+      );
     });
   });
 
@@ -247,7 +251,11 @@ describe('getKeywords', () => {
         innerText: JSON.stringify({ keywords: ['jsonld1', 'jsonld2'] }),
       };
       // 4 querySelectorAll calls: rel=tag, rel=category, JSON-LD, script (GTM)
-      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([mockScript])
+        .mockReturnValueOnce([]);
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
@@ -257,12 +265,14 @@ describe('getKeywords', () => {
     it('should handle JSON-LD with @graph', async () => {
       const mockScript = {
         innerText: JSON.stringify({
-          '@graph': [
-            { '@type': 'Article', keywords: ['graph1', 'graph2'] },
-          ],
+          '@graph': [{ '@type': 'Article', keywords: ['graph1', 'graph2'] }],
         }),
       };
-      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([mockScript])
+        .mockReturnValueOnce([]);
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
@@ -273,7 +283,11 @@ describe('getKeywords', () => {
       const mockScript = {
         innerText: 'invalid json {',
       };
-      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([mockScript])
+        .mockReturnValueOnce([]);
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
@@ -284,7 +298,11 @@ describe('getKeywords', () => {
       const mockScript = {
         innerText: JSON.stringify({ keywords: 'keyword1,keyword2' }),
       };
-      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([mockScript])
+        .mockReturnValueOnce([]);
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
@@ -301,11 +319,17 @@ describe('getKeywords', () => {
       // stay contained to this one script rather than crash the whole
       // extraction pipeline for the page.
       const mockScript = {
-        innerText: JSON.stringify({ keywords: { length: 1, '0': {} } }),
+        innerText: JSON.stringify({ keywords: { length: 1, 0: {} } }),
       };
-      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([mockScript])
+        .mockReturnValueOnce([]);
 
-      await expect(getKeywords(mockParsedData, mockDocument)).resolves.toEqual([]);
+      await expect(getKeywords(mockParsedData, mockDocument)).resolves.toEqual(
+        [],
+      );
     });
   });
 
@@ -326,7 +350,12 @@ describe('getKeywords', () => {
       const mockScript = {
         text: 'dataLayer.push({"content": {"keywords": "gtm1|gtm2|gtm3"}});',
       };
-      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([mockScript])
+        .mockReturnValueOnce([]);
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
@@ -337,7 +366,12 @@ describe('getKeywords', () => {
       const mockScript = {
         text: 'dataLayer.push({invalid});',
       };
-      mockDocument.querySelectorAll.mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([]).mockReturnValueOnce([mockScript]).mockReturnValueOnce([]);
+      mockDocument.querySelectorAll
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([])
+        .mockReturnValueOnce([mockScript])
+        .mockReturnValueOnce([]);
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
@@ -364,16 +398,18 @@ describe('getKeywords', () => {
       // First 4 selectors (rel=tag, rel=category, JSON-LD, GTM) return empty
       // GitHub selector with class*="topic-tag" returns topics
       mockDocument.querySelectorAll
-        .mockReturnValueOnce([])  // rel=tag
-        .mockReturnValueOnce([])  // rel=category
-        .mockReturnValueOnce([])  // JSON-LD
-        .mockReturnValueOnce([])  // GTM
-        .mockReturnValueOnce([mockTopic1, mockTopic2]);  // GitHub topic-tag
+        .mockReturnValueOnce([]) // rel=tag
+        .mockReturnValueOnce([]) // rel=category
+        .mockReturnValueOnce([]) // JSON-LD
+        .mockReturnValueOnce([]) // GTM
+        .mockReturnValueOnce([mockTopic1, mockTopic2]); // GitHub topic-tag
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['opencode', 'ai-agents']);
-      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[class*="topic-tag"]');
+      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+        'a[class*="topic-tag"]',
+      );
     });
 
     it('should extract keywords from GitHub topics using href pattern selector', async () => {
@@ -381,37 +417,41 @@ describe('getKeywords', () => {
       const mockTopic2 = { textContent: 'vibe-coding' };
       // First 4 selectors return empty, topic-tag returns empty, data-view-component returns empty, href selector returns topics
       mockDocument.querySelectorAll
-        .mockReturnValueOnce([])  // rel=tag
-        .mockReturnValueOnce([])  // rel=category
-        .mockReturnValueOnce([])  // JSON-LD
-        .mockReturnValueOnce([])  // GTM
-        .mockReturnValueOnce([])  // GitHub topic-tag (no match)
-        .mockReturnValueOnce([])  // GitHub data-view-component (no match)
-        .mockReturnValueOnce([mockTopic1, mockTopic2]);  // GitHub href selector
+        .mockReturnValueOnce([]) // rel=tag
+        .mockReturnValueOnce([]) // rel=category
+        .mockReturnValueOnce([]) // JSON-LD
+        .mockReturnValueOnce([]) // GTM
+        .mockReturnValueOnce([]) // GitHub topic-tag (no match)
+        .mockReturnValueOnce([]) // GitHub data-view-component (no match)
+        .mockReturnValueOnce([mockTopic1, mockTopic2]); // GitHub href selector
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['claude', 'vibe-coding']);
-      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[href^="/topics/"]');
+      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+        'a[href^="/topics/"]',
+      );
     });
 
     it('should fall back to legacy selector if modern selectors fail', async () => {
       const mockTopic1 = { textContent: 'legacy-topic' };
       // All modern selectors fail, falls back to legacy data-ga-click selector
       mockDocument.querySelectorAll
-        .mockReturnValueOnce([])  // rel=tag
-        .mockReturnValueOnce([])  // rel=category
-        .mockReturnValueOnce([])  // JSON-LD
-        .mockReturnValueOnce([])  // GTM
-        .mockReturnValueOnce([])  // GitHub topic-tag (no match)
-        .mockReturnValueOnce([])  // GitHub data-view-component (no match)
-        .mockReturnValueOnce([])  // GitHub href (no match)
-        .mockReturnValueOnce([mockTopic1]);  // GitHub legacy selector
+        .mockReturnValueOnce([]) // rel=tag
+        .mockReturnValueOnce([]) // rel=category
+        .mockReturnValueOnce([]) // JSON-LD
+        .mockReturnValueOnce([]) // GTM
+        .mockReturnValueOnce([]) // GitHub topic-tag (no match)
+        .mockReturnValueOnce([]) // GitHub data-view-component (no match)
+        .mockReturnValueOnce([]) // GitHub href (no match)
+        .mockReturnValueOnce([mockTopic1]); // GitHub legacy selector
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual(['legacy-topic']);
-      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith('a[data-ga-click="Topic, repository page"]');
+      expect(mockDocument.querySelectorAll).toHaveBeenCalledWith(
+        'a[data-ga-click="Topic, repository page"]',
+      );
     });
   });
 
@@ -461,7 +501,9 @@ describe('getKeywords', () => {
       });
 
       // The implementation parses JSON before try-catch, so it throws SyntaxError
-      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow(SyntaxError);
+      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow(
+        SyntaxError,
+      );
     });
   });
 
@@ -478,7 +520,9 @@ describe('getKeywords', () => {
     it('should use description for extended keywords when enabled', async () => {
       getMeta.mockReturnValue([]);
       mockDocument.querySelectorAll.mockReturnValue([]);
-      getDescription.mockReturnValue('This is a test description with some words');
+      getDescription.mockReturnValue(
+        'This is a test description with some words',
+      );
       cacheGet.mockResolvedValue(['test', 'description', 'words']);
 
       const result = await getKeywords(mockParsedData, mockDocument);
@@ -547,7 +591,9 @@ describe('getKeywords', () => {
       cacheGet.mockRejectedValue(new Error('Cache error'));
 
       // The implementation doesn't catch cache errors - they propagate
-      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow('Cache error');
+      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow(
+        'Cache error',
+      );
     });
   });
 
@@ -601,7 +647,9 @@ describe('getKeywords', () => {
     });
 
     it('should use parsedData.bruteForceKeywords when present', async () => {
-      mockParsedData = { bruteForceKeywords: ['keyword1', ' keyword2', ' keyword3'] };
+      mockParsedData = {
+        bruteForceKeywords: ['keyword1', ' keyword2', ' keyword3'],
+      };
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
@@ -630,7 +678,9 @@ describe('getKeywords', () => {
       getOption.mockRejectedValue(new Error('Storage error'));
 
       // The implementation doesn't catch errors from getOption - they propagate
-      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow('Storage error');
+      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow(
+        'Storage error',
+      );
     });
   });
 });

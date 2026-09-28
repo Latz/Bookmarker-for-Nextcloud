@@ -53,7 +53,10 @@ describe('addSaveBookmarkButtonListener', () => {
       addSaveBookmarkButtonListener();
 
       expect(document.getElementById).toHaveBeenCalledWith('saveBookmark');
-      expect(mockButton.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+      expect(mockButton.addEventListener).toHaveBeenCalledWith(
+        'click',
+        expect.any(Function),
+      );
     });
 
     it('should handle missing save button gracefully', () => {
@@ -81,7 +84,9 @@ describe('addSaveBookmarkButtonListener', () => {
       mockTitleInput = { value: 'Test Page' };
       mockBookmarkIdInput = { value: '-1' };
       mockDescriptionInput = { value: 'Test description' };
-      mockKeywordsInput = { value: '[{"value":"keyword1"},{"value":"keyword2"}]' };
+      mockKeywordsInput = {
+        value: '[{"value":"keyword1"},{"value":"keyword2"}]',
+      };
       mockFoldersSelect = {
         options: [
           { value: '1', selected: false },
@@ -93,14 +98,22 @@ describe('addSaveBookmarkButtonListener', () => {
       globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
-            case 'saveBookmark': return mockButton;
-            case 'url': return mockUrlInput;
-            case 'title': return mockTitleInput;
-            case 'bookmarkID': return mockBookmarkIdInput;
-            case 'description': return mockDescriptionInput;
-            case 'keywords': return mockKeywordsInput;
-            case 'folders': return mockFoldersSelect;
-            default: return null;
+            case 'saveBookmark':
+              return mockButton;
+            case 'url':
+              return mockUrlInput;
+            case 'title':
+              return mockTitleInput;
+            case 'bookmarkID':
+              return mockBookmarkIdInput;
+            case 'description':
+              return mockDescriptionInput;
+            case 'keywords':
+              return mockKeywordsInput;
+            case 'folders':
+              return mockFoldersSelect;
+            default:
+              return null;
           }
         }),
       };
@@ -120,7 +133,7 @@ describe('addSaveBookmarkButtonListener', () => {
       clickHandler(mockEvent);
 
       // Wait for the Promise.all to resolve
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(mockEvent.preventDefault).toHaveBeenCalled();
     });
@@ -155,7 +168,7 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
         msg: 'saveBookmark',
@@ -170,12 +183,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.stringContaining('url=https%3A%2F%2Fexample.com'),
-        })
+        }),
       );
     });
 
@@ -191,12 +204,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.stringContaining('description=Test+description'),
-        })
+        }),
       );
     });
 
@@ -212,12 +225,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.not.stringContaining('description='),
-        })
+        }),
       );
     });
 
@@ -234,12 +247,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.not.stringContaining('description='),
-        })
+        }),
       );
     });
 
@@ -255,17 +268,17 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.stringContaining('tags%5B%5D=keyword1'),
-        })
+        }),
       );
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.stringContaining('tags%5B%5D=keyword2'),
-        })
+        }),
       );
     });
 
@@ -281,12 +294,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.stringContaining('tags%5B%5D='),
-        })
+        }),
       );
     });
 
@@ -302,17 +315,17 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.stringContaining('folders%5B%5D=2'),
-        })
+        }),
       );
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.stringContaining('folders%5B%5D=3'),
-        })
+        }),
       );
     });
 
@@ -328,12 +341,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.stringContaining('folders%5B%5D=-1'),
-        })
+        }),
       );
     });
 
@@ -342,12 +355,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           parameters: expect.stringContaining('page=-1'),
-        })
+        }),
       );
     });
 
@@ -356,7 +369,7 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(window.close).toHaveBeenCalled();
     });
@@ -386,14 +399,22 @@ describe('addSaveBookmarkButtonListener', () => {
       globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
-            case 'saveBookmark': return mockButton;
-            case 'url': return mockUrlInput;
-            case 'title': return mockTitleInput;
-            case 'bookmarkID': return mockBookmarkIdInput;
-            case 'description': return mockDescriptionInput;
-            case 'keywords': return mockKeywordsInput;
-            case 'folders': return mockFoldersSelect;
-            default: return null;
+            case 'saveBookmark':
+              return mockButton;
+            case 'url':
+              return mockUrlInput;
+            case 'title':
+              return mockTitleInput;
+            case 'bookmarkID':
+              return mockBookmarkIdInput;
+            case 'description':
+              return mockDescriptionInput;
+            case 'keywords':
+              return mockKeywordsInput;
+            case 'folders':
+              return mockFoldersSelect;
+            default:
+              return null;
           }
         }),
       };
@@ -407,21 +428,21 @@ describe('addSaveBookmarkButtonListener', () => {
 
     it('should handle getOption error gracefully', async () => {
       getOption.mockRejectedValue(new Error('Storage error'));
-      
+
       // Suppress unhandled rejection since the implementation doesn't catch it
       const unhandledRejectionHandler = () => {};
       process.on('unhandledRejection', unhandledRejectionHandler);
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // When getOption fails, the Promise.all rejects and .then() never runs
       // So sendMessage won't be called, but window.close still runs
       // Note: This is an unhandled rejection in the current implementation
       expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
       expect(window.close).toHaveBeenCalled();
-      
+
       process.off('unhandledRejection', unhandledRejectionHandler);
     });
 
@@ -429,32 +450,40 @@ describe('addSaveBookmarkButtonListener', () => {
       globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
-            case 'saveBookmark': return mockButton;
-            case 'url': return mockUrlInput;
-            case 'title': return mockTitleInput;
-            case 'bookmarkID': return mockBookmarkIdInput;
-            case 'description': return null;
-            case 'keywords': return mockKeywordsInput;
-            case 'folders': return mockFoldersSelect;
-            default: return null;
+            case 'saveBookmark':
+              return mockButton;
+            case 'url':
+              return mockUrlInput;
+            case 'title':
+              return mockTitleInput;
+            case 'bookmarkID':
+              return mockBookmarkIdInput;
+            case 'description':
+              return null;
+            case 'keywords':
+              return mockKeywordsInput;
+            case 'folders':
+              return mockFoldersSelect;
+            default:
+              return null;
           }
         }),
       };
 
       getOption.mockResolvedValue(true);
-      
+
       // Suppress unhandled rejection since the implementation doesn't catch it
       const unhandledRejectionHandler = () => {};
       process.on('unhandledRejection', unhandledRejectionHandler);
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Should not throw (window.close is called outside the Promise chain)
       // Note: This is an unhandled rejection in the current implementation
       expect(window.close).toHaveBeenCalled();
-      
+
       process.off('unhandledRejection', unhandledRejectionHandler);
     });
 
@@ -462,32 +491,40 @@ describe('addSaveBookmarkButtonListener', () => {
       globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
-            case 'saveBookmark': return mockButton;
-            case 'url': return mockUrlInput;
-            case 'title': return mockTitleInput;
-            case 'bookmarkID': return mockBookmarkIdInput;
-            case 'description': return mockDescriptionInput;
-            case 'keywords': return mockKeywordsInput;
-            case 'folders': return null;
-            default: return null;
+            case 'saveBookmark':
+              return mockButton;
+            case 'url':
+              return mockUrlInput;
+            case 'title':
+              return mockTitleInput;
+            case 'bookmarkID':
+              return mockBookmarkIdInput;
+            case 'description':
+              return mockDescriptionInput;
+            case 'keywords':
+              return mockKeywordsInput;
+            case 'folders':
+              return null;
+            default:
+              return null;
           }
         }),
       };
 
       getOption.mockResolvedValue(true);
-      
+
       // Suppress unhandled rejection since the implementation doesn't catch it
       const unhandledRejectionHandler = () => {};
       process.on('unhandledRejection', unhandledRejectionHandler);
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Should not throw (window.close is called outside the Promise chain)
       // Note: This is an unhandled rejection in the current implementation
       expect(window.close).toHaveBeenCalled();
-      
+
       process.off('unhandledRejection', unhandledRejectionHandler);
     });
   });
@@ -521,14 +558,22 @@ describe('addSaveBookmarkButtonListener', () => {
       globalThis.document = {
         getElementById: vi.fn((id) => {
           switch (id) {
-            case 'saveBookmark': return mockButton;
-            case 'url': return mockUrlInput;
-            case 'title': return mockTitleInput;
-            case 'bookmarkID': return mockBookmarkIdInput;
-            case 'description': return mockDescriptionInput;
-            case 'keywords': return mockKeywordsInput;
-            case 'folders': return mockFoldersSelect;
-            default: return null;
+            case 'saveBookmark':
+              return mockButton;
+            case 'url':
+              return mockUrlInput;
+            case 'title':
+              return mockTitleInput;
+            case 'bookmarkID':
+              return mockBookmarkIdInput;
+            case 'description':
+              return mockDescriptionInput;
+            case 'keywords':
+              return mockKeywordsInput;
+            case 'folders':
+              return mockFoldersSelect;
+            default:
+              return null;
           }
         }),
       };
@@ -545,7 +590,7 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Assert on decoded values rather than a specific encoding: every field
       // is encoded now, where previously only title and url were. The old
@@ -563,12 +608,12 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           bookmarkID: 456,
-        })
+        }),
       );
     });
 
@@ -581,13 +626,13 @@ describe('addSaveBookmarkButtonListener', () => {
 
       addSaveBookmarkButtonListener();
       clickHandler(mockEvent);
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // When displayFolders is true but no folders are selected, no folder parameter is added
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
         expect.objectContaining({
           folderIDs: [],
-        })
+        }),
       );
     });
   });

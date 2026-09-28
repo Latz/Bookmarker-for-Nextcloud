@@ -51,7 +51,10 @@ describe('apiCall.js', () => {
       // Mock credentials - load_data returns single value for single key
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
 
       // Mock successful fetch
       mockFetch.mockResolvedValue({
@@ -77,7 +80,10 @@ describe('apiCall.js', () => {
       // Mock credentials
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
 
       // Mock successful fetch
       mockFetch.mockResolvedValue({
@@ -97,7 +103,10 @@ describe('apiCall.js', () => {
       // Mock credentials
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
 
       // Mock fetch that never resolves (simulates slow network)
       // When aborted, it should throw an AbortError (TypeError)
@@ -137,7 +146,10 @@ describe('apiCall.js', () => {
     it('should construct URL with server from credentials', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       mockFetch.mockResolvedValue({
@@ -159,7 +171,10 @@ describe('apiCall.js', () => {
     it('should add trailing slash to server URL', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       mockFetch.mockResolvedValue({
@@ -177,7 +192,10 @@ describe('apiCall.js', () => {
 
     it('should extract server from data.host when provided', async () => {
       getOption.mockResolvedValue(10);
-      load_data.mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+      load_data.mockResolvedValueOnce({
+        loginname: 'testuser',
+        appPassword: 'testpass',
+      });
 
       mockFetch.mockResolvedValue({
         ok: true,
@@ -198,7 +216,10 @@ describe('apiCall.js', () => {
     it('should include Authorization header for non-loginflow requests', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       mockFetch.mockResolvedValue({
@@ -245,7 +266,10 @@ describe('apiCall.js', () => {
     it('should handle successful response', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       const responseData = { status: 'success', data: { id: 123 } };
@@ -262,7 +286,10 @@ describe('apiCall.js', () => {
     it('should return error object for HTTP error responses', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       mockFetch.mockResolvedValue({
@@ -278,7 +305,10 @@ describe('apiCall.js', () => {
     it('should handle TypeError (network error)', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       mockFetch.mockRejectedValue(new TypeError('Network error'));
@@ -294,7 +324,10 @@ describe('apiCall.js', () => {
     it('should handle abort signal', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       const controller = new AbortController();
@@ -320,7 +353,10 @@ describe('apiCall.js', () => {
     it('should add server trailing slash when missing', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       mockFetch.mockResolvedValue({
@@ -339,7 +375,10 @@ describe('apiCall.js', () => {
     it('should not add trailing slash when server already has one', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com/')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       mockFetch.mockResolvedValue({
@@ -358,7 +397,10 @@ describe('apiCall.js', () => {
     it('should return error object for HTTP error responses (401, 500, etc.)', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'testuser', appPassword: 'testpass' });
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
       getOption.mockResolvedValue(10);
 
       mockFetch.mockResolvedValue({
@@ -377,7 +419,10 @@ describe('apiCall.js', () => {
     it('should generate Basic auth header from credentials', async () => {
       load_data
         .mockResolvedValueOnce('https://example.com')
-        .mockResolvedValueOnce({ loginname: 'admin', appPassword: 'secret123' });
+        .mockResolvedValueOnce({
+          loginname: 'admin',
+          appPassword: 'secret123',
+        });
       getOption.mockResolvedValue(10);
 
       mockFetch.mockResolvedValue({

@@ -92,7 +92,10 @@ describe('storage.js', () => {
     it('should load multiple items from store', async () => {
       mockDB.get
         .mockResolvedValueOnce({ item: 'loginname', value: 'admin' })
-        .mockResolvedValueOnce({ item: 'server', value: 'https://example.com' });
+        .mockResolvedValueOnce({
+          item: 'server',
+          value: 'https://example.com',
+        });
 
       const result = await load_data('credentials', 'loginname', 'server');
 
@@ -174,7 +177,11 @@ describe('storage.js', () => {
     });
 
     it('should store multiple items', async () => {
-      await store_data('options', { cbx_enableZen: true }, { cbx_autoTags: false });
+      await store_data(
+        'options',
+        { cbx_enableZen: true },
+        { cbx_autoTags: false },
+      );
 
       expect(mockDB.put).toHaveBeenCalledTimes(2);
       expect(mockDB.put).toHaveBeenCalledWith('options', {
@@ -212,7 +219,13 @@ describe('storage.js', () => {
     it('should await db.put before returning', async () => {
       let putResolved = false;
       mockDB.put.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => { putResolved = true; resolve(); }, 10))
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => {
+              putResolved = true;
+              resolve();
+            }, 10),
+          ),
       );
 
       await store_data('options', { cbx_enableZen: true });
@@ -253,7 +266,13 @@ describe('storage.js', () => {
     it('should await db.delete before returning', async () => {
       let deleteResolved = false;
       mockDB.delete.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => { deleteResolved = true; resolve(); }, 10))
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => {
+              deleteResolved = true;
+              resolve();
+            }, 10),
+          ),
       );
 
       await delete_data('credentials', 'appPassword');
@@ -280,7 +299,13 @@ describe('storage.js', () => {
     it('should await db.put before returning', async () => {
       let putResolved = false;
       mockDB.put.mockImplementation(
-        () => new Promise(resolve => setTimeout(() => { putResolved = true; resolve(); }, 10))
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => {
+              putResolved = true;
+              resolve();
+            }, 10),
+          ),
       );
 
       await store_hash('test-hash');
@@ -418,7 +443,7 @@ describe('storage.js', () => {
       initDefaults();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Check that default options are stored
       expect(mockDB.put).toHaveBeenCalledWith('options', {
@@ -540,7 +565,10 @@ describe('storage.js', () => {
       clearOptionsCache();
 
       // Cache should be cleared, so next getOption should fetch from DB
-      mockCacheDB.get.mockResolvedValue({ item: 'cbx_enableZen', value: false });
+      mockCacheDB.get.mockResolvedValue({
+        item: 'cbx_enableZen',
+        value: false,
+      });
       const result = await getOption('cbx_enableZen');
 
       expect(result).toBe(false);

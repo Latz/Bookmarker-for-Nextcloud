@@ -1,14 +1,16 @@
 /* See src/popup/css/input.css -- scoped to the options page only. */
-@import "tailwindcss" source(none);
-@source "./**/*.{html,js}";
-@plugin "daisyui" {
-  themes: light --default, dark --prefersdark;
+@import 'tailwindcss' source(none);
+@source './**/*.{html,js}';
+@plugin 'daisyui' {
+  themes:
+    light --default,
+    dark --prefersdark;
 }
 
 /* Tagify dropdown dark mode support */
 :root {
-  --tagify-dd-bg-color: light-dark(white, oklch(25.33% .016 252.42));
-  --tagify-dd-text-color: light-dark(black, oklch(97.807% .029 256.847));
+  --tagify-dd-bg-color: light-dark(white, oklch(25.33% 0.016 252.42));
+  --tagify-dd-text-color: light-dark(black, oklch(97.807% 0.029 256.847));
 }
 
 /* Ensure wrapper uses the variables */

@@ -93,7 +93,10 @@ export default async function getBrowserTheme() {
         return cachedTheme;
       }
     } catch (error) {
-      console.warn('[getBrowserTheme] Session storage unavailable, falling back:', error.message);
+      console.warn(
+        '[getBrowserTheme] Session storage unavailable, falling back:',
+        error.message,
+      );
     }
   }
 
@@ -133,7 +136,7 @@ async function detectTheme() {
     await Promise.race([
       chrome.runtime.sendMessage({ target: 'offscreen', msg: 'ready' }),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Offscreen ready timeout')), 1000)
+        setTimeout(() => reject(new Error('Offscreen ready timeout')), 1000),
       ),
     ]);
 
@@ -144,7 +147,7 @@ async function detectTheme() {
         msg: 'getBrowserTheme',
       }),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Theme detection timeout')), 5000)
+        setTimeout(() => reject(new Error('Theme detection timeout')), 5000),
       ),
     ]);
 

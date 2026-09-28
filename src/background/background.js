@@ -7,7 +7,10 @@ import {
   getOption,
   load_data,
 } from '../lib/storage.js';
-import { notifyUser, initializeErrorIconCache } from './modules/notification.js';
+import {
+  notifyUser,
+  initializeErrorIconCache,
+} from './modules/notification.js';
 import getBrowserTheme from './modules/getBrowserTheme.js';
 import { cacheGet, cacheTempAdd } from '../lib/cache.js';
 import { zenMode } from './modules/zenMode.js';
@@ -225,7 +228,6 @@ async function init() {
   //   contexts: ['action'],
   // });
 }
-
 
 /**
  * Warms up the connection to the Nextcloud server on SW startup.

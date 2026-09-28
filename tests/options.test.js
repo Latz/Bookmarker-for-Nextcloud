@@ -21,7 +21,7 @@ vi.mock('@yaireo/tagify', () => {
     value: [],
   };
   return {
-    default: vi.fn(function() {
+    default: vi.fn(function () {
       return mockTagifyInstance;
     }),
   };
@@ -39,7 +39,9 @@ vi.mock('../src/lib/storage.js', () => ({
 }));
 
 vi.mock('../src/background/modules/getFolders.js', () => ({
-  getFolders: vi.fn(() => Promise.resolve('<option value="1">Folder 1</option>')),
+  getFolders: vi.fn(() =>
+    Promise.resolve('<option value="1">Folder 1</option>'),
+  ),
 }));
 
 vi.mock('../src/popup/modules/fillFolders.js', () => ({
@@ -153,12 +155,12 @@ describe('options.js', () => {
         addEventListener: vi.fn(),
       },
       // Heading numbers
-      '1': { id: '1', classList: { add: vi.fn(), remove: vi.fn() } },
-      '2': { id: '2', classList: { add: vi.fn(), remove: vi.fn() } },
-      '3': { id: '3', classList: { add: vi.fn(), remove: vi.fn() } },
-      '4': { id: '4', classList: { add: vi.fn(), remove: vi.fn() } },
-      '5': { id: '5', classList: { add: vi.fn(), remove: vi.fn() } },
-      '6': { id: '6', classList: { add: vi.fn(), remove: vi.fn() } },
+      1: { id: '1', classList: { add: vi.fn(), remove: vi.fn() } },
+      2: { id: '2', classList: { add: vi.fn(), remove: vi.fn() } },
+      3: { id: '3', classList: { add: vi.fn(), remove: vi.fn() } },
+      4: { id: '4', classList: { add: vi.fn(), remove: vi.fn() } },
+      5: { id: '5', classList: { add: vi.fn(), remove: vi.fn() } },
+      6: { id: '6', classList: { add: vi.fn(), remove: vi.fn() } },
       // Options content container
       content: {
         id: 'content',
@@ -284,30 +286,48 @@ describe('options.js', () => {
       await mockDocument.onreadystatechange();
 
       // Verify the stored tab is activated
-      expect(mockElements.tab_basic.classList.remove).toHaveBeenCalledWith('tab-active');
-      expect(mockElements.tab_advanced.classList.add).toHaveBeenCalledWith('tab-active');
-      expect(mockElements.content_tab_advanced.classList.remove).toHaveBeenCalledWith('hidden');
+      expect(mockElements.tab_basic.classList.remove).toHaveBeenCalledWith(
+        'tab-active',
+      );
+      expect(mockElements.tab_advanced.classList.add).toHaveBeenCalledWith(
+        'tab-active',
+      );
+      expect(
+        mockElements.content_tab_advanced.classList.remove,
+      ).toHaveBeenCalledWith('hidden');
     });
 
     it('should handle tab click to switch content', async () => {
       // Get the click handler
-      const tabsClickHandler = mockElements.tabs.addEventListener.mock.calls[0][1];
+      const tabsClickHandler =
+        mockElements.tabs.addEventListener.mock.calls[0][1];
 
       // Simulate clicking on tab_advanced
       tabsClickHandler({ target: mockElements.tab_advanced });
 
       // Verify tab switching
-      expect(mockElements.tab_advanced.classList.add).toHaveBeenCalledWith('tab-active');
-      expect(mockElements.tab_basic.classList.remove).toHaveBeenCalledWith('tab-active');
-      expect(mockElements.content_tab_basic.classList.add).toHaveBeenCalledWith('hidden');
-      expect(mockElements.content_tab_advanced.classList.remove).toHaveBeenCalledWith('hidden');
+      expect(mockElements.tab_advanced.classList.add).toHaveBeenCalledWith(
+        'tab-active',
+      );
+      expect(mockElements.tab_basic.classList.remove).toHaveBeenCalledWith(
+        'tab-active',
+      );
+      expect(mockElements.content_tab_basic.classList.add).toHaveBeenCalledWith(
+        'hidden',
+      );
+      expect(
+        mockElements.content_tab_advanced.classList.remove,
+      ).toHaveBeenCalledWith('hidden');
 
       // Verify active tab was stored
-      expect(store_data).toHaveBeenCalledWith('options', { activeTab: 'tab_advanced' });
+      expect(store_data).toHaveBeenCalledWith('options', {
+        activeTab: 'tab_advanced',
+      });
     });
 
     it('should not switch if clicking the same tab', async () => {
-      const tabsClickHandler = mockElements.tabs.addEventListener.mock.calls[0][1];
+      const tabsClickHandler =
+        mockElements.tabs.addEventListener.mock.calls[0][1];
 
       // Reset the mock to clear previous calls
       vi.clearAllMocks();
@@ -332,7 +352,9 @@ describe('options.js', () => {
       });
       load_data_all.mockResolvedValue([]);
       getOption.mockResolvedValue(false);
-      getFolders.mockResolvedValue('<option value="1">Folder 1</option><option value="2">Folder 2</option>');
+      getFolders.mockResolvedValue(
+        '<option value="1">Folder 1</option><option value="2">Folder 2</option>',
+      );
 
       await import('../src/options/options.js');
       await mockDocument.onreadystatechange();
@@ -359,13 +381,16 @@ describe('options.js', () => {
       ];
 
       // Get the change handler
-      const changeHandler = mockElements.zen_folders.addEventListener.mock.calls[0][1];
+      const changeHandler =
+        mockElements.zen_folders.addEventListener.mock.calls[0][1];
 
       // Simulate change event
       changeHandler({ target: mockElements.zen_folders });
 
       // Verify folders are stored
-      expect(store_data).toHaveBeenCalledWith('options', { zenFolderIDs: ['1', '2'] });
+      expect(store_data).toHaveBeenCalledWith('options', {
+        zenFolderIDs: ['1', '2'],
+      });
     });
 
     it('should default to -1 if no folders stored', async () => {
@@ -399,12 +424,13 @@ describe('options.js', () => {
       };
 
       // Reset the mock and set up a new instance
-      Tagify.mockImplementation(function() {
+      Tagify.mockImplementation(function () {
         return mockTagifyInstance;
       });
 
       load_data.mockImplementation((store, key) => {
-        if (key === 'input_zenKeywords') return Promise.resolve(['keyword1', 'keyword2']);
+        if (key === 'input_zenKeywords')
+          return Promise.resolve(['keyword1', 'keyword2']);
         return Promise.resolve(undefined);
       });
       load_data_all.mockResolvedValue([]);
@@ -428,18 +454,29 @@ describe('options.js', () => {
     });
 
     it('should load and add stored keywords to Tagify', async () => {
-      expect(mockTagifyInstance.addTags).toHaveBeenCalledWith(['keyword1', 'keyword2']);
+      expect(mockTagifyInstance.addTags).toHaveBeenCalledWith([
+        'keyword1',
+        'keyword2',
+      ]);
     });
 
     it('should register event handlers for add and remove', async () => {
-      expect(mockTagifyInstance.on).toHaveBeenCalledWith('add', expect.any(Function));
-      expect(mockTagifyInstance.on).toHaveBeenCalledWith('remove', expect.any(Function));
+      expect(mockTagifyInstance.on).toHaveBeenCalledWith(
+        'add',
+        expect.any(Function),
+      );
+      expect(mockTagifyInstance.on).toHaveBeenCalledWith(
+        'remove',
+        expect.any(Function),
+      );
     });
 
     it('should save tags when add event is triggered', async () => {
       // Get the add event handler (saveZenTags is registered last; the first
       // 'add' handler only keeps the whitelist in sync)
-      const addHandler = mockTagifyInstance.on.mock.calls.filter(call => call[0] === 'add').pop()[1];
+      const addHandler = mockTagifyInstance.on.mock.calls
+        .filter((call) => call[0] === 'add')
+        .pop()[1];
 
       // Trigger the handler
       addHandler();
@@ -452,7 +489,9 @@ describe('options.js', () => {
 
     it('should save tags when remove event is triggered', async () => {
       // Get the remove event handler
-      const removeHandler = mockTagifyInstance.on.mock.calls.find(call => call[0] === 'remove')[1];
+      const removeHandler = mockTagifyInstance.on.mock.calls.find(
+        (call) => call[0] === 'remove',
+      )[1];
 
       // Trigger the handler
       removeHandler();
@@ -478,13 +517,18 @@ describe('options.js', () => {
     });
 
     it('should set slider data attribute on initialization', async () => {
-      expect(mockElements.input_headings_slider.setAttribute).toHaveBeenCalledWith('data', 3);
-      expect(mockElements['3'].classList.add).toHaveBeenCalledWith('selected_heading');
+      expect(
+        mockElements.input_headings_slider.setAttribute,
+      ).toHaveBeenCalledWith('data', 3);
+      expect(mockElements['3'].classList.add).toHaveBeenCalledWith(
+        'selected_heading',
+      );
     });
 
     it('should handle click on heading number to set slider', async () => {
       // Get the click handler
-      const clickHandler = mockElements.heading_selectors.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.heading_selectors.addEventListener.mock.calls[0][1];
 
       // Simulate clicking on heading number 5
       clickHandler({ target: mockElements['5'] });
@@ -493,44 +537,63 @@ describe('options.js', () => {
       expect(mockElements.input_headings_slider.value).toBe('5');
 
       // Verify previous heading is deselected
-      expect(mockElements['3'].classList.remove).toHaveBeenCalledWith('selected_heading');
+      expect(mockElements['3'].classList.remove).toHaveBeenCalledWith(
+        'selected_heading',
+      );
 
       // Verify new heading is selected
-      expect(mockElements['5'].classList.add).toHaveBeenCalledWith('selected_heading');
+      expect(mockElements['5'].classList.add).toHaveBeenCalledWith(
+        'selected_heading',
+      );
 
       // Verify data is stored
-      expect(store_data).toHaveBeenCalledWith('options', { input_headings_slider: 5 });
+      expect(store_data).toHaveBeenCalledWith('options', {
+        input_headings_slider: 5,
+      });
     });
 
     it('should not do anything if clicking on the container itself', async () => {
-      const clickHandler = mockElements.heading_selectors.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.heading_selectors.addEventListener.mock.calls[0][1];
 
       // Simulate clicking on the container (not a number)
       clickHandler({ target: mockElements.heading_selectors });
 
       // Should not update slider or store data
-      expect(store_data).not.toHaveBeenCalledWith('options', expect.any(Object));
+      expect(store_data).not.toHaveBeenCalledWith(
+        'options',
+        expect.any(Object),
+      );
     });
 
     it('should handle slider input event', async () => {
       // Get the input handler
-      const inputHandler = mockElements.input_headings_slider.addEventListener.mock.calls[0][1];
+      const inputHandler =
+        mockElements.input_headings_slider.addEventListener.mock.calls[0][1];
 
       // Simulate slider change
       mockElements.input_headings_slider.value = '4';
       inputHandler();
 
       // Verify previous heading is deselected
-      expect(mockElements['3'].classList.remove).toHaveBeenCalledWith('selected_heading');
+      expect(mockElements['3'].classList.remove).toHaveBeenCalledWith(
+        'selected_heading',
+      );
 
       // Verify new heading is selected
-      expect(mockElements['4'].classList.add).toHaveBeenCalledWith('selected_heading');
+      expect(mockElements['4'].classList.add).toHaveBeenCalledWith(
+        'selected_heading',
+      );
 
       // Verify data attribute is updated
-      expect(mockElements.input_headings_slider.setAttribute).toHaveBeenCalledWith('data', '4');
+      expect(
+        mockElements.input_headings_slider.setAttribute,
+      ).toHaveBeenCalledWith('data', '4');
 
       // Verify data is stored
-      expect(store_data).toHaveBeenCalledWith('options', { input_headings_slider: 4 });
+      expect(store_data).toHaveBeenCalledWith('options', {
+        input_headings_slider: 4,
+      });
     });
   });
 
@@ -553,14 +616,17 @@ describe('options.js', () => {
 
     it('should store value on input change', async () => {
       // Get the input handler
-      const inputHandler = mockElements.input_networkTimeout.addEventListener.mock.calls[0][1];
+      const inputHandler =
+        mockElements.input_networkTimeout.addEventListener.mock.calls[0][1];
 
       // Simulate input change
       mockElements.input_networkTimeout.value = '10000';
       inputHandler();
 
       // Verify data is stored as integer
-      expect(store_data).toHaveBeenCalledWith('options', { input_networkTimeout: 10000 });
+      expect(store_data).toHaveBeenCalledWith('options', {
+        input_networkTimeout: 10000,
+      });
     });
   });
 
@@ -577,17 +643,21 @@ describe('options.js', () => {
 
     it('should handle checkbox changes', async () => {
       // Get the click handler
-      const clickHandler = mockElements.content.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
 
       // Simulate clicking a checkbox
       clickHandler({ target: mockElements.cbx_enableZen });
 
       // Verify checkbox state is stored
-      expect(store_data).toHaveBeenCalledWith('options', { cbx_enableZen: false });
+      expect(store_data).toHaveBeenCalledWith('options', {
+        cbx_enableZen: false,
+      });
     });
 
     it('should handle clear all data button', async () => {
-      const clickHandler = mockElements.content.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
 
       clickHandler({ target: mockElements.btn_clear_all_data });
 
@@ -595,7 +665,8 @@ describe('options.js', () => {
     });
 
     it('should handle reset options button', async () => {
-      const clickHandler = mockElements.content.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
 
       clickHandler({ target: mockElements.btn_reset_options });
 
@@ -603,7 +674,8 @@ describe('options.js', () => {
     });
 
     it('should handle clear cache button', async () => {
-      const clickHandler = mockElements.content.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
 
       clickHandler({ target: mockElements.btn_clear_cache });
 
@@ -611,7 +683,8 @@ describe('options.js', () => {
     });
 
     it('should handle create database button', async () => {
-      const clickHandler = mockElements.content.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
 
       clickHandler({ target: mockElements.btn_create_db });
 
@@ -619,31 +692,34 @@ describe('options.js', () => {
     });
 
     it('should open options display window', async () => {
-      const clickHandler = mockElements.content.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
 
       clickHandler({ target: mockElements.btn_show_options });
 
       expect(window.open).toHaveBeenCalledWith(
         'displayJson.html?type=options',
         'Options',
-        'popup'
+        'popup',
       );
     });
 
     it('should open cache display window', async () => {
-      const clickHandler = mockElements.content.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
 
       clickHandler({ target: mockElements.btn_show_cache });
 
       expect(window.open).toHaveBeenCalledWith(
         'displayJson.html?type=cache',
         'Options',
-        'popup'
+        'popup',
       );
     });
 
     it('should not handle non-button clicks', async () => {
-      const clickHandler = mockElements.content.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
 
       // Click on a non-interactive element
       clickHandler({ target: { type: 'text', id: 'some_text' } });
@@ -658,7 +734,7 @@ describe('options.js', () => {
     beforeEach(async () => {
       // Reset and set up fresh mocks
       vi.resetModules();
-      Tagify.mockImplementation(function() {
+      Tagify.mockImplementation(function () {
         return {
           on: vi.fn(),
           addTags: vi.fn(),
@@ -678,7 +754,7 @@ describe('options.js', () => {
     it('should set checkbox values from stored data', async () => {
       // Reset and re-import with specific data
       vi.resetModules();
-      Tagify.mockImplementation(function() {
+      Tagify.mockImplementation(function () {
         return {
           on: vi.fn(),
           addTags: vi.fn(),
@@ -703,7 +779,7 @@ describe('options.js', () => {
 
     it('should set input values from stored data', async () => {
       vi.resetModules();
-      Tagify.mockImplementation(function() {
+      Tagify.mockImplementation(function () {
         return {
           on: vi.fn(),
           addTags: vi.fn(),
@@ -723,13 +799,12 @@ describe('options.js', () => {
 
       expect(mockElements.input_networkTimeout.value).toBe(8000);
     });
-
   });
 
   describe('Error handling', () => {
     it('should handle undefined stored values in setOptions', async () => {
       vi.resetModules();
-      Tagify.mockImplementation(function() {
+      Tagify.mockImplementation(function () {
         return {
           on: vi.fn(),
           addTags: vi.fn(),

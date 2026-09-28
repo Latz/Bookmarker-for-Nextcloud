@@ -51,7 +51,8 @@ document.onreadystatechange = async () => {
 
     // --- zen keywords ----------------------------------------------------------------
     const tagsInput = document.getElementById('input_zenKeywords');
-    const zenKeywords = (await load_data(OPTION_STORE, 'input_zenKeywords')) ?? [];
+    const zenKeywords =
+      (await load_data(OPTION_STORE, 'input_zenKeywords')) ?? [];
     tagify = new Tagify(tagsInput, {
       backspace: 'edit',
       whitelist: zenKeywords,

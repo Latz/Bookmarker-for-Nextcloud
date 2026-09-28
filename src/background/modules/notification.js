@@ -30,7 +30,10 @@ export async function initializeErrorIconCache() {
         return;
       }
     } catch (error) {
-      console.warn('[notification] Session storage unavailable, falling back:', error.message);
+      console.warn(
+        '[notification] Session storage unavailable, falling back:',
+        error.message,
+      );
     }
   }
 
@@ -69,7 +72,9 @@ async function getIconErrorUrl() {
 
   // Use cached check result (populated at startup by initializeErrorIconCache)
   if (errorIconsAvailable[browserTheme]) {
-    return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}-error.png`);
+    return chrome.runtime.getURL(
+      `/images/icon-128x128-${browserTheme}-error.png`,
+    );
   }
 
   // Fall back to regular icon if error icon doesn't exist

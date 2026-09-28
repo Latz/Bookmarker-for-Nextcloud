@@ -41,7 +41,10 @@ async function getMainDBConnection() {
         return mainDbConnection;
       }
     } catch (error) {
-      console.warn('[storage] DB connection invalid, resetting:', error.message);
+      console.warn(
+        '[storage] DB connection invalid, resetting:',
+        error.message,
+      );
       mainDbConnection = null;
     }
   }

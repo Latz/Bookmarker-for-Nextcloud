@@ -34,7 +34,12 @@ describe('log.js', () => {
       log(true, 'message', 'arg1', 'arg2', 123);
 
       expect(consoleLogSpy).toHaveBeenCalledTimes(1);
-      expect(consoleLogSpy).toHaveBeenCalledWith('message', 'arg1', 'arg2', 123);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'message',
+        'arg1',
+        'arg2',
+        123,
+      );
     });
 
     it('should handle empty arguments', () => {
@@ -49,7 +54,14 @@ describe('log.js', () => {
       const arr = [1, 2, 3];
       log(true, 'string', 123, obj, arr, null, undefined);
 
-      expect(consoleLogSpy).toHaveBeenCalledWith('string', 123, obj, arr, null, undefined);
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        'string',
+        123,
+        obj,
+        arr,
+        null,
+        undefined,
+      );
     });
 
     it('should handle objects', () => {
@@ -147,9 +159,9 @@ describe('log.js', () => {
       const complex = {
         level1: {
           level2: {
-            level3: ['a', 'b', { nested: true }]
-          }
-        }
+            level3: ['a', 'b', { nested: true }],
+          },
+        },
       };
       log(true, complex);
 

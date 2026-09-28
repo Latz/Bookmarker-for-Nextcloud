@@ -14,7 +14,7 @@ vi.mock('../src/lib/cache.js', () => ({
 // Note: vi.mock() is hoisted, so we can't use local variables
 vi.mock('@yaireo/tagify', () => {
   const mockAddTags = vi.fn();
-  const mockTagifyConstructor = vi.fn(function() {
+  const mockTagifyConstructor = vi.fn(function () {
     return { addTags: mockAddTags, on: vi.fn(), whitelist: [] };
   });
 
@@ -258,7 +258,7 @@ describe('fillKeywords', () => {
         mockTagsInput,
         expect.objectContaining({
           whitelist: cachedTags,
-        })
+        }),
       );
       expect(mockAddTags).toHaveBeenCalledWith(keywords);
     });
@@ -278,7 +278,7 @@ describe('fillKeywords', () => {
         mockTagsInput,
         expect.objectContaining({
           whitelist: cachedTags,
-        })
+        }),
       );
       expect(mockAddTags).toHaveBeenCalledWith(keywords);
     });
@@ -288,7 +288,11 @@ describe('fillKeywords', () => {
         getElementById: vi.fn().mockReturnValue(mockTagsInput),
       };
 
-      const cachedTags = ['tag-with-dash', 'tag_with_underscore', 'tag.with.dot'];
+      const cachedTags = [
+        'tag-with-dash',
+        'tag_with_underscore',
+        'tag.with.dot',
+      ];
       cacheGet.mockResolvedValue(cachedTags);
 
       const keywords = ['tag-with-dash'];
@@ -298,7 +302,7 @@ describe('fillKeywords', () => {
         mockTagsInput,
         expect.objectContaining({
           whitelist: cachedTags,
-        })
+        }),
       );
       expect(mockAddTags).toHaveBeenCalledWith(keywords);
     });
@@ -318,7 +322,7 @@ describe('fillKeywords', () => {
         mockTagsInput,
         expect.objectContaining({
           whitelist: cachedTags,
-        })
+        }),
       );
       expect(mockAddTags).toHaveBeenCalledWith(keywords);
     });
@@ -358,7 +362,10 @@ describe('fillKeywords', () => {
 
       await fillKeywords(['keyword1']);
 
-      expect(mockTagifyConstructor).toHaveBeenCalledWith(mockTagsInput, expect.any(Object));
+      expect(mockTagifyConstructor).toHaveBeenCalledWith(
+        mockTagsInput,
+        expect.any(Object),
+      );
     });
 
     it('should pass whitelist from cache to Tagify', async () => {

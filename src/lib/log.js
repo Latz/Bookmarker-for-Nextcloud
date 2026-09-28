@@ -1,4 +1,4 @@
-export default function log(DEBUG,...args) {
+export default function log(DEBUG, ...args) {
   if (DEBUG) {
     console.log(...args);
   }

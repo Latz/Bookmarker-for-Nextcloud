@@ -83,7 +83,10 @@ export async function createForm() {
     checkingDiv.className = 'text-center';
     const loaderSpan = document.createElement('span');
     loaderSpan.className = 'loader';
-    checkingDiv.append(`${chrome.i18n.getMessage('Checking')} Nextcloud...`, loaderSpan);
+    checkingDiv.append(
+      `${chrome.i18n.getMessage('Checking')} Nextcloud...`,
+      loaderSpan,
+    );
     document.getElementById('sub_message').replaceChildren(checkingDiv);
   }
 
@@ -98,7 +101,10 @@ export async function hydrateForm(data) {
   document.getElementById('title').value = data.title;
 
   // Batch fetch options in one DB call
-  const options = await getOptions(['cbx_showDescription', 'cbx_autoDescription']);
+  const options = await getOptions([
+    'cbx_showDescription',
+    'cbx_autoDescription',
+  ]);
 
   if (options.cbx_showDescription && options.cbx_autoDescription) {
     document.getElementById('description').value = data.description;

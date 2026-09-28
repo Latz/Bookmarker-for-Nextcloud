@@ -36,7 +36,7 @@ describe('getDescription', () => {
       { type: 'content', id: 'og:description' },
       { type: 'name', id: 'og:description' },
       { type: 'rel', id: 'search' },
-      { type: 'http-equiv', id: 'description' }
+      { type: 'http-equiv', id: 'description' },
     );
   });
 
@@ -129,11 +129,15 @@ describe('getDescription', () => {
   });
 
   it('should handle real-world description from og:description', () => {
-    getMeta.mockReturnValue(['This is a comprehensive description of the page content.']);
+    getMeta.mockReturnValue([
+      'This is a comprehensive description of the page content.',
+    ]);
 
     const result = getDescription(mockDocument);
 
-    expect(result).toBe('This is a comprehensive description of the page content.');
+    expect(result).toBe(
+      'This is a comprehensive description of the page content.',
+    );
   });
 
   it('should handle description with special characters', () => {

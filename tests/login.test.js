@@ -15,7 +15,8 @@ globalThis.chrome = {
         Loading: 'Loading',
         LoginServerError: 'Login Server Error',
         InsecureServerUrl: 'Please use a secure (https://) server address',
-        PermissionRequestDenied: 'Bookmarker needs permission to access this server. Please allow the permission prompt and try again.',
+        PermissionRequestDenied:
+          'Bookmarker needs permission to access this server. Please allow the permission prompt and try again.',
       };
       return messages[key] || `[i18n:${key}]`;
     }),
@@ -110,11 +111,11 @@ describe('login.js', () => {
       // Verify event listeners were added
       expect(mockElements.testServer.addEventListener).toHaveBeenCalledWith(
         'click',
-        expect.any(Function)
+        expect.any(Function),
       );
       expect(mockElements.serverName.addEventListener).toHaveBeenCalledWith(
         'keydown',
-        expect.any(Function)
+        expect.any(Function),
       );
     });
 
@@ -138,7 +139,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler to extract openServerPage function
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
       openServerPage = clickHandler;
     });
 
@@ -211,14 +213,10 @@ describe('login.js', () => {
       await openServerPage();
 
       // Verify apiCall was called with correct parameters
-      expect(apiCall).toHaveBeenCalledWith(
-        'index.php/login/v2',
-        'POST',
-        {
-          host: 'https://example.com',
-          loginflow: true,
-        }
-      );
+      expect(apiCall).toHaveBeenCalledWith('index.php/login/v2', 'POST', {
+        host: 'https://example.com',
+        loginflow: true,
+      });
     });
 
     it('should request host permission for the exact server origin before apiCall (S5)', async () => {
@@ -240,7 +238,8 @@ describe('login.js', () => {
       });
       // The permission request must happen before the first network call to
       // the new host, not after.
-      const requestOrder = chrome.permissions.request.mock.invocationCallOrder[0];
+      const requestOrder =
+        chrome.permissions.request.mock.invocationCallOrder[0];
       const apiCallOrder = apiCall.mock.invocationCallOrder[0];
       expect(requestOrder).toBeLessThan(apiCallOrder);
     });
@@ -253,7 +252,7 @@ describe('login.js', () => {
 
       expect(apiCall).not.toHaveBeenCalled();
       expect(mockElements.error.innerText).toBe(
-        'Bookmarker needs permission to access this server. Please allow the permission prompt and try again.!'
+        'Bookmarker needs permission to access this server. Please allow the permission prompt and try again.!',
       );
       expect(mockElements.serverName.focus).toHaveBeenCalled();
     });
@@ -266,7 +265,7 @@ describe('login.js', () => {
 
       expect(apiCall).not.toHaveBeenCalled();
       expect(mockElements.error.innerText).toBe(
-        'Bookmarker needs permission to access this server. Please allow the permission prompt and try again.!'
+        'Bookmarker needs permission to access this server. Please allow the permission prompt and try again.!',
       );
     });
 
@@ -293,7 +292,7 @@ describe('login.js', () => {
 
       expect(apiCall).not.toHaveBeenCalled();
       expect(mockElements.error.innerText).toBe(
-        'Please use a secure (https://) server address!'
+        'Please use a secure (https://) server address!',
       );
       expect(mockElements.serverName.focus).toHaveBeenCalled();
     });
@@ -326,16 +325,16 @@ describe('login.js', () => {
       expect(chrome.permissions.request).toHaveBeenCalledWith({
         origins: ['https://example.com/*'],
       });
-      expect(apiCall).toHaveBeenCalledWith(
-        'index.php/login/v2',
-        'POST',
-        { host: 'https://example.com', loginflow: true }
-      );
+      expect(apiCall).toHaveBeenCalledWith('index.php/login/v2', 'POST', {
+        host: 'https://example.com',
+        loginflow: true,
+      });
     });
 
     it('should handle Enter key press on serverName input', async () => {
       // Get the keydown handler
-      const keydownHandler = mockElements.serverName.addEventListener.mock.calls[0][1];
+      const keydownHandler =
+        mockElements.serverName.addEventListener.mock.calls[0][1];
 
       // Mock the openServerPage function call
       apiCall.mockResolvedValue({
@@ -361,13 +360,14 @@ describe('login.js', () => {
       expect(mockEvent.preventDefault).toHaveBeenCalled();
 
       // Verify apiCall was triggered
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       expect(apiCall).toHaveBeenCalled();
     });
 
     it('should not trigger on other key presses', async () => {
       // Get the keydown handler
-      const keydownHandler = mockElements.serverName.addEventListener.mock.calls[0][1];
+      const keydownHandler =
+        mockElements.serverName.addEventListener.mock.calls[0][1];
 
       // Simulate other key press
       const mockEvent = {
@@ -394,7 +394,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock successful API response with login data
       const loginResponse = {
@@ -460,7 +461,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock successful API response
       apiCall.mockResolvedValue({
@@ -514,7 +516,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock API response with server error
       apiCall.mockResolvedValue({
@@ -526,7 +529,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Verify error message was displayed
       expect(mockElements.error.innerText).toBe('Login Server Error!');
@@ -547,7 +550,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock API response with server error (no status)
       apiCall.mockResolvedValue({
@@ -559,7 +563,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Verify statusText message was displayed
       expect(mockElements.msg.innerText).toBe(' Connection Error');
@@ -573,7 +577,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock API response with server error
       apiCall.mockResolvedValue({
@@ -585,7 +590,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Verify error message
       expect(mockElements.error.innerText).toBe('Login Server Error!');
@@ -600,7 +605,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock API response with 500 error
       apiCall.mockResolvedValue({
@@ -612,7 +618,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Verify status with reason phrase
       expect(mockElements.msg.innerText).toBe('500  - Internal Server Error');
@@ -624,7 +630,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock API response with unknown status code
       apiCall.mockResolvedValue({
@@ -636,7 +643,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Verify unknown status handling
       expect(mockElements.msg.innerText).toBe('999  - Unknown Status');
@@ -650,7 +657,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock API call failure
       apiCall.mockRejectedValue(new Error('Network error'));
@@ -668,7 +676,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock successful API response
       apiCall.mockResolvedValue({
@@ -690,7 +699,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for polling attempts
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       // Verify console.log was called with error
       expect(console.log).toHaveBeenCalled();
@@ -704,7 +713,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       const testCases = [
         { status: 200, expected: 'OK' },
@@ -735,7 +745,7 @@ describe('login.js', () => {
         clickHandler();
 
         // Wait for async operations
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
 
         // Verify reason phrase
         expect(mockElements.msg.innerText).toContain(expected);
@@ -748,7 +758,8 @@ describe('login.js', () => {
       await mockDocument.onreadystatechange();
 
       // Get the click handler
-      const clickHandler = mockElements.testServer.addEventListener.mock.calls[0][1];
+      const clickHandler =
+        mockElements.testServer.addEventListener.mock.calls[0][1];
 
       // Mock API response with unknown status
       apiCall.mockResolvedValue({
@@ -760,7 +771,7 @@ describe('login.js', () => {
       clickHandler();
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Verify unknown status handling
       expect(mockElements.msg.innerText).toContain('Unknown Status');

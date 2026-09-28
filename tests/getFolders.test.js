@@ -24,7 +24,10 @@ vi.mock('../src/lib/log.js', () => ({
 }));
 
 // Import the module after mocking
-import { getFolders, preRenderFolders } from '../src/background/modules/getFolders.js';
+import {
+  getFolders,
+  preRenderFolders,
+} from '../src/background/modules/getFolders.js';
 import { getOption } from '../src/lib/storage.js';
 import apiCall from '../src/lib/apiCall.js';
 import { cacheGet, cacheAdd } from '../src/lib/cache.js';
@@ -81,7 +84,7 @@ describe('getFolders', () => {
     expect(cacheGet).toHaveBeenCalledWith('folders');
     expect(apiCall).toHaveBeenCalledWith(
       'index.php/apps/bookmarks/public/rest/v2/folder',
-      'GET'
+      'GET',
     );
     expect(cacheAdd).toHaveBeenCalled();
   });
@@ -253,9 +256,7 @@ describe('preRenderFolders', () => {
           {
             id: '2',
             title: 'Level 2',
-            children: [
-              { id: '3', title: 'Level 3' },
-            ],
+            children: [{ id: '3', title: 'Level 3' }],
           },
         ],
       },
@@ -269,20 +270,19 @@ describe('preRenderFolders', () => {
   });
 
   it('should handle folders with special characters in title', () => {
-    const folders = [
-      { id: '1', title: 'Folder & "Special" <Test>' },
-    ];
+    const folders = [{ id: '1', title: 'Folder & "Special" <Test>' }];
 
     const result = preRenderFolders(folders);
 
     // Note: The implementation does NOT HTML-escape the title
-    expect(result).toContainEqual({ value: '1', name: 'Folder & "Special" <Test>' });
+    expect(result).toContainEqual({
+      value: '1',
+      name: 'Folder & "Special" <Test>',
+    });
   });
 
   it('should handle folders with unicode characters', () => {
-    const folders = [
-      { id: '1', title: '📁 中文文件夹' },
-    ];
+    const folders = [{ id: '1', title: '📁 中文文件夹' }];
 
     const result = preRenderFolders(folders);
 
@@ -310,9 +310,7 @@ describe('preRenderFolders', () => {
       {
         id: '2',
         title: 'Parent',
-        children: [
-          { id: '3', title: 'Child' },
-        ],
+        children: [{ id: '3', title: 'Child' }],
       },
     ];
 
@@ -324,9 +322,7 @@ describe('preRenderFolders', () => {
   });
 
   it('should handle folders with empty title', () => {
-    const folders = [
-      { id: '1', title: '' },
-    ];
+    const folders = [{ id: '1', title: '' }];
 
     const result = preRenderFolders(folders);
 
@@ -334,9 +330,7 @@ describe('preRenderFolders', () => {
   });
 
   it('should handle folders with whitespace-only title', () => {
-    const folders = [
-      { id: '1', title: '   ' },
-    ];
+    const folders = [{ id: '1', title: '   ' }];
 
     const result = preRenderFolders(folders);
 

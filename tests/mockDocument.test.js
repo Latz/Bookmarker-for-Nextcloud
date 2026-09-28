@@ -13,7 +13,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { createMockDocument } from '../src/background/modules/mockDocument.js';
 
 describe('Mock Document Interface', () => {
-
   describe('querySelectorAll', () => {
     it('should handle a[rel=tag] selector', () => {
       const parsedData = {
@@ -24,7 +23,7 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -45,7 +44,7 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -67,11 +66,13 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
-      const results = mockDoc.querySelectorAll('script[type="application/ld+json"]');
+      const results = mockDoc.querySelectorAll(
+        'script[type="application/ld+json"]',
+      );
 
       expect(results).toHaveLength(2);
       expect(results[0].innerText).toBe('{"keywords": ["tech"]}');
@@ -87,7 +88,7 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -107,11 +108,13 @@ describe('Mock Document Interface', () => {
         githubTopics: ['JavaScript', 'TypeScript', 'React'],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
-      const results = mockDoc.querySelectorAll('a[data-ga-click="Topic, repository page"]');
+      const results = mockDoc.querySelectorAll(
+        'a[data-ga-click="Topic, repository page"]',
+      );
 
       expect(results).toHaveLength(3);
       expect(results[0].textContent).toBe('JavaScript');
@@ -135,8 +138,8 @@ describe('Mock Document Interface', () => {
           h3: ['Section'],
           h4: [],
           h5: ['Detail'],
-          h6: ['Small']
-        }
+          h6: ['Small'],
+        },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -167,12 +170,36 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [
-          { name: 'description', property: null, itemprop: null, httpEquiv: null, content: 'Page description' },
-          { name: null, property: 'og:description', itemprop: null, httpEquiv: null, content: 'OG description' },
-          { name: 'keywords', property: null, itemprop: null, httpEquiv: null, content: 'tech, web' },
-          { name: null, property: 'article:tag', itemprop: null, httpEquiv: null, content: 'article-tag' },
+          {
+            name: 'description',
+            property: null,
+            itemprop: null,
+            httpEquiv: null,
+            content: 'Page description',
+          },
+          {
+            name: null,
+            property: 'og:description',
+            itemprop: null,
+            httpEquiv: null,
+            content: 'OG description',
+          },
+          {
+            name: 'keywords',
+            property: null,
+            itemprop: null,
+            httpEquiv: null,
+            content: 'tech, web',
+          },
+          {
+            name: null,
+            property: 'article:tag',
+            itemprop: null,
+            httpEquiv: null,
+            content: 'article-tag',
+          },
         ],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -184,13 +211,17 @@ describe('Mock Document Interface', () => {
       expect(descResults[0].content).toBe('Page description');
 
       // Test property="og:description"
-      const ogResults = mockDoc.querySelectorAll('meta[property="og:description"]');
+      const ogResults = mockDoc.querySelectorAll(
+        'meta[property="og:description"]',
+      );
       expect(ogResults).toHaveLength(1);
       expect(ogResults[0].getAttribute('property')).toBe('og:description');
       expect(ogResults[0].content).toBe('OG description');
 
       // Test case-insensitive matching
-      const caseInsensitiveResults = mockDoc.querySelectorAll('meta[name="DESCRIPTION" i]');
+      const caseInsensitiveResults = mockDoc.querySelectorAll(
+        'meta[name="DESCRIPTION" i]',
+      );
       expect(caseInsensitiveResults).toHaveLength(1);
       expect(caseInsensitiveResults[0].content).toBe('Page description');
     });
@@ -204,7 +235,7 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -225,7 +256,7 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '{"props": {"page": "test"}}',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -245,7 +276,7 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -263,7 +294,7 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -281,7 +312,7 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -300,7 +331,7 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -320,11 +351,29 @@ describe('Mock Document Interface', () => {
         githubTopics: [],
         nextData: '',
         metaTags: [
-          { name: 'description', property: null, itemprop: null, httpEquiv: null, content: 'Test description' },
-          { name: null, property: 'og:description', itemprop: null, httpEquiv: null, content: 'OG description' },
-          { name: 'twitter:description', property: null, itemprop: null, httpEquiv: null, content: 'Twitter description' },
+          {
+            name: 'description',
+            property: null,
+            itemprop: null,
+            httpEquiv: null,
+            content: 'Test description',
+          },
+          {
+            name: null,
+            property: 'og:description',
+            itemprop: null,
+            httpEquiv: null,
+            content: 'OG description',
+          },
+          {
+            name: 'twitter:description',
+            property: null,
+            itemprop: null,
+            httpEquiv: null,
+            content: 'Twitter description',
+          },
         ],
-        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] }
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
       };
 
       const mockDoc = createMockDocument(parsedData);
@@ -354,11 +403,17 @@ describe('Mock Document Interface', () => {
       expect(description).toEqual(['Test description']);
 
       // Test getting og:description
-      const ogDescription = getMeta(mockDoc, { type: 'property', id: 'og:description' });
+      const ogDescription = getMeta(mockDoc, {
+        type: 'property',
+        id: 'og:description',
+      });
       expect(ogDescription).toEqual(['OG description']);
 
       // Test getting twitter:description
-      const twitterDescription = getMeta(mockDoc, { type: 'name', id: 'twitter:description' });
+      const twitterDescription = getMeta(mockDoc, {
+        type: 'name',
+        id: 'twitter:description',
+      });
       expect(twitterDescription).toEqual(['Twitter description']);
     });
   });

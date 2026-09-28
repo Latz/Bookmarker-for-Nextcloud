@@ -9,7 +9,7 @@ export default function getDescription(document) {
     { type: 'content', id: 'og:description' },
     { type: 'name', id: 'og:description' },
     { type: 'rel', id: 'search' },
-    { type: 'http-equiv', id: 'description' }
+    { type: 'http-equiv', id: 'description' },
   );
   if (description.length === 0) return '';
 

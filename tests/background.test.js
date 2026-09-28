@@ -100,7 +100,11 @@ vi.mock('../src/background/modules/zenMode.js', () => ({
 // Import after mocking
 import apiCall from '../src/lib/apiCall.js';
 import getData from '../src/background/modules/getData.js';
-import { store_data, getOption, createOldDatabase } from '../src/lib/storage.js';
+import {
+  store_data,
+  getOption,
+  createOldDatabase,
+} from '../src/lib/storage.js';
 import { notifyUser } from '../src/background/modules/notification.js';
 import getBrowserTheme from '../src/background/modules/getBrowserTheme.js';
 import { cacheGet, cacheTempAdd } from '../src/lib/cache.js';
@@ -161,13 +165,13 @@ describe('background.js', () => {
       expect(result).toBe(false);
 
       // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Verify apiCall was called with correct parameters
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        { url: 'https://example.com', title: 'Test' }
+        { url: 'https://example.com', title: 'Test' },
       );
 
       // Verify badge was set
@@ -199,13 +203,13 @@ describe('background.js', () => {
       await import('../src/background/background.js');
       messageListener(request, sender, sendResponse);
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Verify PUT method and bookmark ID in endpoint
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark/123',
         'PUT',
-        { url: 'https://example.com', title: 'Updated Test' }
+        { url: 'https://example.com', title: 'Updated Test' },
       );
     });
 
@@ -230,10 +234,13 @@ describe('background.js', () => {
       expect(result).toBe(true);
 
       // Wait for async operation
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(getData).toHaveBeenCalledWith({ url: 'https://example.com' });
-      expect(sendResponse).toHaveBeenCalledWith({ ok: true, url: 'https://example.com' });
+      expect(sendResponse).toHaveBeenCalledWith({
+        ok: true,
+        url: 'https://example.com',
+      });
     });
 
     it('should handle authorize message correctly', async () => {
@@ -278,7 +285,7 @@ describe('background.js', () => {
 
       expect(result).toBe(false);
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(chrome.scripting.executeScript).toHaveBeenCalledWith({
         target: { tabId: 123 },
@@ -299,7 +306,8 @@ describe('background.js', () => {
       });
 
       // Import zenMode module to mock it properly
-      const zenModeModule = await import('../src/background/modules/zenMode.js');
+      const zenModeModule =
+        await import('../src/background/modules/zenMode.js');
 
       await import('../src/background/background.js');
       const result = messageListener(request, sender, sendResponse);
@@ -345,12 +353,16 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // First call sets the save icon
-      expect(chrome.action.setBadgeText).toHaveBeenNthCalledWith(1, { text: '💾' });
+      expect(chrome.action.setBadgeText).toHaveBeenNthCalledWith(1, {
+        text: '💾',
+      });
       // Second call clears the badge
-      expect(chrome.action.setBadgeText).toHaveBeenNthCalledWith(2, { text: '' });
+      expect(chrome.action.setBadgeText).toHaveBeenNthCalledWith(2, {
+        text: '',
+      });
     });
 
     it('should store folder IDs after saving bookmark', async () => {
@@ -369,9 +381,11 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(store_data).toHaveBeenCalledWith('options', { folderIDs: [5, 10, 15] });
+      expect(store_data).toHaveBeenCalledWith('options', {
+        folderIDs: [5, 10, 15],
+      });
     });
 
     it('should notify user with API response', async () => {
@@ -393,7 +407,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(notifyUser).toHaveBeenCalledWith(mockResponse);
     });
@@ -488,7 +502,10 @@ describe('background.js', () => {
     });
 
     it('should not touch the keyword cache on a network failure (status -1)', async () => {
-      apiCall.mockResolvedValueOnce({ status: -1, statusText: 'Failed to fetch' });
+      apiCall.mockResolvedValueOnce({
+        status: -1,
+        statusText: 'Failed to fetch',
+      });
 
       const params = new URLSearchParams();
       params.append('tags[]', 'newKeyword1');
@@ -517,7 +534,9 @@ describe('background.js', () => {
     it('should not throw when the keyword cache lookup fails', async () => {
       apiCall.mockResolvedValueOnce({ status: 'success', data: { id: 123 } });
       cacheGet.mockRejectedValueOnce(new Error('Cache error'));
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       const params = new URLSearchParams();
       params.append('tags[]', 'newKeyword1');
@@ -556,7 +575,7 @@ describe('background.js', () => {
       // Import triggers init()
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(getBrowserTheme).toHaveBeenCalled();
       // Chrome renders the action icon at 16px (32px at 2x DPR) and downsamples
@@ -573,11 +592,13 @@ describe('background.js', () => {
     });
 
     it('should handle theme detection errors gracefully', async () => {
-      getBrowserTheme.mockRejectedValueOnce(new Error('Theme detection failed'));
+      getBrowserTheme.mockRejectedValueOnce(
+        new Error('Theme detection failed'),
+      );
 
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Should not throw, icon will use default
       expect(chrome.action.setIcon).not.toHaveBeenCalled();
@@ -586,7 +607,7 @@ describe('background.js', () => {
     it('should remove all context menus before creating new ones', async () => {
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(chrome.contextMenus.removeAll).toHaveBeenCalled();
     });
@@ -596,7 +617,7 @@ describe('background.js', () => {
 
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(chrome.contextMenus.create).toHaveBeenCalledWith({
         id: 'menuEnableZen',
@@ -610,7 +631,7 @@ describe('background.js', () => {
     it('should create Refresh Cache context menu', async () => {
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(chrome.contextMenus.create).toHaveBeenCalledWith({
         id: 'menuRefreshCache',
@@ -624,7 +645,7 @@ describe('background.js', () => {
 
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // The setZenModeMenu function should update the menu
       expect(chrome.contextMenus.update).toHaveBeenCalledWith('menuEnableZen', {
@@ -634,7 +655,9 @@ describe('background.js', () => {
     });
 
     it('should handle context menu creation errors gracefully', async () => {
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
 
       chrome.contextMenus.create.mockImplementationOnce(() => {
         throw new Error('Menu creation failed');
@@ -642,7 +665,7 @@ describe('background.js', () => {
 
       await import('../src/background/background.js');
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Should not throw, error is caught and logged
       expect(consoleLogSpy).toHaveBeenCalled();
@@ -661,7 +684,7 @@ describe('background.js', () => {
       load_data.mockResolvedValueOnce('https://nextcloud.example.com');
 
       await import('../src/background/background.js');
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
@@ -675,7 +698,7 @@ describe('background.js', () => {
       load_data.mockResolvedValueOnce(undefined);
 
       await import('../src/background/background.js');
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // apiCall should not have been called (no server = skip warmup)
       expect(apiCall).not.toHaveBeenCalled();
@@ -687,8 +710,10 @@ describe('background.js', () => {
       apiCall.mockRejectedValueOnce(new Error('Network error'));
 
       // Should not throw
-      await expect(import('../src/background/background.js')).resolves.not.toThrow();
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await expect(
+        import('../src/background/background.js'),
+      ).resolves.not.toThrow();
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
   });
 
@@ -696,10 +721,12 @@ describe('background.js', () => {
     beforeEach(async () => {
       // Capture context menu listener
       const listeners = [];
-      chrome.contextMenus.onClicked.addListener.mockImplementation((callback) => {
-        listeners.push(callback);
-        contextMenuListener = callback;
-      });
+      chrome.contextMenus.onClicked.addListener.mockImplementation(
+        (callback) => {
+          listeners.push(callback);
+          contextMenuListener = callback;
+        },
+      );
 
       await import('../src/background/background.js');
     });
@@ -709,7 +736,7 @@ describe('background.js', () => {
 
       contextMenuListener(info);
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cacheGet).toHaveBeenCalledWith('keywords', true);
       expect(cacheGet).toHaveBeenCalledWith('folders', true);
@@ -720,7 +747,7 @@ describe('background.js', () => {
 
       contextMenuListener(info);
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(createOldDatabase).toHaveBeenCalled();
     });
@@ -733,9 +760,11 @@ describe('background.js', () => {
 
       contextMenuListener(info);
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(store_data).toHaveBeenCalledWith('options', { cbx_enableZen: true });
+      expect(store_data).toHaveBeenCalledWith('options', {
+        cbx_enableZen: true,
+      });
       expect(chrome.contextMenus.update).toHaveBeenCalledWith('menuEnableZen', {
         title: '⭢Zen Mode',
         checked: true,
@@ -750,9 +779,11 @@ describe('background.js', () => {
 
       contextMenuListener(info);
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(store_data).toHaveBeenCalledWith('options', { cbx_enableZen: false });
+      expect(store_data).toHaveBeenCalledWith('options', {
+        cbx_enableZen: false,
+      });
       expect(chrome.contextMenus.update).toHaveBeenCalledWith('menuEnableZen', {
         title: 'Zen Mode',
         checked: false,
@@ -815,7 +846,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(chrome.scripting.executeScript).toHaveBeenCalled();
     });
@@ -838,7 +869,7 @@ describe('background.js', () => {
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(chrome.scripting.executeScript).toHaveBeenCalledWith({
         target: { tabId: 456 },
@@ -856,13 +887,15 @@ describe('background.js', () => {
         messageListener = callback;
       });
 
-      chrome.scripting.executeScript.mockRejectedValueOnce(new Error('Script execution failed'));
+      chrome.scripting.executeScript.mockRejectedValueOnce(
+        new Error('Script execution failed'),
+      );
 
       await import('../src/background/background.js');
 
       messageListener(request, {}, vi.fn());
 
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Should log the error but not throw
       expect(console.log).toHaveBeenCalled();
@@ -904,7 +937,7 @@ describe('background.js', () => {
         expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
 
         // Wait for the async operation to complete (and fail)
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
 
         // Note: The badge is NOT cleared because the error happens during apiCall
         // before store_data is called. This is expected behavior - the badge
@@ -912,7 +945,7 @@ describe('background.js', () => {
       } finally {
         // Restore original handler
         process.removeAllListeners('unhandledRejection');
-        originalHandler.forEach(h => process.on('unhandledRejection', h));
+        originalHandler.forEach((h) => process.on('unhandledRejection', h));
       }
     });
 
@@ -933,7 +966,8 @@ describe('background.js', () => {
         // Third call is for checkBookmark in getData
         // Fourth call is for apiCall in saveBookmark
         const apiCallModule = await import('../src/lib/apiCall.js');
-        apiCallModule.default = vi.fn()
+        apiCallModule.default = vi
+          .fn()
           .mockResolvedValueOnce({ status: 'success', data: [] }) // cacheGet('keywords')
           .mockResolvedValueOnce({ status: 'success', data: [] }) // cacheGet('folders')
           .mockResolvedValueOnce({ status: 'success', data: [] }) // checkBookmark
@@ -956,7 +990,7 @@ describe('background.js', () => {
 
         messageListener(request, {}, vi.fn());
 
-        await new Promise(resolve => setTimeout(resolve, 0));
+        await new Promise((resolve) => setTimeout(resolve, 0));
 
         // notifyUser is called AFTER store_data in the code, so it will NOT be called
         // if store_data fails
@@ -967,7 +1001,7 @@ describe('background.js', () => {
       } finally {
         // Restore original handler
         process.removeAllListeners('unhandledRejection');
-        originalHandler.forEach(h => process.on('unhandledRejection', h));
+        originalHandler.forEach((h) => process.on('unhandledRejection', h));
       }
     });
   });
@@ -975,7 +1009,8 @@ describe('background.js', () => {
   describe('Integration tests', () => {
     it('should handle multiple message types in sequence', async () => {
       // Import zenMode module to spy on it
-      const zenModeModule = await import('../src/background/modules/zenMode.js');
+      const zenModeModule =
+        await import('../src/background/modules/zenMode.js');
 
       chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
         messageListener = callback;

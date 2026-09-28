@@ -34,13 +34,15 @@
  */
 export function extractPageData(headingLevel) {
   try {
-    const metaTags = Array.from(document.querySelectorAll('meta')).map((meta) => ({
-      name: meta.getAttribute('name'),
-      property: meta.getAttribute('property'),
-      itemprop: meta.getAttribute('itemprop'),
-      httpEquiv: meta.getAttribute('http-equiv'),
-      content: meta.getAttribute('content'),
-    }));
+    const metaTags = Array.from(document.querySelectorAll('meta')).map(
+      (meta) => ({
+        name: meta.getAttribute('name'),
+        property: meta.getAttribute('property'),
+        itemprop: meta.getAttribute('itemprop'),
+        httpEquiv: meta.getAttribute('http-equiv'),
+        content: meta.getAttribute('content'),
+      }),
+    );
 
     const aRelTag = Array.from(document.querySelectorAll('a[rel=tag]')).map(
       (a) => a.textContent,
@@ -73,9 +75,9 @@ export function extractPageData(headingLevel) {
           ...Array.from(document.querySelectorAll('a[href^="/topics/"]')).map(
             (a) => a.textContent.trim(),
           ),
-          ...Array.from(
-            document.querySelectorAll('a[class*="topic-tag"]'),
-          ).map((a) => a.textContent.trim()),
+          ...Array.from(document.querySelectorAll('a[class*="topic-tag"]')).map(
+            (a) => a.textContent.trim(),
+          ),
           ...Array.from(
             document.querySelectorAll(
               'a[data-view-component="true"][title^="Topic:"]',
@@ -90,7 +92,8 @@ export function extractPageData(headingLevel) {
       ),
     ];
 
-    const nextData = document.getElementById('__NEXT_DATA__')?.textContent || '';
+    const nextData =
+      document.getElementById('__NEXT_DATA__')?.textContent || '';
 
     const description = Array.from(
       document.querySelectorAll(

@@ -34,7 +34,9 @@ export async function cacheGet(type, forceServer = false) {
   // Keywords entries written before failed fetches stopped being cached can
   // hold `undefined`; treat any non-array value as a miss so they self-heal.
   const staleFormat =
-    (type === 'folders' || type === 'keywords') && element && !Array.isArray(element.value);
+    (type === 'folders' || type === 'keywords') &&
+    element &&
+    !Array.isArray(element.value);
 
   // data was not found in cache -> load from server
   if (

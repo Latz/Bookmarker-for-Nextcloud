@@ -114,7 +114,9 @@ describe('getBrowserTheme module', () => {
     it('should handle theme detection errors gracefully', async () => {
       chrome.offscreen.hasDocument.mockResolvedValue(false);
       chrome.runtime.getContexts.mockResolvedValue([]);
-      chrome.runtime.sendMessage.mockRejectedValue(new Error('Theme detection failed'));
+      chrome.runtime.sendMessage.mockRejectedValue(
+        new Error('Theme detection failed'),
+      );
 
       const theme = await getBrowserTheme();
 
@@ -126,8 +128,8 @@ describe('getBrowserTheme module', () => {
       chrome.runtime.getContexts.mockResolvedValue([]);
 
       // Mock slow response
-      chrome.runtime.sendMessage.mockImplementation(() =>
-        new Promise(resolve => setTimeout(resolve, 10000))
+      chrome.runtime.sendMessage.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 10000)),
       );
 
       const theme = await getBrowserTheme();
@@ -144,11 +146,13 @@ describe('getBrowserTheme module', () => {
       chrome.runtime.sendMessage.mockResolvedValue(true);
 
       // Make multiple concurrent requests
-      const promises = Array(5).fill(null).map(() => getBrowserTheme());
+      const promises = Array(5)
+        .fill(null)
+        .map(() => getBrowserTheme());
       const results = await Promise.all(promises);
 
       // All should return the same result (dark, since browser is light)
-      expect(results.every(t => t === 'dark')).toBe(true);
+      expect(results.every((t) => t === 'dark')).toBe(true);
 
       // Should only create one offscreen document (deduplication)
       // Note: Each call will create and close its own, but the inflightRequest prevents duplicates
@@ -176,7 +180,9 @@ describe('getBrowserTheme module', () => {
 
       await getBrowserTheme();
 
-      expect(chrome.storage.session.set).toHaveBeenCalledWith({ browserTheme: 'dark' });
+      expect(chrome.storage.session.set).toHaveBeenCalledWith({
+        browserTheme: 'dark',
+      });
     });
 
     it('should fall through to full detection when session storage is empty', async () => {
@@ -203,7 +209,7 @@ describe('getBrowserTheme module', () => {
       expect(chrome.offscreen.createDocument).toHaveBeenCalledWith(
         expect.objectContaining({
           reasons: ['MATCH_MEDIA'],
-        })
+        }),
       );
     });
 
@@ -231,7 +237,9 @@ describe('getBrowserTheme module', () => {
 
   describe('Error handling edge cases', () => {
     it('should handle getContexts failure', async () => {
-      chrome.runtime.getContexts.mockRejectedValue(new Error('Context check failed'));
+      chrome.runtime.getContexts.mockRejectedValue(
+        new Error('Context check failed'),
+      );
 
       // Should still work by attempting to create document
       // Mock returns true (browser is light), so function returns 'dark' for icon contrast
@@ -254,15 +262,17 @@ describe('getBrowserTheme module', () => {
 
     it('should handle multiple rapid requests without race conditions', async () => {
       chrome.runtime.getContexts.mockResolvedValue([]);
-      chrome.runtime.sendMessage.mockImplementation(() =>
-        new Promise(resolve => setTimeout(() => resolve(true), 50))
+      chrome.runtime.sendMessage.mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve(true), 50)),
       );
 
-      const promises = Array(10).fill(null).map(() => getBrowserTheme());
+      const promises = Array(10)
+        .fill(null)
+        .map(() => getBrowserTheme());
       const results = await Promise.all(promises);
 
       // All should succeed - mock returns true (browser is light), so 'dark' for icon contrast
-      expect(results.every(r => r === 'dark')).toBe(true);
+      expect(results.every((r) => r === 'dark')).toBe(true);
     });
   });
 });

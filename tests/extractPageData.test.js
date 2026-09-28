@@ -40,10 +40,16 @@ describe('extractPageData', () => {
 
     expect(result.metaTags).toHaveLength(7);
     expect(result.metaTags).toContainEqual(
-      expect.objectContaining({ name: 'description', content: 'Page description' }),
+      expect.objectContaining({
+        name: 'description',
+        content: 'Page description',
+      }),
     );
     expect(result.metaTags).toContainEqual(
-      expect.objectContaining({ property: 'og:description', content: 'OG description' }),
+      expect.objectContaining({
+        property: 'og:description',
+        content: 'OG description',
+      }),
     );
     // description: name="description", property="og:description",
     // name="twitter:description" -- in that selector order.
@@ -219,7 +225,9 @@ describe('extractPageData', () => {
 
       const result = extractPageData(3);
 
-      expect(result.bruteForceKeywords).toEqual(['Dream Chaser|NASA|spaceplane']);
+      expect(result.bruteForceKeywords).toEqual([
+        'Dream Chaser|NASA|spaceplane',
+      ]);
     });
 
     it('returns an empty array when the brute-force pattern is absent', () => {

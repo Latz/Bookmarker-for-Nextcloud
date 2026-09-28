@@ -58,9 +58,9 @@ describe('zenMode', () => {
     it('should save bookmark with basic data', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -70,12 +70,12 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('title=Test+Page')
+        expect.stringContaining('title=Test+Page'),
       );
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('url=https%3A%2F%2Fexample.com')
+        expect.stringContaining('url=https%3A%2F%2Fexample.com'),
       );
       expect(notifyUser).toHaveBeenCalledWith({ status: 'success' });
     });
@@ -83,9 +83,9 @@ describe('zenMode', () => {
     it('should set loading badge when starting', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -96,9 +96,9 @@ describe('zenMode', () => {
     it('should clear loading badge when complete', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -109,14 +109,17 @@ describe('zenMode', () => {
     it('should handle API errors gracefully', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'error', statusText: 'API error' });
 
       await zenMode();
 
-      expect(notifyUser).toHaveBeenCalledWith({ status: 'error', statusText: 'API error' });
+      expect(notifyUser).toHaveBeenCalledWith({
+        status: 'error',
+        statusText: 'API error',
+      });
     });
   });
 
@@ -124,9 +127,9 @@ describe('zenMode', () => {
     it('should include selected folders in request', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(['folder1', 'folder2'])  // zenFolderIDs
-        .mockResolvedValueOnce(undefined)               // input_zenKeywords
-        .mockResolvedValueOnce(true);                   // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(['folder1', 'folder2']) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -135,16 +138,16 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('folders%5B%5D=folder1&folders%5B%5D=folder2')
+        expect.stringContaining('folders%5B%5D=folder1&folders%5B%5D=folder2'),
       );
     });
 
     it('should not include folders parameter when none selected', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -152,16 +155,16 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.not.stringContaining('folders[]=')
+        expect.not.stringContaining('folders[]='),
       );
     });
 
     it('should handle empty folder array', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce([])          // zenFolderIDs (empty)
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce([]) // zenFolderIDs (empty)
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -170,7 +173,7 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.not.stringContaining('folders[]=')
+        expect.not.stringContaining('folders[]='),
       );
     });
   });
@@ -179,9 +182,9 @@ describe('zenMode', () => {
     it('should include zen keywords in request', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)           // zenFolderIDs
-        .mockResolvedValueOnce(['zen1', 'zen2'])    // input_zenKeywords
-        .mockResolvedValueOnce(true);               // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(['zen1', 'zen2']) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -190,16 +193,16 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('tags%5B%5D=zen1&tags%5B%5D=zen2')
+        expect.stringContaining('tags%5B%5D=zen1&tags%5B%5D=zen2'),
       );
     });
 
     it('should include data keywords in request', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -207,16 +210,16 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('tags%5B%5D=keyword1&tags%5B%5D=keyword2')
+        expect.stringContaining('tags%5B%5D=keyword1&tags%5B%5D=keyword2'),
       );
     });
 
     it('should combine zen keywords and data keywords', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(['zen1'])    // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(['zen1']) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -236,9 +239,9 @@ describe('zenMode', () => {
       };
       getData.mockResolvedValue(emptyData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(['zen1'])    // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(['zen1']) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -246,7 +249,7 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('tags%5B%5D=zen1')
+        expect.stringContaining('tags%5B%5D=zen1'),
       );
     });
 
@@ -259,9 +262,9 @@ describe('zenMode', () => {
       };
       getData.mockResolvedValue(emptyData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -281,9 +284,9 @@ describe('zenMode', () => {
       };
       getData.mockResolvedValue(specialData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -291,7 +294,7 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('title=Test+%26+%22Special%22+%3CPage%3E')
+        expect.stringContaining('title=Test+%26+%22Special%22+%3CPage%3E'),
       );
     });
 
@@ -304,9 +307,9 @@ describe('zenMode', () => {
       };
       getData.mockResolvedValue(specialData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -314,7 +317,9 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('url=https%3A%2F%2Fexample.com%2Fpath%3Fquery%3Dvalue%26other%3D123')
+        expect.stringContaining(
+          'url=https%3A%2F%2Fexample.com%2Fpath%3Fquery%3Dvalue%26other%3D123',
+        ),
       );
     });
 
@@ -327,9 +332,9 @@ describe('zenMode', () => {
       };
       getData.mockResolvedValue(specialData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -337,7 +342,9 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('description=Test+%26+%22description%22+with+%3Cspecial%3E+chars')
+        expect.stringContaining(
+          'description=Test+%26+%22description%22+with+%3Cspecial%3E+chars',
+        ),
       );
     });
   });
@@ -346,9 +353,9 @@ describe('zenMode', () => {
     it('should include page=-1 parameter', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -356,16 +363,16 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.stringContaining('page=-1')
+        expect.stringContaining('page=-1'),
       );
     });
 
     it('should use POST method', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -373,16 +380,16 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.any(String)
+        expect.any(String),
       );
     });
 
     it('should use correct endpoint', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -390,7 +397,7 @@ describe('zenMode', () => {
       expect(apiCall).toHaveBeenCalledWith(
         'index.php/apps/bookmarks/public/rest/v2/bookmark',
         'POST',
-        expect.any(String)
+        expect.any(String),
       );
     });
   });
@@ -399,9 +406,9 @@ describe('zenMode', () => {
     it('should call notifyUser when cbx_zenDisplayNotification is true', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -412,9 +419,9 @@ describe('zenMode', () => {
     it('should NOT call notifyUser for success when cbx_zenDisplayNotification is false', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(false);      // cbx_zenDisplayNotification
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(false); // cbx_zenDisplayNotification
       apiCall.mockResolvedValue({ status: 'success' });
 
       await zenMode();
@@ -427,12 +434,18 @@ describe('zenMode', () => {
       load_data
         .mockResolvedValueOnce(undefined)
         .mockResolvedValueOnce(undefined)
-        .mockResolvedValueOnce(false);      // notifications disabled
-      apiCall.mockResolvedValue({ status: 'error', statusText: 'Server error' });
+        .mockResolvedValueOnce(false); // notifications disabled
+      apiCall.mockResolvedValue({
+        status: 'error',
+        statusText: 'Server error',
+      });
 
       await zenMode();
 
-      expect(notifyUser).toHaveBeenCalledWith({ status: 'error', statusText: 'Server error' });
+      expect(notifyUser).toHaveBeenCalledWith({
+        status: 'error',
+        statusText: 'Server error',
+      });
     });
   });
 
@@ -452,7 +465,9 @@ describe('zenMode', () => {
 
     it('should handle load_data error for keywords', async () => {
       getData.mockResolvedValue(mockData);
-      load_data.mockResolvedValueOnce(undefined).mockRejectedValue(new Error('Storage error'));
+      load_data
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValue(new Error('Storage error'));
 
       await expect(zenMode()).rejects.toThrow('Storage error');
     });
@@ -460,9 +475,9 @@ describe('zenMode', () => {
     it('should handle apiCall error', async () => {
       getData.mockResolvedValue(mockData);
       load_data
-        .mockResolvedValueOnce(undefined)   // zenFolderIDs
-        .mockResolvedValueOnce(undefined)   // input_zenKeywords
-        .mockResolvedValueOnce(true);       // cbx_zenDisplayNotification (default: on)
+        .mockResolvedValueOnce(undefined) // zenFolderIDs
+        .mockResolvedValueOnce(undefined) // input_zenKeywords
+        .mockResolvedValueOnce(true); // cbx_zenDisplayNotification (default: on)
       apiCall.mockRejectedValue(new Error('Network error'));
 
       await expect(zenMode()).rejects.toThrow('Network error');

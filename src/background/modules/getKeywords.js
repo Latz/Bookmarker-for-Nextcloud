@@ -69,7 +69,9 @@ async function reduceKeywords(
   if (cachedAllKeywords instanceof Set) {
     lookup = cachedAllKeywords;
   } else {
-    lookup = buildKeywordLookup(cachedAllKeywords ?? (await cacheGet('keywords')));
+    lookup = buildKeywordLookup(
+      cachedAllKeywords ?? (await cacheGet('keywords')),
+    );
   }
   if (lookup === null) return [];
 
@@ -206,8 +208,7 @@ function extractMetaKeywords(document) {
     const dividers = [',', ';', '&amp;', ' '];
     if (dividers.some((v) => metaKeywords[0].includes(v))) {
       // https://www.heise.de
-      if (metaKeywords[0].includes(','))
-        keywords = metaKeywords[0].split(',');
+      if (metaKeywords[0].includes(',')) keywords = metaKeywords[0].split(',');
       else if (metaKeywords[0].includes(';'))
         keywords = metaKeywords[0].split(';');
       else if (metaKeywords[0].includes(' '))

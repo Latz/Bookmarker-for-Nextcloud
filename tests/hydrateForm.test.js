@@ -29,7 +29,9 @@ vi.mock('../src/lib/storage.js', () => {
   // Adapter: hydrateForm now uses getOptions(), but tests mock getOption individually.
   // getOptions delegates to getOption so all existing assertions still hold.
   const getOptions = vi.fn(async (keys) => {
-    const entries = await Promise.all(keys.map(async (key) => [key, await getOption(key)]));
+    const entries = await Promise.all(
+      keys.map(async (key) => [key, await getOption(key)]),
+    );
     return Object.fromEntries(entries);
   });
   return { getOption, getOptions };
@@ -55,11 +57,15 @@ describe('createForm', () => {
       innerHTML: '',
       textContent: '',
       replaceChildren: vi.fn(function (...nodes) {
-        mockSubMessage.innerHTML = nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        mockSubMessage.innerHTML = nodes
+          .map((n) => (typeof n === 'string' ? n : (n.textContent ?? '')))
+          .join('');
         mockSubMessage.textContent = mockSubMessage.innerHTML;
       }),
       append: vi.fn(function (...nodes) {
-        const text = nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        const text = nodes
+          .map((n) => (typeof n === 'string' ? n : (n.textContent ?? '')))
+          .join('');
         mockSubMessage.innerHTML += text;
         mockSubMessage.textContent += text;
       }),
@@ -70,11 +76,19 @@ describe('createForm', () => {
     };
 
     const createDOMElement = (tag) => {
-      const el = { tagName: tag, className: '', textContent: '', id: '', innerHTML: '' };
+      const el = {
+        tagName: tag,
+        className: '',
+        textContent: '',
+        id: '',
+        innerHTML: '',
+      };
       el.setAttribute = vi.fn();
       el.appendChild = vi.fn();
       el.append = vi.fn((...nodes) => {
-        el.textContent += nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        el.textContent += nodes
+          .map((n) => (typeof n === 'string' ? n : (n.textContent ?? '')))
+          .join('');
       });
       return el;
     };
@@ -82,10 +96,14 @@ describe('createForm', () => {
     globalThis.document = {
       getElementById: vi.fn((id) => {
         switch (id) {
-          case 'formData': return mockForm;
-          case 'sub_message': return mockSubMessage;
-          case 'saveBookmark': return mockSaveButton;
-          default: return createMockElement();
+          case 'formData':
+            return mockForm;
+          case 'sub_message':
+            return mockSubMessage;
+          case 'saveBookmark':
+            return mockSaveButton;
+          default:
+            return createMockElement();
         }
       }),
       createElement: vi.fn((tag) => createDOMElement(tag)),
@@ -348,11 +366,15 @@ describe('hydrateForm', () => {
       innerHTML: '',
       textContent: '',
       replaceChildren: vi.fn(function (...nodes) {
-        mockSubMessage.innerHTML = nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        mockSubMessage.innerHTML = nodes
+          .map((n) => (typeof n === 'string' ? n : (n.textContent ?? '')))
+          .join('');
         mockSubMessage.textContent = mockSubMessage.innerHTML;
       }),
       append: vi.fn(function (...nodes) {
-        const text = nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        const text = nodes
+          .map((n) => (typeof n === 'string' ? n : (n.textContent ?? '')))
+          .join('');
         mockSubMessage.innerHTML += text;
         mockSubMessage.textContent += text;
       }),
@@ -368,11 +390,19 @@ describe('hydrateForm', () => {
     });
 
     const createDOMElement = (tag) => {
-      const el = { tagName: tag, className: '', textContent: '', id: '', innerHTML: '' };
+      const el = {
+        tagName: tag,
+        className: '',
+        textContent: '',
+        id: '',
+        innerHTML: '',
+      };
       el.setAttribute = vi.fn();
       el.appendChild = vi.fn();
       el.append = vi.fn((...nodes) => {
-        el.textContent += nodes.map((n) => (typeof n === 'string' ? n : n.textContent ?? '')).join('');
+        el.textContent += nodes
+          .map((n) => (typeof n === 'string' ? n : (n.textContent ?? '')))
+          .join('');
       });
       return el;
     };
@@ -380,13 +410,20 @@ describe('hydrateForm', () => {
     globalThis.document = {
       getElementById: vi.fn((id) => {
         switch (id) {
-          case 'url': return mockUrlInput;
-          case 'title': return mockTitleInput;
-          case 'description': return mockDescriptionInput;
-          case 'bookmarkID': return mockBookmarkIdInput;
-          case 'folders': return mockFoldersSelect;
-          case 'sub_message': return mockSubMessage;
-          default: return createLocalMockElement();
+          case 'url':
+            return mockUrlInput;
+          case 'title':
+            return mockTitleInput;
+          case 'description':
+            return mockDescriptionInput;
+          case 'bookmarkID':
+            return mockBookmarkIdInput;
+          case 'folders':
+            return mockFoldersSelect;
+          case 'sub_message':
+            return mockSubMessage;
+          default:
+            return createLocalMockElement();
         }
       }),
       createElement: vi.fn((tag) => createDOMElement(tag)),
@@ -418,7 +455,12 @@ describe('hydrateForm', () => {
   it('should set URL value', async () => {
     getOption.mockResolvedValue(false);
 
-    const data = { url: 'https://example.com', title: 'Test', bookmarkID: 1, checkBookmark: { ok: true } };
+    const data = {
+      url: 'https://example.com',
+      title: 'Test',
+      bookmarkID: 1,
+      checkBookmark: { ok: true },
+    };
     await hydrateForm(data);
 
     expect(mockUrlInput.value).toBe('https://example.com');
@@ -427,7 +469,12 @@ describe('hydrateForm', () => {
   it('should set title value', async () => {
     getOption.mockResolvedValue(false);
 
-    const data = { url: 'https://example.com', title: 'Test Title', bookmarkID: 1, checkBookmark: { ok: true } };
+    const data = {
+      url: 'https://example.com',
+      title: 'Test Title',
+      bookmarkID: 1,
+      checkBookmark: { ok: true },
+    };
     await hydrateForm(data);
 
     expect(mockTitleInput.value).toBe('Test Title');
@@ -436,7 +483,12 @@ describe('hydrateForm', () => {
   it('should set bookmark ID value', async () => {
     getOption.mockResolvedValue(false);
 
-    const data = { url: 'https://example.com', title: 'Test', bookmarkID: 123, checkBookmark: { ok: true } };
+    const data = {
+      url: 'https://example.com',
+      title: 'Test',
+      bookmarkID: 123,
+      checkBookmark: { ok: true },
+    };
     await hydrateForm(data);
 
     expect(mockBookmarkIdInput.value).toBe(123);
@@ -451,7 +503,13 @@ describe('hydrateForm', () => {
       return Promise.resolve(options[key]);
     });
 
-    const data = { url: 'https://example.com', title: 'Test', bookmarkID: 1, description: 'Test description', checkBookmark: { ok: true } };
+    const data = {
+      url: 'https://example.com',
+      title: 'Test',
+      bookmarkID: 1,
+      description: 'Test description',
+      checkBookmark: { ok: true },
+    };
     await hydrateForm(data);
 
     expect(mockDescriptionInput.value).toBe('Test description');
@@ -466,7 +524,13 @@ describe('hydrateForm', () => {
       return Promise.resolve(options[key]);
     });
 
-    const data = { url: 'https://example.com', title: 'Test', bookmarkID: 1, description: 'Test description', checkBookmark: { ok: true } };
+    const data = {
+      url: 'https://example.com',
+      title: 'Test',
+      bookmarkID: 1,
+      description: 'Test description',
+      checkBookmark: { ok: true },
+    };
     await hydrateForm(data);
 
     expect(mockDescriptionInput.value).toBe('');
@@ -481,7 +545,13 @@ describe('hydrateForm', () => {
       return Promise.resolve(options[key]);
     });
 
-    const data = { url: 'https://example.com', title: 'Test', bookmarkID: 1, description: 'Test description', checkBookmark: { ok: true } };
+    const data = {
+      url: 'https://example.com',
+      title: 'Test',
+      bookmarkID: 1,
+      description: 'Test description',
+      checkBookmark: { ok: true },
+    };
     await hydrateForm(data);
 
     expect(mockDescriptionInput.value).toBe('');
@@ -490,7 +560,13 @@ describe('hydrateForm', () => {
   it('should call fillKeywords with data keywords', async () => {
     getOption.mockResolvedValue(false);
 
-    const data = { url: 'https://example.com', title: 'Test', bookmarkID: 1, keywords: ['tag1', 'tag2'], checkBookmark: { ok: true } };
+    const data = {
+      url: 'https://example.com',
+      title: 'Test',
+      bookmarkID: 1,
+      keywords: ['tag1', 'tag2'],
+      checkBookmark: { ok: true },
+    };
     await hydrateForm(data);
 
     expect(fillKeywords).toHaveBeenCalledWith(['tag1', 'tag2']);
@@ -499,7 +575,13 @@ describe('hydrateForm', () => {
   it('should call fillKeywords even with empty keywords array', async () => {
     getOption.mockResolvedValue(false);
 
-    const data = { url: 'https://example.com', title: 'Test', bookmarkID: 1, keywords: [], checkBookmark: { ok: true } };
+    const data = {
+      url: 'https://example.com',
+      title: 'Test',
+      bookmarkID: 1,
+      keywords: [],
+      checkBookmark: { ok: true },
+    };
     await hydrateForm(data);
 
     expect(fillKeywords).toHaveBeenCalledWith([]);
@@ -508,7 +590,13 @@ describe('hydrateForm', () => {
   it('should call fillFolders with data folders', async () => {
     getOption.mockResolvedValue(false);
 
-    const data = { url: 'https://example.com', title: 'Test', bookmarkID: 1, folders: ['1', '2'], checkBookmark: { ok: true } };
+    const data = {
+      url: 'https://example.com',
+      title: 'Test',
+      bookmarkID: 1,
+      folders: ['1', '2'],
+      checkBookmark: { ok: true },
+    };
     await hydrateForm(data);
 
     expect(fillFolders).toHaveBeenCalledWith(mockFoldersSelect, ['1', '2']);
@@ -528,7 +616,9 @@ describe('hydrateForm', () => {
     };
     await hydrateForm(data);
 
-    expect(document.getElementById('sub_message').textContent).toContain('Already bookmarked');
+    expect(document.getElementById('sub_message').textContent).toContain(
+      'Already bookmarked',
+    );
   });
 
   it('should show modified date when added and lastmodified differ', async () => {

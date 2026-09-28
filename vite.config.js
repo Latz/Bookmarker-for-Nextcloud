@@ -20,15 +20,12 @@ function copyLoginHtmlPlugin() {
         copyFileSync(srcPath, destPath);
         console.log('Copied login.html to dist/login/login.html');
       }
-    }
+    },
   };
 }
 
 export default defineConfig(({ mode }) => ({
-  plugins: [
-    crx({ manifest }),
-    copyLoginHtmlPlugin()
-  ],
+  plugins: [crx({ manifest }), copyLoginHtmlPlugin()],
 
   build: {
     outDir: 'dist',
@@ -43,22 +40,22 @@ export default defineConfig(({ mode }) => ({
         // Manually add files not in manifest
         displayJson: 'src/options/displayJson.html',
         login: 'src/login/login.html',
-        offscreen: 'src/background/modules/offscreen/offscreen.html'
-      }
-    }
+        offscreen: 'src/background/modules/offscreen/offscreen.html',
+      },
+    },
   },
 
   resolve: {
     alias: {
-      '@': '/src'
-    }
+      '@': '/src',
+    },
   },
 
   server: {
     port: 5173,
     strictPort: true,
     hmr: {
-      port: 5173
-    }
-  }
+      port: 5173,
+    },
+  },
 }));

@@ -12,7 +12,7 @@
   <body>
     <div id="header">
       <h1
-        class="z-0 mb-10 mt-0 pt-[40px] text-center text-5xl font-medium leading-tight text-sky-400 text-wrap-balance"
+        class="text-wrap-balance z-0 mt-0 mb-10 pt-[40px] text-center text-5xl leading-tight font-medium text-sky-400"
         i18n-data="optionsheader"
       >
         Options - Bookmarker for Nextcloud
@@ -23,7 +23,7 @@
       <div id="clickarea">
         <div
           id="tabs"
-          class="tabs tabs-border tabs-lg pb-2 hover:accent-primary"
+          class="tabs tabs-border tabs-lg hover:accent-primary pb-2"
         >
           <a
             id="tab_basic"
@@ -31,19 +31,14 @@
             i18n-data="basic"
             >Basic</a
           >
-          <a id="tab_zen" class="tab-border tab-lg tab" i18n-data="zen"
-            >Zen</a
-          >
+          <a id="tab_zen" class="tab-border tab-lg tab" i18n-data="zen">Zen</a>
           <a
             id="tab_advanced"
             class="tab-border tab-lg tab"
             i18n-data="advanced"
             >Advanced</a
           >
-          <a
-            id="tab_dev"
-            class="tab-border tab-lg tab"
-            i18n-data="development"
+          <a id="tab_dev" class="tab-border tab-lg tab" i18n-data="development"
             >Development</a
           >
         </div>
@@ -101,7 +96,9 @@
                 />
               </div>
               <div>
-                <label for="cbx_enableZen" i18n-data="enableZen">Enable Zen Mode</label>
+                <label for="cbx_enableZen" i18n-data="enableZen"
+                  >Enable Zen Mode</label
+                >
               </div>
               <div>
                 <input
@@ -115,10 +112,13 @@
                 <label
                   for="cbx_zenDisplayNotification"
                   i18n-data="zenDisplayNotification"
-                >Display notification in Zen Mode</label>
+                  >Display notification in Zen Mode</label
+                >
               </div>
               <div class="mt-2 self-center p-1">
-                <label for="input_zenKeywords" i18n-data="zenkeywords">Zen Keywords</label>
+                <label for="input_zenKeywords" i18n-data="zenkeywords"
+                  >Zen Keywords</label
+                >
               </div>
               <div class="self-center p-1">
                 <input
@@ -151,7 +151,9 @@
                 id="cbx_alreadyStored"
                 class="toggle toggle-info toggle-xs"
               />
-              <label i18n-data="alreadyStored" for="cbx_alreadyStored">Check for stored bookmarks</label>
+              <label i18n-data="alreadyStored" for="cbx_alreadyStored"
+                >Check for stored bookmarks</label
+              >
             </div>
             <div>
               <input
@@ -177,7 +179,9 @@
                 id="cbx_showKeywords"
                 class="toggle toggle-info toggle-xs"
               />
-              <label i18n-data="showKeywords" for="cbx_showKeywords">Show Keywords</label>
+              <label i18n-data="showKeywords" for="cbx_showKeywords"
+                >Show Keywords</label
+              >
             </div>
             <div>
               <input
@@ -185,10 +189,8 @@
                 id="cbx_extendedKeywords"
                 class="toggle toggle-info toggle-xs"
               />
-              <label
-                i18n-data="extendedKeywords"
-                for="cbx_extendedKeywords"
-              >User extended keyword detection</label
+              <label i18n-data="extendedKeywords" for="cbx_extendedKeywords"
+                >User extended keyword detection</label
               ><br />
               <div class="flex flex-row">
                 <label

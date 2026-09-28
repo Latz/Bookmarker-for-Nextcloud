@@ -69,8 +69,12 @@ describe('stringSimilarity.js', () => {
       });
 
       it('should be case-sensitive when option is set', () => {
-        expect(calculateSimilarity('Test', 'test', { caseSensitive: true })).toBeLessThan(1.0);
-        expect(calculateSimilarity('HELLO', 'hello', { caseSensitive: true })).toBeLessThan(1.0);
+        expect(
+          calculateSimilarity('Test', 'test', { caseSensitive: true }),
+        ).toBeLessThan(1.0);
+        expect(
+          calculateSimilarity('HELLO', 'hello', { caseSensitive: true }),
+        ).toBeLessThan(1.0);
       });
     });
 
@@ -81,7 +85,9 @@ describe('stringSimilarity.js', () => {
       });
 
       it('should not trim when trim option is false', () => {
-        expect(calculateSimilarity('  test  ', 'test', { trim: false })).toBeLessThan(1.0);
+        expect(
+          calculateSimilarity('  test  ', 'test', { trim: false }),
+        ).toBeLessThan(1.0);
       });
     });
 
@@ -202,8 +208,12 @@ describe('stringSimilarity.js', () => {
 
     describe('Options', () => {
       it('should pass options to calculateSimilarity', () => {
-        expect(isSimilar('TEST', 'test', 0.5, { caseSensitive: true })).toBe(false);
-        expect(isSimilar('TEST', 'test', 0.5, { caseSensitive: false })).toBe(true);
+        expect(isSimilar('TEST', 'test', 0.5, { caseSensitive: true })).toBe(
+          false,
+        );
+        expect(isSimilar('TEST', 'test', 0.5, { caseSensitive: false })).toBe(
+          true,
+        );
       });
     });
   });
@@ -215,7 +225,9 @@ describe('stringSimilarity.js', () => {
       });
 
       it('should throw TypeError when candidates is not an array', () => {
-        expect(() => findMostSimilar('test', 'not-an-array')).toThrow(TypeError);
+        expect(() => findMostSimilar('test', 'not-an-array')).toThrow(
+          TypeError,
+        );
       });
     });
 
@@ -280,7 +292,9 @@ describe('stringSimilarity.js', () => {
       it('should pass options to calculateSimilarity', () => {
         const target = 'TEST';
         const candidates = ['test', 'TESTING'];
-        const result = findMostSimilar(target, candidates, 0.5, { caseSensitive: true });
+        const result = findMostSimilar(target, candidates, 0.5, {
+          caseSensitive: true,
+        });
 
         expect(result).not.toBeNull();
         expect(result.value).toBe('TESTING');
@@ -291,11 +305,15 @@ describe('stringSimilarity.js', () => {
   describe('batchSimilarityCheck', () => {
     describe('Input validation', () => {
       it('should throw TypeError when target is not a string', () => {
-        expect(() => batchSimilarityCheck(123, [{ title: 'test' }])).toThrow(TypeError);
+        expect(() => batchSimilarityCheck(123, [{ title: 'test' }])).toThrow(
+          TypeError,
+        );
       });
 
       it('should throw TypeError when candidates is not an array', () => {
-        expect(() => batchSimilarityCheck('test', 'not-an-array')).toThrow(TypeError);
+        expect(() => batchSimilarityCheck('test', 'not-an-array')).toThrow(
+          TypeError,
+        );
       });
     });
 
@@ -311,7 +329,7 @@ describe('stringSimilarity.js', () => {
 
         // At least 'test' should match
         expect(results.length).toBeGreaterThanOrEqual(1);
-        expect(results.map(r => r.id)).toContain(1);
+        expect(results.map((r) => r.id)).toContain(1);
       });
 
       it('should return empty array when no matches exceed threshold', () => {
@@ -338,10 +356,10 @@ describe('stringSimilarity.js', () => {
         // Should only return candidates with valid titles that exceed threshold
         // At least 'test' should match
         expect(results.length).toBeGreaterThanOrEqual(1);
-        expect(results.map(r => r.id)).toContain(1);
+        expect(results.map((r) => r.id)).toContain(1);
         // Should not include candidates without valid titles
-        expect(results.map(r => r.id)).not.toContain(2);
-        expect(results.map(r => r.id)).not.toContain(3);
+        expect(results.map((r) => r.id)).not.toContain(2);
+        expect(results.map((r) => r.id)).not.toContain(3);
       });
 
       it('should skip candidates with non-string titles', () => {
@@ -356,9 +374,9 @@ describe('stringSimilarity.js', () => {
         // Should only return candidates with string titles that exceed threshold
         // At least 'test' should match
         expect(results.length).toBeGreaterThanOrEqual(1);
-        expect(results.map(r => r.id)).toContain(1);
+        expect(results.map((r) => r.id)).toContain(1);
         // Should not include candidates with non-string titles
-        expect(results.map(r => r.id)).not.toContain(2);
+        expect(results.map((r) => r.id)).not.toContain(2);
       });
     });
 
@@ -396,7 +414,9 @@ describe('stringSimilarity.js', () => {
         // Verify results are sorted by similarity (highest first)
         expect(results.length).toBeGreaterThanOrEqual(2);
         for (let i = 0; i < results.length - 1; i++) {
-          expect(results[i].similarity).toBeGreaterThanOrEqual(results[i + 1].similarity);
+          expect(results[i].similarity).toBeGreaterThanOrEqual(
+            results[i + 1].similarity,
+          );
         }
       });
     });
@@ -424,7 +444,9 @@ describe('stringSimilarity.js', () => {
           { id: 1, title: 'test' },
           { id: 2, title: 'TESTING' },
         ];
-        const results = batchSimilarityCheck(target, candidates, 0.5, { caseSensitive: true });
+        const results = batchSimilarityCheck(target, candidates, 0.5, {
+          caseSensitive: true,
+        });
 
         expect(results).toHaveLength(1);
         expect(results[0].id).toBe(2);
