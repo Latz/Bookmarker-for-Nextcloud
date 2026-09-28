@@ -312,10 +312,9 @@ Read the entries from the popup's DevTools console (right-click the popup → In
 
 **Algorithmic.** For P1-7, seed the keyword cache with a few thousand tags, enable `cbx_extendedKeywords`, and time `getKeywords` on a heading-dense page (a long documentation page works well).
 
-**Regression safety.** The suite should stay green throughout. On WSL2, pre-warm the disk cache first:
+**Regression safety.** The suite should stay green throughout:
 
 ```
-node --input-type=module --eval "import 'vitest'; import 'jsdom'; import 'vite'; console.log('all warmed')"
 npx vitest run --pool=threads
 ```
 

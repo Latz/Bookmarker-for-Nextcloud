@@ -9,7 +9,7 @@
   - Source: [how we learned this] — YYYY-MM-DD
 -->
 
-## Development Environment — WSL2
+## Development Environment — Native Windows
 
-- **Pre-warm disk cache before running vitest**: Run `node --input-type=module --eval "import 'vitest'; import 'jsdom'; import 'vite'; console.log('all warmed')"` before `npx vitest run` when node_modules is on a Windows NTFS drive (D:). Cold NTFS cache via WSL2 causes jsdom to take >60s to load, exceeding vitest's hardcoded worker startup timeout. ^tr-e3a9f7b2c1
-  - Source: Discovered during vite 7 upgrade attempt — 2026-02-24
+- **No disk-cache pre-warm needed**: The project moved from WSL2 to native Windows (2026-09). The old jsdom warm-up (cold NTFS cache via WSL2 exceeding vitest's 60s worker startup timeout) no longer applies. ^tr-e3a9f7b2c1
+  - Source: Superseded WSL2 note from vite 7 upgrade attempt — 2026-02-24

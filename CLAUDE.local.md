@@ -18,7 +18,7 @@
 - 2026-02-24 evening: +6 commits — fixed all 4 code review bugs (items 2–5)
 - 667 tests passing across 27 files (`npx vitest run --pool=threads`)
 - SonarCloud: 308 issues total; 33 critical in `critical.md`; S4123 (10 issues) all false positives
-- **WSL2 note**: Pre-warm disk cache before tests: `node --input-type=module --eval "import 'vitest'; import 'jsdom'; import 'vite'; console.log('all warmed')"`
+- **Environment**: Native Windows (no longer WSL2) — no disk-cache pre-warm needed. Suite uses `node` env by default, `happy-dom` per file via `// @vitest-environment happy-dom` (branch `happydom`, 2026-09-28). `isolate: false` breaks tests — keep isolation on.
 
 ## Critical Preferences
 
