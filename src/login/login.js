@@ -86,13 +86,22 @@ document.onreadystatechange = async () => {
       .addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
-          openServerPage();
+          // A held-down Enter would restart the flow (and reopen the login tab)
+          // on every auto-repeat.
+          if (!event.repeat) openServerPage();
         }
       });
   }
 };
 
+// Each click/Enter starts a new login flow. Only the latest may keep polling:
+// without this, every click left another poll loop (up to 300 s) and another
+// login tab behind.
+let currentFlow = 0;
+let currentLoginTabId = null;
+
 async function openServerPage() {
+  const flow = ++currentFlow;
   // clear possible error message
   document.getElementById('error').textContent = '';
   document.getElementById('msg').textContent = '';
@@ -151,13 +160,47 @@ async function openServerPage() {
       host,
       loginflow: true,
     });
-    response.login ? loginPoll(response) : serverError(response);
+    if (flow !== currentFlow) return; // superseded while the request was running
+    if (!response.login) {
+      serverError(response);
+    } else if (!isTrustedLoginResponse(response, host)) {
+      // Login Flow v2 sends the poll token to response.poll.endpoint; a server
+      // that points it elsewhere (or at plain http) would receive that token.
+      serverError({ statusText: 'Unexpected login flow response' });
+    } else {
+      await loginPoll(response, flow);
+    }
   } catch (e) {
     console.log('!', e);
   }
 }
 
-async function loginPoll(request) {
+/**
+ * The poll endpoint and login page must be https and on the server the user
+ * entered. The extension only holds host permission for that origin, so a
+ * different one could not be polled anyway.
+ * @param {{login?: string, poll?: {endpoint?: string, token?: string}}} response
+ * @param {string} host - The normalized server address the user entered.
+ * @returns {boolean}
+ */
+function isTrustedLoginResponse(response, host) {
+  try {
+    const origin = new URL(host).origin;
+    const endpoint = new URL(response.poll?.endpoint ?? '');
+    const login = new URL(response.login ?? '');
+    return (
+      Boolean(response.poll?.token) &&
+      endpoint.protocol === 'https:' &&
+      endpoint.origin === origin &&
+      login.protocol === 'https:' &&
+      login.origin === origin
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function loginPoll(request, flow) {
   let authorized = false;
   let authCheck;
 
@@ -166,11 +209,16 @@ async function loginPoll(request) {
   const maxAttempts = 300;
   let attempts = 0;
 
+  // A previous, abandoned attempt's login tab would otherwise stay open
+  if (currentLoginTabId !== null) {
+    await chrome.tabs.remove(currentLoginTabId).catch(() => {});
+  }
+
   // remember login page id so that we can close it If there was an time.
   const loginPage = await chrome.tabs.create({ url: request.login });
-  console.log('🚀 ~ loginPoll ~ loginPage:', loginPage);
+  currentLoginTabId = loginPage.id;
 
-  while (!authorized && attempts < maxAttempts) {
+  while (!authorized && attempts < maxAttempts && flow === currentFlow) {
     try {
       authCheck = await fetch(request.poll.endpoint, {
         credentials: 'omit',
@@ -191,20 +239,34 @@ async function loginPoll(request) {
     attempts++;
   }
 
+  // A newer login attempt took over; it owns the UI and the login tab now.
+  if (flow !== currentFlow) return;
+  currentLoginTabId = null;
+
   // User did not interact after maxAttempts iterations
-  if (maxAttempts === attempts) {
+  if (!authorized) {
     chrome.runtime.sendMessage({ msg: 'maxAttempts', loginPage });
     document.getElementById('testServer').textContent =
       chrome.i18n.getMessage('OpenLoginPage');
     document.getElementById('serverName').focus();
-  } else {
+    return;
+  }
+
   // Otherwise, save login credentials.
-    let response = await authCheck.json();
-    store_data('credentials', {
+  try {
+    const response = await authCheck.json();
+    if (!response?.appPassword || !response?.loginName || !response?.server) {
+      throw new Error('Incomplete login response');
+    }
+    await store_data('credentials', {
       appPassword: response.appPassword,
       loginname: response.loginName,
       server: response.server,
     });
+  } catch (error) {
+    // Nothing was stored: say so instead of leaving the user waiting.
+    console.error('[login] could not save the credentials:', error);
+    serverError({ statusText: error?.message ?? String(error) });
   }
 }
 

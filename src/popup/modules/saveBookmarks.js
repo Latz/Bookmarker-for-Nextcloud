@@ -7,51 +7,47 @@ export default function addSaveBookmarkButtonListener() {
     .addEventListener('click', saveBookmark);
 }
 
-function saveBookmark(event) {
+/**
+ * @param {string} id
+ * @returns {string} The element's value, or '' when the element is absent.
+ */
+function valueOf(id) {
+  const element = /** @type {HTMLInputElement | null} */ (
+    document.getElementById(id)
+  );
+  return element?.value ?? '';
+}
+
+async function saveBookmark(event) {
   event.preventDefault();
 
-  const url = /** @type {HTMLInputElement} */ (document.getElementById('url'))
-    .value;
-  const title = /** @type {HTMLInputElement} */ (
-    document.getElementById('title')
-  ).value;
-  const bookmarkID = Number.parseInt(
-    /** @type {HTMLInputElement} */ (document.getElementById('bookmarkID'))
-      .value,
-  );
+  try {
+    // The form is read before anything is awaited: the popup can go away at any
+    // await, and the values must not depend on it still being there.
+    const url = valueOf('url');
+    const title = valueOf('title');
+    const bookmarkID = Number.parseInt(valueOf('bookmarkID'));
+    const rawDescription = valueOf('description');
+    const rawKeywords = valueOf('keywords');
+    const selectedFolderIDs = Array.from(
+      /** @type {HTMLSelectElement | null} */ (
+        document.getElementById('folders')
+      )?.options ?? [],
+    )
+      .filter((opt) => opt.selected)
+      .map((opt) => opt.value);
 
-  (async () => {
-    const [showDescription, showKeywords, displayFolders] = await Promise.all([
-      getOption('cbx_showDescription'),
-      getOption('cbx_showKeywords'),
-      getOption('cbx_displayFolders'),
-    ]);
-
-    const rawDescription = /** @type {HTMLTextAreaElement} */ (
-      document.getElementById('description')
-    ).value;
+    const { showDescription, showKeywords, displayFolders } =
+      await loadDisplayOptions();
 
     let keywords = /** @type {Array<{value: string}>} */ ([]);
     try {
-      if (showKeywords) {
-        keywords = JSON.parse(
-          /** @type {HTMLInputElement} */ (document.getElementById('keywords'))
-            .value,
-        );
-      }
+      if (showKeywords) keywords = JSON.parse(rawKeywords);
     } catch {
       keywords = [];
     }
 
-    let folderIDs = /** @type {string[]} */ ([]);
-    if (displayFolders) {
-      folderIDs = Array.from(
-        /** @type {HTMLSelectElement} */ (document.getElementById('folders'))
-          .options,
-      )
-        .filter((opt) => opt.selected)
-        .map((opt) => opt.value);
-    }
+    const folderIDs = displayFolders ? selectedFolderIDs : [];
 
     // Built with URLSearchParams rather than string concatenation. Previously
     // description, tag values and folder IDs were interpolated raw, so a value
@@ -78,16 +74,36 @@ function saveBookmark(event) {
     }
     params.set('page', '-1');
 
-    const parameters = params.toString();
-
-    chrome.runtime.sendMessage({
+    // Awaited so the popup is not torn down before the message is on its way.
+    await chrome.runtime.sendMessage({
       msg: 'saveBookmark',
-      parameters,
+      parameters: params.toString(),
       folderIDs,
       bookmarkID,
     });
-  })();
+  } catch (error) {
+    console.error('[popup] saving the bookmark failed:', error);
+  } finally {
+    window.close();
+  }
+}
 
-  // Close popup immediately
-  window.close();
+/**
+ * Reads the three display options. After the 30 s options cache expires these
+ * are real IndexedDB reads, so a failure must not lose the save: fall back to
+ * what a fresh install uses, and file into the root folder.
+ * @returns {Promise<{showDescription: boolean, showKeywords: boolean, displayFolders: boolean}>}
+ */
+async function loadDisplayOptions() {
+  try {
+    const [showDescription, showKeywords, displayFolders] = await Promise.all([
+      getOption('cbx_showDescription'),
+      getOption('cbx_showKeywords'),
+      getOption('cbx_displayFolders'),
+    ]);
+    return { showDescription, showKeywords, displayFolders };
+  } catch (error) {
+    console.error('[popup] could not read options, using defaults:', error);
+    return { showDescription: true, showKeywords: true, displayFolders: false };
+  }
 }

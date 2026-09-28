@@ -426,24 +426,46 @@ describe('addSaveBookmarkButtonListener', () => {
       });
     });
 
-    it('should handle getOption error gracefully', async () => {
+    it('should still save (into the root folder) when reading the options fails', async () => {
       getOption.mockRejectedValue(new Error('Storage error'));
-
-      // Suppress unhandled rejection since the implementation doesn't catch it
-      const unhandledRejectionHandler = () => {};
-      process.on('unhandledRejection', unhandledRejectionHandler);
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       addSaveBookmarkButtonListener();
-      clickHandler(mockEvent);
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      await clickHandler(mockEvent);
 
-      // When getOption fails, the Promise.all rejects and .then() never runs
-      // So sendMessage won't be called, but window.close still runs
-      // Note: This is an unhandled rejection in the current implementation
-      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+      // A failed options read used to drop the save silently.
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(1);
+      const sent = chrome.runtime.sendMessage.mock.calls[0][0];
+      expect(sent.parameters).toContain('folders%5B%5D=-1');
       expect(window.close).toHaveBeenCalled();
+      consoleError.mockRestore();
+    });
 
-      process.off('unhandledRejection', unhandledRejectionHandler);
+    it('should close the popup only after the message has been sent', async () => {
+      getOption.mockResolvedValue(true);
+      const order = [];
+      chrome.runtime.sendMessage.mockImplementation(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        order.push('sent');
+      });
+      window.close.mockImplementation(() => order.push('closed'));
+
+      addSaveBookmarkButtonListener();
+      await clickHandler(mockEvent);
+
+      expect(order).toEqual(['sent', 'closed']);
+    });
+
+    it('should close the popup even when sending the message fails', async () => {
+      getOption.mockResolvedValue(true);
+      chrome.runtime.sendMessage.mockRejectedValue(new Error('no receiver'));
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      addSaveBookmarkButtonListener();
+      await clickHandler(mockEvent);
+
+      expect(window.close).toHaveBeenCalled();
+      consoleError.mockRestore();
     });
 
     it('should handle missing description input', async () => {

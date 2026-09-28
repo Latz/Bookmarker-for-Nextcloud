@@ -173,10 +173,31 @@ describe('options.js', () => {
         addEventListener: vi.fn(),
       },
       // Buttons
-      btn_clear_all_data: { id: 'btn_clear_all_data', type: 'submit' },
-      btn_reset_options: { id: 'btn_reset_options', type: 'submit' },
-      btn_clear_cache: { id: 'btn_clear_cache', type: 'submit' },
-      btn_create_db: { id: 'btn_create_db', type: 'submit' },
+      btn_clear_all_data: {
+        id: 'btn_clear_all_data',
+        type: 'submit',
+        textContent: ' Clear all data ',
+      },
+      btn_reset_options: {
+        id: 'btn_reset_options',
+        type: 'submit',
+        textContent: 'Reset options',
+      },
+      btn_forget_credentials: {
+        id: 'btn_forget_credentials',
+        type: 'submit',
+        textContent: 'Forget credentials',
+      },
+      btn_clear_cache: {
+        id: 'btn_clear_cache',
+        type: 'submit',
+        textContent: 'Clear cache',
+      },
+      btn_create_db: {
+        id: 'btn_create_db',
+        type: 'submit',
+        textContent: 'Create',
+      },
       btn_show_options: { id: 'btn_show_options' },
       btn_show_cache: { id: 'btn_show_cache' },
       // Checkboxes
@@ -206,7 +227,10 @@ describe('options.js', () => {
     globalThis.document = mockDocument;
     globalThis.window = {
       open: vi.fn(),
+      confirm: vi.fn(() => true),
+      alert: vi.fn(),
     };
+    globalThis.location = { reload: vi.fn() };
 
     // Set up global variables for elements accessed directly (browser creates these for IDs)
     globalThis.zen_folders = mockElements.zen_folders;
@@ -620,13 +644,82 @@ describe('options.js', () => {
         mockElements.input_networkTimeout.addEventListener.mock.calls[0][1];
 
       // Simulate input change
-      mockElements.input_networkTimeout.value = '10000';
+      mockElements.input_networkTimeout.value = '45';
       inputHandler();
 
       // Verify data is stored as integer
       expect(store_data).toHaveBeenCalledWith('options', {
-        input_networkTimeout: 10000,
+        input_networkTimeout: 45,
       });
+    });
+
+    it.each([
+      ['10000', 120], // capped: a typo must not hang requests for hours
+      ['-5', 1], // negative would make every request abort at once
+      ['0', 1],
+      ['7.9', 7],
+    ])('should clamp %s to %i', (typed, stored) => {
+      const inputHandler =
+        mockElements.input_networkTimeout.addEventListener.mock.calls[0][1];
+
+      mockElements.input_networkTimeout.value = typed;
+      inputHandler();
+
+      expect(store_data).toHaveBeenCalledWith('options', {
+        input_networkTimeout: stored,
+      });
+    });
+
+    it.each(['', 'abc'])('should not store %j (NaN)', (typed) => {
+      const inputHandler =
+        mockElements.input_networkTimeout.addEventListener.mock.calls[0][1];
+
+      mockElements.input_networkTimeout.value = typed;
+      inputHandler();
+
+      expect(store_data).not.toHaveBeenCalled();
+    });
+
+    it('should show the effective value when the field is left', () => {
+      const changeHandler = mockElements.input_networkTimeout.addEventListener.mock.calls.find(
+        ([event]) => event === 'change',
+      )[1];
+
+      mockElements.input_networkTimeout.value = '';
+      changeHandler();
+      expect(mockElements.input_networkTimeout.value).toBe('10');
+
+      mockElements.input_networkTimeout.value = '999';
+      changeHandler();
+      expect(mockElements.input_networkTimeout.value).toBe('120');
+    });
+  });
+
+  describe('when the folder list cannot be loaded', () => {
+    it('still saves zen keywords and folders', async () => {
+      load_data.mockResolvedValue(undefined);
+      load_data_all.mockResolvedValue([]);
+      getOption.mockResolvedValue(false);
+      getFolders.mockRejectedValue(new Error('offline'));
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      await import('../src/options/options.js');
+      await mockDocument.onreadystatechange();
+
+      // These were registered after the folder request, so a failing server
+      // meant zen settings silently stopped being saved.
+      const tagify = new Tagify();
+      expect(tagify.on).toHaveBeenCalledWith('add', expect.any(Function));
+      expect(tagify.on).toHaveBeenCalledWith('remove', expect.any(Function));
+      expect(mockElements.zen_folders.addEventListener).toHaveBeenCalledWith(
+        'change',
+        expect.any(Function),
+      );
+      expect(consoleError).toHaveBeenCalledWith(
+        '[options] could not load the folder list:',
+        expect.objectContaining({ message: 'offline' }),
+      );
+      consoleError.mockRestore();
     });
   });
 
@@ -659,25 +752,81 @@ describe('options.js', () => {
       const clickHandler =
         mockElements.content.addEventListener.mock.calls[0][1];
 
-      clickHandler({ target: mockElements.btn_clear_all_data });
+      await clickHandler({ target: mockElements.btn_clear_all_data });
 
+      // The button's label is the confirmation question
+      expect(window.confirm).toHaveBeenCalledWith('Clear all data?');
       expect(clearData).toHaveBeenCalledWith('all');
+      // The form still shows the old values until it is reloaded
+      expect(location.reload).toHaveBeenCalled();
     });
 
     it('should handle reset options button', async () => {
       const clickHandler =
         mockElements.content.addEventListener.mock.calls[0][1];
 
-      clickHandler({ target: mockElements.btn_reset_options });
+      await clickHandler({ target: mockElements.btn_reset_options });
 
+      expect(window.confirm).toHaveBeenCalled();
       expect(initDefaults).toHaveBeenCalled();
+      expect(location.reload).toHaveBeenCalled();
+    });
+
+    it('should handle forget credentials button', async () => {
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
+
+      await clickHandler({ target: mockElements.btn_forget_credentials });
+
+      expect(window.confirm).toHaveBeenCalled();
+      expect(clearData).toHaveBeenCalledWith('credentials');
+    });
+
+    it.each([
+      ['btn_clear_all_data', () => clearData],
+      ['btn_reset_options', () => initDefaults],
+      ['btn_forget_credentials', () => clearData],
+    ])('should do nothing when %s is not confirmed', async (id, spy) => {
+      window.confirm.mockReturnValue(false);
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
+
+      await clickHandler({ target: mockElements[id] });
+
+      expect(spy()).not.toHaveBeenCalled();
+      expect(location.reload).not.toHaveBeenCalled();
+    });
+
+    it('should not ask before clearing the cache', async () => {
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
+
+      await clickHandler({ target: mockElements.btn_clear_cache });
+
+      expect(window.confirm).not.toHaveBeenCalled();
+    });
+
+    it('should report a failing action instead of dropping the rejection', async () => {
+      clearData.mockRejectedValueOnce(new Error('db locked'));
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const clickHandler =
+        mockElements.content.addEventListener.mock.calls[0][1];
+
+      await clickHandler({ target: mockElements.btn_clear_all_data });
+
+      expect(window.alert).toHaveBeenCalledWith(
+        expect.stringContaining('db locked'),
+      );
+      // Nothing was cleared, so the page must not pretend it was
+      expect(location.reload).not.toHaveBeenCalled();
+      consoleError.mockRestore();
     });
 
     it('should handle clear cache button', async () => {
       const clickHandler =
         mockElements.content.addEventListener.mock.calls[0][1];
 
-      clickHandler({ target: mockElements.btn_clear_cache });
+      await clickHandler({ target: mockElements.btn_clear_cache });
 
       expect(clearData).toHaveBeenCalledWith('cache');
     });

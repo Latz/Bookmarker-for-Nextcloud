@@ -227,7 +227,13 @@
                   >Network Timeout</label
                 >
                 <div class="ps-2">
-                  <input type="number" id="input_networkTimeout" />
+                  <input
+                    type="number"
+                    id="input_networkTimeout"
+                    min="1"
+                    max="120"
+                    step="1"
+                  />
                 </div>
                 <div></div>
                 <div i18n-data="networkTimeoutNote" class="ps-2 text-xs">

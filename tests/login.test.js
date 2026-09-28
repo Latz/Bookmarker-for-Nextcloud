@@ -49,6 +49,17 @@ describe('login.js', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    // clearAllMocks keeps implementations. A tabs.create that resolved a tab in
+    // an earlier test would let later tests' login flows reach the poll loop,
+    // and those loops (real timers, up to 300 s) then fired during unrelated
+    // tests, calling their fetch mock and store_data. Tests that need a tab set
+    // it themselves.
+    chrome.tabs.create.mockReset();
+    // Default fetch never answers. A poll loop left over from a test that did
+    // not wait for it therefore parks on its first request instead of sleeping
+    // on a real 1 s timer and waking up inside a later test. Tests that poll set
+    // their own fetch.
+    globalThis.fetch = vi.fn(() => new Promise(() => {}));
 
     // Create mock DOM elements
     mockElements = {
@@ -90,6 +101,8 @@ describe('login.js', () => {
   });
 
   afterEach(() => {
+    // Also drops any pending fake timer, so a poll loop cannot outlive its test
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -397,6 +410,9 @@ describe('login.js', () => {
       const clickHandler =
         mockElements.testServer.addEventListener.mock.calls[0][1];
 
+      // The poll endpoint/login page must be on the server that was entered
+      mockElements.serverName.value = 'https://example.com';
+
       // Mock successful API response with login data
       const loginResponse = {
         login: 'https://example.com/login',
@@ -463,6 +479,8 @@ describe('login.js', () => {
       // Get the click handler
       const clickHandler =
         mockElements.testServer.addEventListener.mock.calls[0][1];
+
+      mockElements.serverName.value = 'https://example.com';
 
       // Mock successful API response
       apiCall.mockResolvedValue({
@@ -570,6 +588,141 @@ describe('login.js', () => {
     });
   });
 
+  describe('login flow robustness', () => {
+    const pollUrls = (overrides = {}) => ({
+      login: 'https://example.com/login',
+      poll: {
+        endpoint: 'https://example.com/poll',
+        token: 'test-token',
+        ...overrides.poll,
+      },
+      ...overrides.top,
+    });
+
+    async function startLogin() {
+      await import('../src/login/login.js');
+      await mockDocument.onreadystatechange();
+      mockElements.serverName.value = 'https://example.com';
+      return mockElements.testServer.addEventListener.mock.calls[0][1];
+    }
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it.each([
+      ['a poll endpoint on another host', { poll: { endpoint: 'https://evil.example/poll' } }],
+      ['a plain-http poll endpoint', { poll: { endpoint: 'http://example.com/poll' } }],
+      ['a login page on another host', { top: { login: 'https://evil.example/login' } }],
+      ['a response without a poll token', { poll: { token: '' } }],
+    ])('refuses %s without opening a tab or polling', async (_label, overrides) => {
+      const clickHandler = await startLogin();
+      apiCall.mockResolvedValue(pollUrls(overrides));
+      globalThis.fetch = vi.fn();
+
+      clickHandler(); // the listener does not return the flow's promise
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // The poll token must not be sent anywhere but the server the user typed.
+      expect(chrome.tabs.create).not.toHaveBeenCalled();
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(mockElements.error.innerText).toBe('Login Server Error!');
+      expect(store_data).not.toHaveBeenCalled();
+    });
+
+    it('does not store an incomplete login response', async () => {
+      vi.useFakeTimers();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const clickHandler = await startLogin();
+      apiCall.mockResolvedValue(pollUrls());
+      chrome.tabs.create.mockResolvedValue({ id: 1 });
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ loginName: 'user' }), // no appPassword / server
+      });
+
+      const done = clickHandler();
+      await vi.advanceTimersByTimeAsync(1000);
+      await done;
+
+      expect(store_data).not.toHaveBeenCalled();
+      expect(mockElements.error.innerText).toBe('Login Server Error!');
+      consoleError.mockRestore();
+    });
+
+    it('reports a failing credential save instead of dropping the rejection', async () => {
+      vi.useFakeTimers();
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const clickHandler = await startLogin();
+      apiCall.mockResolvedValue(pollUrls());
+      chrome.tabs.create.mockResolvedValue({ id: 1 });
+      store_data.mockRejectedValueOnce(new Error('disk full'));
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          appPassword: 'p',
+          loginName: 'u',
+          server: 'https://example.com',
+        }),
+      });
+
+      const done = clickHandler();
+      await vi.advanceTimersByTimeAsync(1000);
+      await done;
+
+      expect(mockElements.msg.innerText).toContain('disk full');
+      consoleError.mockRestore();
+    });
+
+    it('a new click replaces the running attempt and closes its login tab', async () => {
+      vi.useFakeTimers();
+      chrome.tabs.remove = vi.fn().mockResolvedValue(undefined);
+      const clickHandler = await startLogin();
+      apiCall.mockResolvedValue(pollUrls());
+      chrome.tabs.create
+        .mockResolvedValueOnce({ id: 1 })
+        .mockResolvedValueOnce({ id: 2 });
+      globalThis.fetch = vi.fn().mockResolvedValue({ ok: false });
+
+      const first = clickHandler();
+      await vi.advanceTimersByTimeAsync(1000); // first attempt is polling
+      const second = clickHandler();
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The abandoned attempt's tab is closed before the new one opens
+      expect(chrome.tabs.remove).toHaveBeenCalledWith(1);
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          appPassword: 'p',
+          loginName: 'u',
+          server: 'https://example.com',
+        }),
+      });
+      await vi.advanceTimersByTimeAsync(2000);
+      await Promise.all([first, second]);
+
+      // Exactly one attempt finished, and the superseded one stayed silent
+      expect(store_data).toHaveBeenCalledTimes(1);
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith(
+        expect.objectContaining({ msg: 'maxAttempts' }),
+      );
+    });
+
+    it('ignores auto-repeated Enter presses', async () => {
+      const clickHandler = await startLogin();
+      void clickHandler;
+      const keydown = mockElements.serverName.addEventListener.mock.calls[0][1];
+      apiCall.mockResolvedValue({ status: 401, statusText: 'x' });
+
+      keydown({ key: 'Enter', repeat: true, preventDefault: vi.fn() });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(apiCall).not.toHaveBeenCalled();
+    });
+  });
+
   describe('serverError function', () => {
     it('should display error message with status code and reason phrase', async () => {
       // Import and initialize
@@ -671,6 +824,7 @@ describe('login.js', () => {
     });
 
     it('should handle fetch errors during polling', async () => {
+      vi.useFakeTimers();
       // Import and initialize
       await import('../src/login/login.js');
       await mockDocument.onreadystatechange();
@@ -678,6 +832,8 @@ describe('login.js', () => {
       // Get the click handler
       const clickHandler =
         mockElements.testServer.addEventListener.mock.calls[0][1];
+
+      mockElements.serverName.value = 'https://example.com';
 
       // Mock successful API response
       apiCall.mockResolvedValue({
@@ -698,8 +854,11 @@ describe('login.js', () => {
       // Call openServerPage
       clickHandler();
 
-      // Wait for polling attempts
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Fake timers: with real ones the 300-attempt poll loop kept running in
+      // the background after this test and hit later tests' fetch/store_data
+      // mocks (a flaky "called 2 times" elsewhere). Restoring real timers in
+      // afterEach drops the pending fake timer, which ends the loop.
+      await vi.advanceTimersByTimeAsync(1500);
 
       // Verify console.log was called with error
       expect(console.log).toHaveBeenCalled();

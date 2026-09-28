@@ -1,451 +1,111 @@
+// @vitest-environment happy-dom
 /**
- * Unit tests for displayJson module
- * Tests the function that displays JSON data in the options page
+ * Tests for the real displayJson module (the developer view opened from the
+ * options page). It uses top-level await and reads window.location, so each
+ * test sets the URL and imports a fresh copy.
+ *
+ * This file used to re-implement the module's logic inline, so a wrong
+ * hard-coded database version in the module could not fail it.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock dependencies
-vi.mock('idb', () => ({
-  openDB: vi.fn(),
-}));
+vi.mock('idb', () => ({ openDB: vi.fn() }));
+vi.mock('../src/lib/storage.js', () => ({ load_data_all: vi.fn() }));
 
-vi.mock('../src/lib/storage.js', () => ({
-  load_data_all: vi.fn(),
-}));
+async function show(search) {
+  window.happyDOM.setURL(`http://localhost/displayJson.html${search}`);
+  document.body.innerHTML = '<div id="jsondata"></div>';
+  vi.resetModules();
+  // Re-import the mocks: resetModules gave the module fresh instances
+  const { openDB } = await import('idb');
+  const { load_data_all } = await import('../src/lib/storage.js');
+  const { cacheDbVersion, initCacheStores } = await import(
+    '../src/lib/cacheSchema.js'
+  );
+  return {
+    openDB,
+    load_data_all,
+    cacheDbVersion,
+    initCacheStores,
+    run: async () => {
+      await import('../src/options/displayJson.js');
+      return document.querySelector('#jsondata pre')?.textContent;
+    },
+  };
+}
 
-// Import the module after mocking
-import { openDB } from 'idb';
-import { load_data_all } from '../src/lib/storage.js';
-
-// Note: The displayJson module uses top-level await, so we need to test it differently
-// We'll test the logic by simulating what happens when the module is loaded
-
-describe('displayJson module', () => {
-  let mockDocument;
-  let mockJsonDataElement;
-
+describe('displayJson', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockJsonDataElement = {
-      innerHTML: '',
+  });
+
+  it('shows the stored options for ?type=options', async () => {
+    const ctx = await show('?type=options');
+    ctx.load_data_all.mockResolvedValue([{ item: 'cbx_showUrl', value: true }]);
+
+    const text = await ctx.run();
+
+    expect(ctx.load_data_all).toHaveBeenCalledWith('options');
+    expect(JSON.parse(text)).toEqual([{ item: 'cbx_showUrl', value: true }]);
+  });
+
+  it('reads the cache with the schema version and upgrade, and closes the connection', async () => {
+    const ctx = await show('?type=cache');
+    const db = {
+      get: vi.fn().mockResolvedValue({ item: 'keywords', value: ['a', 'b'] }),
+      close: vi.fn(),
     };
-    mockDocument = {
-      getElementById: vi.fn(),
-    };
+    ctx.openDB.mockResolvedValue(db);
 
-    // Reset global state
-    delete globalThis.window;
-    delete globalThis.document;
+    const text = await ctx.run();
+
+    // A hard-coded old version (it was 2) fails with a VersionError; without
+    // the upgrade callback an empty database would be created instead.
+    expect(ctx.openDB).toHaveBeenCalledWith('BookmarkerCache', ctx.cacheDbVersion, {
+      upgrade: ctx.initCacheStores,
+    });
+    expect(db.get).toHaveBeenCalledWith('keywords', 'keywords');
+    expect(db.close).toHaveBeenCalled();
+    expect(JSON.parse(text).value).toEqual(['a', 'b']);
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it('parses the type from a URL with further parameters', async () => {
+    const ctx = await show('?extra=1&type=options');
+    ctx.load_data_all.mockResolvedValue([]);
+
+    await ctx.run();
+
+    expect(ctx.load_data_all).toHaveBeenCalledWith('options');
   });
 
-  describe('URL parameter parsing', () => {
-    it('should parse type=options from URL', () => {
-      globalThis.window = {
-        location: {
-          search: '?type=options',
-        },
-      };
+  it.each(['', '?other=value', '?type=nonsense'])(
+    'reads nothing for %j',
+    async (search) => {
+      const ctx = await show(search);
 
-      const urlParams = globalThis.window.location.search || '';
-      const type = urlParams.split('=')[1];
+      await expect(ctx.run()).resolves.not.toThrow;
 
-      expect(type).toBe('options');
-    });
+      expect(ctx.load_data_all).not.toHaveBeenCalled();
+      expect(ctx.openDB).not.toHaveBeenCalled();
+    },
+  );
 
-    it('should parse type=cache from URL', () => {
-      globalThis.window = {
-        location: {
-          search: '?type=cache',
-        },
-      };
+  it('shows the error instead of a blank page when the database cannot be opened', async () => {
+    const ctx = await show('?type=cache');
+    ctx.openDB.mockRejectedValue(new Error('VersionError'));
 
-      const urlParams = globalThis.window.location.search || '';
-      const type = urlParams.split('=')[1];
+    const text = await ctx.run();
 
-      expect(type).toBe('cache');
-    });
-
-    it('should handle empty URL parameters', () => {
-      globalThis.window = {
-        location: {
-          search: '',
-        },
-      };
-
-      const urlParams = globalThis.window.location.search || '';
-      const type = urlParams.split('=')[1];
-
-      expect(type).toBeUndefined();
-    });
-
-    it('should handle URL with no type parameter', () => {
-      globalThis.window = {
-        location: {
-          search: '?other=value',
-        },
-      };
-
-      const urlParams = globalThis.window.location.search || '';
-      const type = urlParams.split('=')[1];
-
-      expect(type).toBe('value');
-    });
+    expect(JSON.parse(text)).toEqual({ error: 'VersionError' });
   });
 
-  describe('Options data loading', () => {
-    it('should load options data when type is options', async () => {
-      globalThis.window = {
-        location: {
-          search: '?type=options',
-        },
-      };
+  it('shows the error when the options cannot be read', async () => {
+    const ctx = await show('?type=options');
+    ctx.load_data_all.mockRejectedValue(new Error('Storage error'));
 
-      const mockOptions = {
-        cbx_showUrl: true,
-        cbx_autoTags: false,
-        input_titleCheckLimit: 20,
-      };
-      load_data_all.mockResolvedValue(mockOptions);
+    const text = await ctx.run();
 
-      const type = 'options';
-      let data;
-      if (type === 'options') {
-        data = await load_data_all('options');
-      }
-
-      expect(load_data_all).toHaveBeenCalledWith('options');
-      expect(data).toEqual(mockOptions);
-    });
-
-    it('should return undefined when options are empty', async () => {
-      globalThis.window = {
-        location: {
-          search: '?type=options',
-        },
-      };
-
-      load_data_all.mockResolvedValue({});
-
-      const type = 'options';
-      let data;
-      if (type === 'options') {
-        data = await load_data_all('options');
-      }
-
-      expect(data).toEqual({});
-    });
-
-    it('should handle load_data_all error', async () => {
-      globalThis.window = {
-        location: {
-          search: '?type=options',
-        },
-      };
-
-      load_data_all.mockRejectedValue(new Error('Storage error'));
-
-      const type = 'options';
-      let data;
-      if (type === 'options') {
-        try {
-          data = await load_data_all('options');
-        } catch (error) {
-          console.warn(
-            '[displayJson.test] options load failed:',
-            error.message,
-          );
-          data = null;
-        }
-      }
-
-      expect(data).toBeNull();
-    });
-  });
-
-  describe('Cache data loading', () => {
-    it('should load cache data when type is cache', async () => {
-      globalThis.window = {
-        location: {
-          search: '?type=cache',
-        },
-    };
-
-      const mockCache = ['keyword1', 'keyword2', 'keyword3'];
-      openDB.mockResolvedValue({
-        get: vi.fn().mockResolvedValue(mockCache),
-      });
-
-      const type = 'cache';
-      let data;
-      if (type === 'cache') {
-        const db = await openDB('BookmarkerCache', 2);
-        data = await db.get('keywords', 'keywords');
-      }
-
-      expect(openDB).toHaveBeenCalledWith('BookmarkerCache', 2);
-      expect(data).toEqual(mockCache);
-    });
-
-    it('should handle empty cache data', async () => {
-      globalThis.window = {
-        location: {
-          search: '?type=cache',
-        },
-      };
-
-      openDB.mockResolvedValue({
-        get: vi.fn().mockResolvedValue([]),
-      });
-
-      const type = 'cache';
-      let data;
-      if (type === 'cache') {
-        const db = await openDB('BookmarkerCache', 2);
-        data = await db.get('keywords', 'keywords');
-      }
-
-      expect(data).toEqual([]);
-    });
-
-    it('should handle undefined cache data', async () => {
-      globalThis.window = {
-        location: {
-          search: '?type=cache',
-        },
-      };
-
-      openDB.mockResolvedValue({
-        get: vi.fn().mockResolvedValue(undefined),
-      });
-
-      const type = 'cache';
-      let data;
-      if (type === 'cache') {
-        const db = await openDB('BookmarkerCache', 2);
-        data = await db.get('keywords', 'keywords');
-      }
-
-      expect(data).toBeUndefined();
-    });
-
-    it('should handle database error', async () => {
-      globalThis.window = {
-        location: {
-          search: '?type=cache',
-        },
-      };
-
-      openDB.mockRejectedValue(new Error('Database error'));
-
-      const type = 'cache';
-      let data;
-      if (type === 'cache') {
-        try {
-          const db = await openDB('BookmarkerCache', 2);
-          data = await db.get('keywords', 'keywords');
-        } catch (error) {
-          console.warn('[displayJson.test] cache load failed:', error.message);
-          data = null;
-        }
-      }
-
-      expect(data).toBeNull();
-    });
-  });
-
-  describe('JSON display', () => {
-    it('should format JSON with proper indentation', () => {
-      const data = {
-        key1: 'value1',
-        key2: 123,
-        key3: true,
-      };
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toContain('key1');
-      expect(formatted).toContain('value1');
-      expect(formatted).toContain('key2');
-      expect(formatted).toContain('123');
-      expect(formatted).toContain('key3');
-      expect(formatted).toContain('true');
-      expect(formatted).toContain('<pre>');
-      expect(formatted).toContain('</pre>');
-    });
-
-    it('should handle null data', () => {
-      const data = null;
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toBe('<pre>null</pre>');
-    });
-
-    it('should handle undefined data', () => {
-      const data = undefined;
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toBe('<pre>undefined</pre>');
-    });
-
-    it('should handle empty object', () => {
-      const data = {};
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toBe('<pre>{}</pre>');
-    });
-
-    it('should handle empty array', () => {
-      const data = [];
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toBe('<pre>[]</pre>');
-    });
-
-    it('should handle nested objects', () => {
-      const data = {
-        outer: {
-          inner: {
-            value: 'test',
-          },
-        },
-      };
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toContain('outer');
-      expect(formatted).toContain('inner');
-      expect(formatted).toContain('value');
-    });
-
-    it('should handle arrays in data', () => {
-      const data = {
-        items: ['item1', 'item2', 'item3'],
-      };
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toContain('items');
-      expect(formatted).toContain('item1');
-      expect(formatted).toContain('item2');
-      expect(formatted).toContain('item3');
-    });
-  });
-
-  describe('Integration scenarios', () => {
-    it('should display options data correctly', async () => {
-      globalThis.window = {
-        location: {
-          search: '?type=options',
-        },
-      };
-
-      const mockOptions = {
-        cbx_showUrl: true,
-        cbx_autoTags: false,
-        input_titleCheckLimit: 20,
-        input_titleSimilarityThreshold: 75,
-      };
-      load_data_all.mockResolvedValue(mockOptions);
-
-      const type = 'options';
-      let data;
-      if (type === 'options') {
-        data = await load_data_all('options');
-      }
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toContain('cbx_showUrl');
-      expect(formatted).toContain('true');
-      expect(formatted).toContain('cbx_autoTags');
-      expect(formatted).toContain('false');
-      expect(formatted).toContain('input_titleCheckLimit');
-      expect(formatted).toContain('20');
-    });
-
-    it('should display cache data correctly', async () => {
-      globalThis.window = {
-        location: {
-          search: '?type=cache',
-        },
-      };
-
-      const mockCache = ['work', 'personal', 'important', 'todo'];
-      openDB.mockResolvedValue({
-        get: vi.fn().mockResolvedValue(mockCache),
-      });
-
-      const type = 'cache';
-      let data;
-      if (type === 'cache') {
-        const db = await openDB('BookmarkerCache', 2);
-        data = await db.get('keywords', 'keywords');
-      }
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toContain('work');
-      expect(formatted).toContain('personal');
-      expect(formatted).toContain('important');
-      expect(formatted).toContain('todo');
-    });
-  });
-
-  describe('Edge cases', () => {
-    it('should handle URL with trailing characters', () => {
-      globalThis.window = {
-        location: {
-          search: '?type=options&extra=param',
-        },
-      };
-
-      const urlParams = new URLSearchParams(globalThis.window.location.search);
-      const type = urlParams.get('type');
-
-      expect(type).toBe('options');
-    });
-
-    it('should handle URL with encoded characters', () => {
-      globalThis.window = {
-        location: {
-          search: '?type=options%2Fpath',
-        },
-      };
-
-      const urlParams = globalThis.window.location.search || '';
-      const type = urlParams.split('=')[1];
-
-      expect(type).toBe('options%2Fpath');
-    });
-
-    it('should handle circular references in JSON (should not occur in our data)', () => {
-      const data = {
-        key: 'value',
-      };
-
-      // JSON.stringify handles this by throwing an error
-      expect(() => JSON.stringify(data, null, 4)).not.toThrow();
-    });
-
-    it('should handle large data objects', () => {
-      const data = {};
-      for (let i = 0; i < 100; i++) {
-        data[`key${i}`] = `value${i}`;
-      }
-
-      const formatted = '<pre>' + JSON.stringify(data, null, 4) + '</pre>';
-
-      expect(formatted).toContain('key0');
-      expect(formatted).toContain('value99');
-    });
+    expect(JSON.parse(text)).toEqual({ error: 'Storage error' });
   });
 });
