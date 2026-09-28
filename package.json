@@ -45,7 +45,7 @@
     "sonar:scan": "npm run test:coverage && sonar-scanner"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.7.1",
+    "@crxjs/vite-plugin": "^3.0.0",
     "@linthtml/linthtml": "^0.10.2",
     "@tailwindcss/cli": "^4.3.3",
     "@vitest/coverage-v8": "^5.0.2",
