@@ -18,9 +18,28 @@ const DEBUG = false;
 // Keyword sources that still need finding are listed in
 // docs/keyword-sources-todo.md.
 
+/**
+ * Trims keywords and drops empty entries, non-strings, and case-insensitive
+ * duplicates, keeping the first spelling seen.
+ * @param {Array<any>} keywords
+ * @returns {Array<string>}
+ */
+export function mergeKeywords(keywords) {
+  const seen = new Set();
+  const merged = [];
+  for (const keyword of keywords) {
+    if (typeof keyword !== 'string') continue;
+    const trimmed = keyword.trim();
+    const key = trimmed.toLowerCase();
+    if (!trimmed || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(trimmed);
+  }
+  return merged;
+}
+
 export default async function getKeywords(parsedData, document) {
-  // define an array of function whcih can be looped through later and
-  // break if a function found keywords
+  // Every source is asked; their keywords are merged in this order.
   const sources = [
     () => extractMetaKeywords(document),
     () => extractRelTagKeywords(document),
@@ -47,16 +66,25 @@ export default async function getKeywords(parsedData, document) {
 
   if (!options.cbx_autoTags) return [];
 
-  // Loop through the various sources; the first one that finds anything wins
+  // Collect the keywords of all sources, so tags declared in more than one
+  // place (meta keywords, article:tag, JSON-LD, ...) all end up in Tagify.
+  const found = [];
   for (const source of sources) {
-    const keywords = source();
-    log(DEBUG, '🚀 ~ keywords:', keywords);
+    try {
+      const keywords = source();
+      log(DEBUG, '🚀 ~ keywords:', keywords);
+      if (Array.isArray(keywords)) found.push(...keywords);
+    } catch (error) {
+      // A source choking on odd page data must not drop the others' keywords
+      log(DEBUG, 'Keyword source failed, skipping:', error);
+    }
+  }
 
+  const keywords = mergeKeywords(found);
+  if (keywords.length > 0) {
     // use only keywords that are already stored in Bookmarks
     // switchable by Options/Advanced
-    if (keywords && keywords.length > 0) {
-      return reduceKeywords(keywords);
-    }
+    return reduceKeywords(keywords);
   }
 
   // --- Last resort: Try to match parts of description or headlines with stored keywords ---

@@ -32,7 +32,9 @@ import getMeta from '../src/background/modules/getMeta.js';
 import getDescription from '../src/background/modules/getDescription.js';
 import { cacheGet } from '../src/lib/cache.js';
 import { getOption, getOptions } from '../src/lib/storage.js';
-import getKeywords from '../src/background/modules/getKeywords.js';
+import getKeywords, {
+  mergeKeywords,
+} from '../src/background/modules/getKeywords.js';
 
 describe('getKeywords', () => {
   let mockDocument;
@@ -119,7 +121,9 @@ describe('getKeywords', () => {
     });
 
     it('should split keywords by space', async () => {
-      getMeta.mockReturnValue(['keyword1 keyword2 keyword3']);
+      getMeta.mockImplementation((doc, { id }) =>
+        id === 'keywords' ? ['keyword1 keyword2 keyword3'] : [],
+      );
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
@@ -180,7 +184,7 @@ describe('getKeywords', () => {
       expect(result).toEqual(['Space Exploration', 'SpaceX', 'moon']);
     });
 
-    it('should prefer meta keywords over article:tag', async () => {
+    it('should merge meta keywords and article:tag', async () => {
       getMeta.mockImplementation((doc, { id }) => {
         if (id === 'keywords') return ['k1, k2'];
         if (id === 'article:tag') return ['tag'];
@@ -189,7 +193,7 @@ describe('getKeywords', () => {
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
-      expect(result).toEqual(['k1', 'k2']);
+      expect(result).toEqual(['k1', 'k2', 'tag']);
     });
 
     it('should return empty array when no meta keywords found', async () => {
@@ -238,7 +242,7 @@ describe('getKeywords', () => {
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
-      expect(result).toEqual(['  tag  ']); // Note: textContent is used directly
+      expect(result).toEqual(['tag']);
     });
   });
 
@@ -538,9 +542,9 @@ describe('getKeywords', () => {
         innerText: 'invalid json',
       });
 
-      // The implementation parses JSON before try-catch, so it throws SyntaxError
-      await expect(getKeywords(mockParsedData, mockDocument)).rejects.toThrow(
-        SyntaxError,
+      // The source throws a SyntaxError; getKeywords skips it
+      await expect(getKeywords(mockParsedData, mockDocument)).resolves.toEqual(
+        [],
       );
     });
   });
@@ -691,7 +695,7 @@ describe('getKeywords', () => {
 
       const result = await getKeywords(mockParsedData, mockDocument);
 
-      expect(result).toEqual(['keyword1', ' keyword2', ' keyword3']);
+      expect(result).toEqual(['keyword1', 'keyword2', 'keyword3']);
     });
 
     it('should return empty when bruteForceKeywords is absent', async () => {
@@ -700,6 +704,78 @@ describe('getKeywords', () => {
       const result = await getKeywords(mockParsedData, mockDocument);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe('Merging all sources', () => {
+    beforeEach(() => {
+      getOptions.mockResolvedValue({
+        cbx_autoTags: true,
+        cbx_reduceKeywords: false,
+        cbx_extendedKeywords: false,
+        input_headings_slider: 3,
+      });
+      getOption.mockResolvedValue(false);
+      getMeta.mockImplementation((doc, { id }) =>
+        id === 'keywords' ? ['OpenAI, security'] : [],
+      );
+      mockDocument.querySelectorAll.mockImplementation((selector) => {
+        if (selector === 'a[rel=tag]') return [{ textContent: 'Privacy' }];
+        if (selector === 'script[type="application/ld+json"]') {
+          return [{ innerText: JSON.stringify({ keywords: ['openai', 'AI'] }) }];
+        }
+        return [];
+      });
+    });
+
+    it('should combine keywords from every source in source order', async () => {
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toEqual(['OpenAI', 'security', 'Privacy', 'AI']);
+    });
+
+    it('should drop case-insensitive duplicates, keeping the first spelling', async () => {
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toContain('OpenAI');
+      expect(result).not.toContain('openai');
+    });
+
+    it('should include pre-extracted keywords alongside page sources', async () => {
+      mockParsedData = { bruteForceKeywords: ['extra'] };
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toEqual(['OpenAI', 'security', 'Privacy', 'AI', 'extra']);
+    });
+
+    it('should keep the other sources when one throws', async () => {
+      mockDocument.getElementById.mockReturnValue({ innerText: 'invalid json' });
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toEqual(['OpenAI', 'security', 'Privacy', 'AI']);
+    });
+
+    it('should reduce the merged keywords once', async () => {
+      getOption.mockResolvedValue(true); // cbx_reduceKeywords
+      cacheGet.mockResolvedValue(['privacy', 'ai']);
+
+      const result = await getKeywords(mockParsedData, mockDocument);
+
+      expect(result).toEqual(['Privacy', 'AI']);
+    });
+  });
+
+  describe('mergeKeywords', () => {
+    it('should trim, drop empty and non-string entries, and dedupe', () => {
+      expect(
+        mergeKeywords([' a ', '', '  ', null, 42, { x: 1 }, 'A', 'b', 'a']),
+      ).toEqual(['a', 'b']);
+    });
+
+    it('should return [] for no keywords', () => {
+      expect(mergeKeywords([])).toEqual([]);
     });
   });
 

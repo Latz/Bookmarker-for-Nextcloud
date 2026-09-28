@@ -1,7 +1,7 @@
 // @ts-check
 import getMeta from '../getMeta.js';
 
-// Meta sources in priority order. article:tag holds one tag per meta element,
+// Meta sources, in the order their keywords are listed. article:tag holds one tag per meta element,
 // and tags are often several words ("Fatty Liver Disease",
 // https://nourishedbyscience.com/keto_and_liverfat/), so a lone value there is
 // never split on spaces.
@@ -18,19 +18,18 @@ const META_SOURCES = [
 ];
 
 /**
- * Extracts keywords from a page's meta tags (keywords, news_keywords,
- * article:tag, etc.), splitting a single divider-separated string when only
- * one meta value was found.
+ * Extracts keywords from all of a page's keyword meta tags (keywords,
+ * news_keywords, article:tag, etc.), splitting a single divider-separated
+ * string per source. Duplicates are left to getKeywords' mergeKeywords.
  * @returns {Array<string>} Keywords found in meta tags, or [] if none.
  */
 export function extractMetaKeywords(document) {
-  for (const { type, id, splitOnSpace = true } of META_SOURCES) {
+  return META_SOURCES.flatMap(({ type, id, splitOnSpace = true }) => {
     const metaKeywords = getMeta(document, { type, id });
-    if (metaKeywords.length > 0) {
-      return splitMetaKeywords(metaKeywords, splitOnSpace);
-    }
-  }
-  return [];
+    return metaKeywords.length > 0
+      ? splitMetaKeywords(metaKeywords, splitOnSpace)
+      : [];
+  });
 }
 
 /**
