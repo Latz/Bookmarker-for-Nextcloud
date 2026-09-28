@@ -45,6 +45,10 @@ function fastPreFilter(s1, s2, threshold = 0.75) {
     if (chars2.has(char)) commonChars++;
   }
 
+  // No shared characters means no Jaro matches, so the score is exactly 0.
+  // (The threshold check below cannot catch this when threshold is 0.)
+  if (commonChars === 0) return 0.0;
+
   // Estimate similarity based on character overlap
   const charOverlap = commonChars / Math.max(chars1.size, chars2.size);
 
