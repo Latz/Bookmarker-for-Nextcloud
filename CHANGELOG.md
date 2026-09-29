@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Added the missing `storage` permission. Without it `chrome.storage` does not exist in the extension, so the session caches for the browser theme and the notification-icon check (meant to spare a service worker cold start the offscreen round trip and two fetches) silently never worked.
 - Fixed the keywords field never suggesting existing Nextcloud tags: the tag endpoint returns a plain array, which was read as `{ data }` and cached as empty. Failed tag/folder fetches are no longer cached for 24h, and broken cache entries are refetched.
 - Fixed the keywords dropdown not appearing when typing a tag that is already in the field.
 - Fixed the Tagify stylesheet never being included in the built extension; the keywords field now also has a border and focus outline matching the other inputs.

@@ -10,7 +10,7 @@ The Bookmarker for Nextcloud browser extension ("Bookmarker for Nextcloud") lets
 
 ## Permissions
 
-Bookmarker for Nextcloud requests browser permissions (such as `activeTab`, `scripting`, `notifications`, `contextMenus`, and `offscreen`) only to provide its core features — reading the active page's title/URL to bookmark it, showing notifications, and rendering bookmark folders. Access to a specific server's domain is requested only after you enter that server's address, and only for that domain.
+Bookmarker for Nextcloud requests browser permissions (such as `activeTab`, `scripting`, `notifications`, `contextMenus`, `offscreen`, and `storage`) only to provide its core features — reading the active page's title/URL to bookmark it, showing notifications, and rendering bookmark folders. The `storage` permission is used only for a short-lived, in-memory session cache (the detected browser theme and whether the notification icons are available), which the browser discards when it closes. Access to a specific server's domain is requested only after you enter that server's address, and only for that domain.
 
 ## Information shared with others
 

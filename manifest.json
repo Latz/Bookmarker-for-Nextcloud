@@ -29,7 +29,8 @@
     "activeTab",
     "notifications",
     "scripting",
-    "offscreen"
+    "offscreen",
+    "storage"
   ],
   "optional_host_permissions": ["https://*/*"]
 }
