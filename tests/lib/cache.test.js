@@ -213,6 +213,86 @@ describe('cache.js', () => {
     });
   });
 
+  describe('cacheGet - concurrent misses', () => {
+    // A stand-in for navigator.locks: one holder at a time, in request order.
+    function stubLocks() {
+      let tail = Promise.resolve();
+      const request = vi.fn((name, task) => {
+        const run = tail.then(task);
+        tail = run.catch(() => {});
+        return run;
+      });
+      vi.stubGlobal('navigator', { locks: { request } });
+      return request;
+    }
+
+    // A minimal in-memory database behind the mocked connection.
+    function memoryDb() {
+      const store = new Map();
+      mockDB.get.mockImplementation(async (name, key) => store.get(key));
+      mockDB.put.mockImplementation(async (name, record) => {
+        store.set(record.item, record);
+      });
+    }
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('sends one request when two callers miss at the same time', async () => {
+      const locks = stubLocks();
+      memoryDb();
+      apiCall.mockResolvedValueOnce(['a', 'b']); // the tag endpoint returns a bare array
+
+      const [first, second] = await Promise.all([
+        cacheGet('keywords'),
+        cacheGet('keywords'),
+      ]);
+
+      expect(apiCall).toHaveBeenCalledTimes(1);
+      expect(first).toEqual(['a', 'b']);
+      expect(second).toEqual(['a', 'b']);
+      expect(locks).toHaveBeenCalledWith(
+        'bookmarker-cache-fetch-keywords',
+        expect.any(Function),
+      );
+    });
+
+    it('takes no lock on a cache hit', async () => {
+      const locks = stubLocks();
+      memoryDb();
+      await cacheAdd('keywords', ['x']);
+
+      expect(await cacheGet('keywords')).toEqual(['x']);
+      expect(locks).not.toHaveBeenCalled();
+    });
+
+    it('fetches again for a forced refresh even though the cache is filled', async () => {
+      stubLocks();
+      memoryDb();
+      await cacheAdd('keywords', ['old']);
+      apiCall.mockResolvedValueOnce(['new']);
+
+      expect(await cacheGet('keywords', true)).toEqual(['new']);
+      expect(apiCall).toHaveBeenCalledTimes(1);
+    });
+
+    it('locks each list separately', async () => {
+      const locks = stubLocks();
+      memoryDb();
+      apiCall
+        .mockResolvedValueOnce(['a'])
+        .mockResolvedValueOnce({ data: [{ id: 1, title: 'F' }] });
+
+      await Promise.all([cacheGet('keywords'), cacheGet('folders')]);
+
+      expect(locks.mock.calls.map((c) => c[0]).sort()).toEqual([
+        'bookmarker-cache-fetch-folders',
+        'bookmarker-cache-fetch-keywords',
+      ]);
+    });
+  });
+
   describe('cacheAdd', () => {
     it('should add data to cache', async () => {
       const mockData = ['tag1', 'tag2'];

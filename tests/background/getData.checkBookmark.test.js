@@ -69,6 +69,14 @@ function tab(id, url = URL_A) {
 
 const tick = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
 beforeEach(() => {
   options = {
     cbx_alreadyStored: true,
@@ -200,17 +208,27 @@ describe('getData - exact URL match', () => {
     expect(cacheBookmarkCheck).toHaveBeenCalledTimes(1);
   });
 
-  it('does not run the title check when the URL already matched', async () => {
+  it('drops the title check when the URL already matched', async () => {
     options.cbx_titleSimilarityCheck = true;
-    apiCall.mockResolvedValueOnce({
-      status: 'success',
-      data: [{ id: 1, url: URL_A, title: 'Stored', tags: [], folders: [] }],
-    });
+    const titleResponse = deferred();
+    apiCall
+      .mockResolvedValueOnce({
+        status: 'success',
+        data: [{ id: 1, url: URL_A, title: 'Stored', tags: [], folders: [] }],
+      })
+      .mockReturnValueOnce(titleResponse.promise);
 
-    await getData();
+    const result = await getData();
 
-    expect(apiCall).toHaveBeenCalledTimes(1);
+    // The title request was started alongside the URL lookup, then aborted
+    // because its answer is not needed; its late response is ignored.
+    expect(apiCall).toHaveBeenCalledTimes(2);
+    const titleSignal = apiCall.mock.calls[1][3];
+    expect(titleSignal.aborted).toBe(true);
+    titleResponse.resolve({ status: 'success', data: [{ id: 5 }] });
+    await tick();
     expect(batchSimilarityCheck).not.toHaveBeenCalled();
+    expect(result.bookmarkID).toBe(1);
   });
 });
 
@@ -239,6 +257,28 @@ describe('getData - title similarity check', () => {
     expect(result.matchType).toBe('title');
     expect(result.count).toBe(1);
     expect(cacheBookmarkCheck).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts the title lookup without waiting for the URL lookup', async () => {
+    const urlResponse = deferred();
+    apiCall
+      .mockReturnValueOnce(urlResponse.promise) // checkByUrl, still pending
+      .mockResolvedValueOnce({ status: 'success', data: [{ id: 9 }] }); // checkByTitle
+    batchSimilarityCheck.mockReturnValueOnce([
+      { id: 9, title: 'Similar', similarity: 0.9, tags: [], folders: [] },
+    ]);
+
+    const pending = getData();
+    await tick();
+
+    // Both requests are out before the URL lookup has answered.
+    expect(apiCall).toHaveBeenCalledTimes(2);
+    expect(apiCall.mock.calls[0][2]).toContain('url=');
+    expect(apiCall.mock.calls[1][2]).toContain('limit=');
+
+    urlResponse.resolve({ status: 'success', data: [] });
+    const result = await pending;
+    expect(result.matchType).toBe('title');
   });
 
   it('sorts several title matches by similarity, best first', async () => {
@@ -313,14 +353,6 @@ describe('getData - title similarity check', () => {
 });
 
 describe('getData - concurrent requests', () => {
-  function deferred() {
-    let resolve;
-    const promise = new Promise((res) => {
-      resolve = res;
-    });
-    return { promise, resolve };
-  }
-
   it('shares one server request between two tabs checking the same URL', async () => {
     const pending = deferred();
     apiCall.mockReturnValueOnce(pending.promise);

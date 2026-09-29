@@ -35,7 +35,33 @@ const CONNECTION_IDLE_TIME = 5 * 60 * 1000; // 5 minutes
  * @returns {Promise<Array<any>>} The list, or [] if the server call failed.
  */
 export async function cacheGet(type, forceServer = false) {
-  const db = await getDBConnection();
+  const cached = await readCached(await getDBConnection(), type, forceServer);
+  if (cached) return cached.value;
+
+  // Not usable: load from the server -- but only one context at a time. The
+  // popup and the service worker both ask for the keyword list while it is
+  // still empty (first open after the 24h expiry, or "clear cache"), and each
+  // used to send its own request. Whoever gets the lock fetches and stores;
+  // the other one then finds the fresh entry in its re-read below.
+  return withFetchLock(type, async () => {
+    if (!forceServer) {
+      const filled = await readCached(await getDBConnection(), type, false);
+      if (filled) return filled.value;
+    }
+    return fetchAndCache(type, forceServer);
+  });
+}
+
+/**
+ * Reads a cache entry and returns it only if it is usable: present, in the
+ * current format and younger than 24h. Never usable when `forceServer` is set.
+ * @param {any} db - Open database.
+ * @param {'keywords'|'folders'} type
+ * @param {boolean} forceServer
+ * @returns {Promise<{value: Array<any>}|null>} The stored record, or null on a miss.
+ */
+async function readCached(db, type, forceServer) {
+  if (forceServer) return null;
 
   // OPTIMIZATION: Fetch both in parallel instead of sequentially
   const [element, created] = await Promise.all([
@@ -55,39 +81,63 @@ export async function cacheGet(type, forceServer = false) {
     element &&
     !Array.isArray(element.value);
 
-  // data was not found in cache -> load from server
   if (
     element === undefined ||
     Object.keys(element).length === 0 ||
     staleFormat ||
-    elementExpired(db, type, created, forceServer)
+    elementExpired(db, type, created, false)
   ) {
-    // We call it "keywords" Nextcloud calls it "tags" -> convert
-    const datatype = type === 'keywords' ? 'tag' : 'folder';
-    const response = await apiCall(
-      `index.php/apps/bookmarks/public/rest/v2/${datatype}`,
-      'GET',
-    );
-    // The tag endpoint returns a bare array; the folder endpoint wraps it in
-    // { status, data }.
-    const payload = Array.isArray(response) ? response : response.data;
-    // A failed apiCall resolves to a status/statusText object with no array.
-    // Caching that would poison this entry for 24h, so return empty and let
-    // the next call retry the server.
-    if (!Array.isArray(payload)) {
-      return [];
-    }
-    const data = type === 'folders' ? preRenderFolders(payload) : payload;
-    // The data is already in hand; a failed cache write must not fail the read.
-    await cacheAdd(type, data).catch((error) => {
-      console.error(`Error caching ${type}:`, error);
-    });
-    if (forceServer) void cacheRefreshNotification();
-    return data;
-  } else {
-    // data was found in cache -> return cache elements
-    return element.value;
+    return null;
   }
+  return element;
+}
+
+/**
+ * Fetches a list from the server and stores it in the cache.
+ * @param {'keywords'|'folders'} type
+ * @param {boolean} forceServer - A manual refresh: also notify the user.
+ * @returns {Promise<Array<any>>} The list, or [] if the server call failed.
+ */
+async function fetchAndCache(type, forceServer) {
+  // We call it "keywords" Nextcloud calls it "tags" -> convert
+  const datatype = type === 'keywords' ? 'tag' : 'folder';
+  const response = await apiCall(
+    `index.php/apps/bookmarks/public/rest/v2/${datatype}`,
+    'GET',
+  );
+  // The tag endpoint returns a bare array; the folder endpoint wraps it in
+  // { status, data }.
+  const payload = Array.isArray(response) ? response : response.data;
+  // A failed apiCall resolves to a status/statusText object with no array.
+  // Caching that would poison this entry for 24h, so return empty and let
+  // the next call retry the server.
+  if (!Array.isArray(payload)) {
+    return [];
+  }
+  const data = type === 'folders' ? preRenderFolders(payload) : payload;
+  // The data is already in hand; a failed cache write must not fail the read.
+  await cacheAdd(type, data).catch((error) => {
+    console.error(`Error caching ${type}:`, error);
+  });
+  if (forceServer) void cacheRefreshNotification();
+  return data;
+}
+
+/**
+ * Runs `task` while holding a Web Lock named after the cache entry. Locks are
+ * shared by every context of the extension (popup, service worker, options
+ * page), which is what makes this work across them; a lock held by a context
+ * that dies is released by the browser. Without the Web Locks API (tests, very
+ * old browsers) the task simply runs.
+ * @template T
+ * @param {string} type
+ * @param {() => Promise<T>} task
+ * @returns {Promise<T>}
+ */
+function withFetchLock(type, task) {
+  const locks = globalThis.navigator?.locks;
+  if (!locks?.request) return task();
+  return locks.request(`bookmarker-cache-fetch-${type}`, task);
 }
 
 // ---------------------------------------------------------------------

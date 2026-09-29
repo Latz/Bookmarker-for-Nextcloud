@@ -7,6 +7,7 @@ vi.mock('../../src/lib/apiCall.js', () => ({ default: vi.fn() }));
 vi.mock('../../src/lib/storage.js', () => ({
   getOption: vi.fn(),
   load_data: vi.fn(),
+  store_data: vi.fn(),
   ensureDefaults: vi.fn(() => Promise.resolve()),
 }));
 vi.mock('../../src/background/modules/browser/notification.js', () => ({
@@ -20,7 +21,12 @@ vi.mock('../../src/background/modules/browser/contextMenu.js', () => ({
 }));
 
 import apiCall from '../../src/lib/apiCall.js';
-import { getOption, load_data, ensureDefaults } from '../../src/lib/storage.js';
+import {
+  getOption,
+  load_data,
+  store_data,
+  ensureDefaults,
+} from '../../src/lib/storage.js';
 import { initializeErrorIconCache } from '../../src/background/modules/browser/notification.js';
 import getBrowserTheme from '../../src/background/modules/browser/getBrowserTheme.js';
 import { createContextMenus } from '../../src/background/modules/browser/contextMenu.js';
@@ -89,6 +95,71 @@ describe('startup init', () => {
       'GET',
       'page=0&limit=1',
     );
+  });
+
+  describe('warm-up rate limit', () => {
+    // The stamp lives in the 'misc' store; every other read returns the server URL.
+    let stamp;
+
+    beforeEach(() => {
+      stamp = undefined;
+      load_data.mockImplementation(async (store) =>
+        store === 'misc' ? stamp : 'https://cloud.example.com',
+      );
+      store_data.mockImplementation(async (store, items) => {
+        stamp = items.lastConnectionWarmup;
+      });
+    });
+
+    it('records the warm-up so the next start can skip it', async () => {
+      await init();
+      await flush();
+
+      expect(apiCall).toHaveBeenCalledTimes(1);
+      expect(store_data).toHaveBeenCalledWith('misc', {
+        lastConnectionWarmup: expect.any(Number),
+      });
+    });
+
+    it('skips the warm-up when one ran less than five minutes ago', async () => {
+      stamp = Date.now() - 60 * 1000;
+
+      await init();
+      await flush();
+
+      expect(apiCall).not.toHaveBeenCalled();
+      expect(store_data).not.toHaveBeenCalled();
+    });
+
+    it('warms up again once the interval has passed', async () => {
+      stamp = Date.now() - 6 * 60 * 1000;
+
+      await init();
+      await flush();
+
+      expect(apiCall).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips the second of two starts in a row', async () => {
+      await init();
+      await flush();
+      await init();
+      await flush();
+
+      expect(apiCall).toHaveBeenCalledTimes(1);
+    });
+
+    it('still warms up when the stamp cannot be read', async () => {
+      load_data.mockImplementation(async (store) => {
+        if (store === 'misc') throw new Error('unavailable');
+        return 'https://cloud.example.com';
+      });
+
+      await init();
+      await flush();
+
+      expect(apiCall).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('skips the warm-up without a server', async () => {

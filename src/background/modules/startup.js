@@ -1,6 +1,11 @@
 // @ts-check
 import apiCall from '../../lib/apiCall.js';
-import { getOption, load_data, ensureDefaults } from '../../lib/storage.js';
+import {
+  getOption,
+  load_data,
+  store_data,
+  ensureDefaults,
+} from '../../lib/storage.js';
 import { initializeErrorIconCache } from './browser/notification.js';
 import getBrowserTheme from './browser/getBrowserTheme.js';
 import { createContextMenus } from './browser/contextMenu.js';
@@ -32,8 +37,35 @@ async function applyThemedIcon() {
   }
 }
 
+// The worker restarts after every ~30 s idle, and every start used to send a
+// request. Idle connections stay usable for a few minutes, so a warm-up more
+// often than this warms nothing that is not warm already.
+const WARMUP_MIN_INTERVAL_MS = 5 * 60 * 1000;
+const WARMUP_STAMP_KEY = 'lastConnectionWarmup';
+
 /**
- * Warms up the connection to the Nextcloud server on SW startup.
+ * Whether a warm-up ran less than WARMUP_MIN_INTERVAL_MS ago; if not, records
+ * this one. The stamp is kept in the 'misc' store of the extension's own
+ * database: module state does not survive a worker restart, and
+ * chrome.storage.session would need the "storage" permission the manifest does
+ * not declare. If the store cannot be read or written it answers "no", i.e.
+ * warms up every time.
+ * @returns {Promise<boolean>}
+ */
+async function warmedUpRecently() {
+  try {
+    const last = (await load_data('misc', WARMUP_STAMP_KEY)) ?? 0;
+    if (Date.now() - last < WARMUP_MIN_INTERVAL_MS) return true;
+    await store_data('misc', { [WARMUP_STAMP_KEY]: Date.now() });
+  } catch {
+    // stamp unavailable: just warm up
+  }
+  return false;
+}
+
+/**
+ * Warms up the connection to the Nextcloud server on SW startup (at most once
+ * per WARMUP_MIN_INTERVAL_MS).
  * Primes the TCP/TLS connection, auth header cache, and network timeout cache.
  * Fire-and-forget — errors are silently ignored.
  */
@@ -42,6 +74,7 @@ async function warmupConnection() {
   // server URL string itself — not an object with a `server` property.
   const server = await load_data('credentials', 'server');
   if (!server) return;
+  if (await warmedUpRecently()) return;
 
   // The cheapest useful request: one bookmark of the first page. The response
   // is discarded; the request only exists for its side effects on the caches.

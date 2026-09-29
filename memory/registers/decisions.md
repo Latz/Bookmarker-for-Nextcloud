@@ -102,3 +102,10 @@
 - **Alternatives considered**: `vi.resetModules()` per test (slow, breaks imports); avoid module-level state (requires bigger refactor)
 - **Outcome**: `getBrowserTheme.js` → `_resetCacheForTesting()`; `storage.js` → `_resetMainConnectionForTesting()`; `notification.js` → `_resetErrorIconCacheForTesting(cache)`; all called in `beforeEach` in respective test files
 - **Status**: in-effect (pattern to follow for future modules with module-level state)
+
+## Popup/SW Request Dedupe, Rate-Limited Warm-Up, Parallel Title Check — 2026-09-29
+- **Decision**: (1) `cacheGet` takes a Web Lock (`bookmarker-cache-fetch-<type>`) on the miss path and re-reads the cache inside it; (2) `warmupConnection` runs at most once per 5 min, stamp in the IndexedDB `misc` store (`lastConnectionWarmup`); (3) `checkBookmark` starts the optional title lookup together with the URL lookup and aborts it when the URL matches.
+- **Rationale**: Measured in headless Chrome against a mock Nextcloud (harness was scratchpad-only): a cold keyword cache made popup and SW each send `GET tag` (2 requests every time); every SW start sent a warm-up request even with no popup; the title lookup started only after the URL answer (serial round trip).
+- **Alternatives considered**: in-process promise map for (1) (does not span popup + SW); `chrome.storage.session` for (2) (manifest has no `storage` permission, so `chrome.storage` is undefined -- the stamp would never have been written; the existing theme/error-icon session caches are inactive for the same reason); `AbortSignal.any` for (3) (needs Chrome 116+).
+- **Outcome**: browser re-run: `tag×1` on cold cache, URL and title requests leave together, warm-up on the first of three cold starts only. 985 tests passing.
+- **Status**: in-effect. Open: theme/error-icon session caches never work without the `storage` permission (add it, or move them to IndexedDB).

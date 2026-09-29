@@ -293,7 +293,8 @@ async function checkCache(url, options) {
  * Finds out whether the page is already bookmarked on the server.
  *
  * Order: feature switch -> cache -> a request that is already running for the
- * same URL -> server lookup by URL -> (optionally) lookup by similar title.
+ * same URL -> server lookup by URL, with (optionally) a lookup by similar title
+ * running alongside it.
  * Successful lookups are cached.
  *
  * @param {string} url - The tab's URL.
@@ -338,36 +339,47 @@ async function checkBookmark(url, title, signal = null) {
   log(DEBUG, 'Cache miss - fetching bookmark check from server for', url);
 
   const checkPromise = (async () => {
+    // The optional title lookup is independent of the URL lookup, so it starts
+    // right away instead of waiting for it -- one round trip less whenever the
+    // page is not bookmarked yet. If the URL turns out to match, the title
+    // request is no longer needed and is aborted (also when the caller aborts).
+    const titleAbort = new AbortController();
+    const abortTitle = () => titleAbort.abort();
+    signal?.addEventListener('abort', abortTitle);
     try {
-      let urlMatches = await checkByUrl(cacheKey, signal);
+      const urlLookup = checkByUrl(cacheKey, signal);
+      const titleLookup =
+        allOptions.cbx_titleSimilarityCheck && title
+          ? checkByTitle(title, titleAbort.signal) // never rejects
+          : null;
+
+      let urlMatches = await urlLookup;
 
       if (signal?.aborted) {
         throw new DOMException('Request aborted', 'AbortError');
       }
 
       if (urlMatches.found && urlMatches.matches.length > 0) {
-        log(DEBUG, 'Found exact URL match - skipping title check');
+        log(DEBUG, 'Found exact URL match - dropping title check');
+        titleAbort.abort();
         // Fire-and-forget: the response must not wait on an IndexedDB write
         // (cacheBookmarkCheck handles its own errors).
         void cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
         return urlMatches;
       }
 
-      // No URL match: optionally look for a bookmark with a similar title
-      // (catches the same article under a different URL).
-      if (allOptions.cbx_titleSimilarityCheck && title) {
-        const titleMatches = await checkByTitle(title, signal);
+      // No URL match: a bookmark with a similar title (catches the same
+      // article under a different URL) still counts.
+      const titleMatches = titleLookup ? await titleLookup : [];
+      if (titleMatches.length > 0) {
+        const mergedMatches = mergeMatches(urlMatches.matches, titleMatches);
+        urlMatches.matches = mergedMatches;
+        urlMatches.count = mergedMatches.length;
+        urlMatches.found = mergedMatches.length > 0;
 
-        if (titleMatches.length > 0) {
-          const mergedMatches = mergeMatches(urlMatches.matches, titleMatches);
-          urlMatches.matches = mergedMatches;
-          urlMatches.count = mergedMatches.length;
-          urlMatches.found = mergedMatches.length > 0;
-
-          if (mergedMatches.length > 0) {
-            // Like checkByUrl, expose the best match's fields at the top level.
-            urlMatches = { ...urlMatches, ...mergedMatches[0] };
-          }
+        if (mergedMatches.length > 0) {
+          // Like checkByUrl, expose the best match's fields at the top level.
+          urlMatches = { ...urlMatches, ...mergedMatches[0] };
         }
       }
 
@@ -380,6 +392,8 @@ async function checkBookmark(url, title, signal = null) {
       log(DEBUG, 'checkBookmark response', urlMatches);
       return urlMatches;
     } finally {
+      signal?.removeEventListener('abort', abortTitle);
+      titleAbort.abort(); // no-op once the title request has finished
       inflightChecks.delete(cacheKey);
     }
   })();
@@ -468,6 +482,9 @@ async function checkByTitle(title, signal = null) {
     const method = 'GET';
     const data = new URLSearchParams({ page: 0, limit }).toString();
     const result = await apiCall(endpoint, method, data, signal);
+
+    // Aborted while in flight (the URL matched, so the answer is not needed).
+    if (signal?.aborted) return [];
 
     if (result.status !== 'success') {
       log(DEBUG, 'Title check failed - API error');
