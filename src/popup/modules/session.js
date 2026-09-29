@@ -57,6 +57,10 @@ export async function startSession() {
     load_data('credentials', 'server'),
   ]);
 
+  // Three possible paths for the popup:
+  //  1. not logged in (no app password)  -> show the authorize button
+  //  2. zen mode enabled                 -> save immediately, no form
+  //  3. otherwise                        -> show the bookmark form (needsForm)
   const needsForm = apppwd !== undefined && !enableZen;
   let needsReconnect = false;
   let dataPromise = null;

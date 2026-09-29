@@ -1,4 +1,12 @@
 // @ts-check
+// Collects everything the popup (and zen mode) needs about the active tab:
+//   - url and title from the tab itself
+//   - description and keywords extracted from the page (extractPageData is
+//     injected into the tab; getDescription/getKeywords work on its result)
+//   - the user's folders
+//   - whether the page is already bookmarked (checkBookmark: exact URL, plus
+//     optionally similar URLs / similar titles, with caching)
+// These steps are run in parallel wherever they do not depend on each other.
 import getDescription from '../page/getDescription.js';
 import getKeywords from '../page/getKeywords.js';
 import { getFolders } from './getFolders.js';
@@ -56,6 +64,18 @@ function isValidBookmarkableUrl(url) {
   return true;
 }
 
+/**
+ * Gathers the bookmark data for the active tab.
+ *
+ * The result always has an `ok` flag. On failure it is `{ ok: false, error }`
+ * (plus `retryable: false` if trying again cannot help). On success it holds
+ * url, title, description, keywords, folders and `checkBookmark`; if the page
+ * is already bookmarked, the stored bookmark's fields (id as `bookmarkID`,
+ * tags as `keywords`, added, lastmodified, ...) replace the extracted ones,
+ * otherwise `bookmarkID` is -1.
+ *
+ * @returns {Promise<Object>}
+ */
 export default async function getData() {
   let data = { ok: true };
 
@@ -75,7 +95,8 @@ export default async function getData() {
   data.url = activeTab.url;
   data.title = activeTab.title;
 
-  // Cancel any previous request for this specific tab
+  // Cancel any previous request for this specific tab (e.g. the popup was
+  // reopened while the last lookup was still running).
   const tabId = activeTab.id;
   if (abortControllers.has(tabId)) {
     const previousController = abortControllers.get(tabId);
@@ -133,6 +154,7 @@ export default async function getData() {
     return data;
   }
 
+  // The injected function catches its own errors and reports them as data.
   if (parsedData.error) {
     return {
       ok: false,
@@ -203,7 +225,13 @@ async function getContent(tabId, headingLevel) {
 
 // ---------------------------------------------------------------------------------------------------
 /**
- * Handles waiting for an in-flight request with proper abort signal handling
+ * Handles waiting for an in-flight request with proper abort signal handling:
+ * the returned promise settles like `inflightPromise`, but rejects with an
+ * AbortError as soon as `signal` aborts. The shared request itself keeps
+ * running, since other callers may still be waiting for it.
+ * @param {Promise<Object>} inflightPromise - The request started by another caller.
+ * @param {AbortSignal|null} signal - This caller's abort signal.
+ * @returns {Promise<Object>}
  */
 async function waitForInflightRequest(inflightPromise, signal) {
   if (!signal) {
@@ -233,9 +261,12 @@ async function waitForInflightRequest(inflightPromise, signal) {
 }
 
 /**
- * Checks cache for a bookmark check result
+ * Checks cache for a bookmark check result. Tries the URL as given first, then
+ * its normalized form (results may have been stored under either).
  * @param {string} url - URL to look up.
  * @param {Object} options - Pre-fetched options (saves per-lookup option reads).
+ * @returns {Promise<Object|null>} The cached result, or null on a miss or if
+ *   caching is disabled.
  */
 async function checkCache(url, options) {
   if (!options.cbx_cacheBookmarkChecks) return null;
@@ -258,6 +289,19 @@ async function checkCache(url, options) {
   return null;
 }
 
+/**
+ * Finds out whether the page is already bookmarked on the server.
+ *
+ * Order: feature switch -> cache -> a request that is already running for the
+ * same URL -> server lookup by URL -> (optionally) lookup by similar title.
+ * Successful lookups are cached.
+ *
+ * @param {string} url - The tab's URL.
+ * @param {string} title - The tab's title, for the optional similar-title check.
+ * @param {AbortSignal|null} [signal] - Aborts the wait/lookup.
+ * @returns {Promise<{ok: boolean, found: boolean, matches: Array<Object>, count: number}>}
+ *   `ok: false` means the server could not be reached (not "not found").
+ */
 async function checkBookmark(url, title, signal = null) {
   // One batched read: getOptions fetches in parallel off a single connection
   // and is Map-cached, so splitting this saved nothing and cost a second
@@ -270,6 +314,8 @@ async function checkBookmark(url, title, signal = null) {
     'cbx_titleSimilarityCheck',
   ]);
 
+  // The user turned the "already bookmarked?" check off: report "not found"
+  // without any request.
   if (!allOptions.cbx_alreadyStored) {
     return { ok: true, found: false, matches: [], count: 0 };
   }
@@ -277,9 +323,13 @@ async function checkBookmark(url, title, signal = null) {
   const cached = await checkCache(url, allOptions);
   if (cached) return cached;
 
+  // With fuzzy matching the normalized URL (http/https, www, trailing slash,
+  // ... ignored) is what is searched for and cached; otherwise the exact URL.
   const normalizedUrl = normalizeUrl(url);
   const cacheKey = allOptions.cbx_fuzzyUrlMatch ? normalizedUrl : url;
 
+  // Deduplicate: two callers checking the same URL at the same time share one
+  // server request.
   if (inflightChecks.has(cacheKey)) {
     log(DEBUG, 'Request deduplication - waiting for in-flight check', url);
     return waitForInflightRequest(inflightChecks.get(cacheKey), signal);
@@ -303,6 +353,8 @@ async function checkBookmark(url, title, signal = null) {
         return urlMatches;
       }
 
+      // No URL match: optionally look for a bookmark with a similar title
+      // (catches the same article under a different URL).
       if (allOptions.cbx_titleSimilarityCheck && title) {
         const titleMatches = await checkByTitle(title, signal);
 
@@ -313,11 +365,14 @@ async function checkBookmark(url, title, signal = null) {
           urlMatches.found = mergedMatches.length > 0;
 
           if (mergedMatches.length > 0) {
+            // Like checkByUrl, expose the best match's fields at the top level.
             urlMatches = { ...urlMatches, ...mergedMatches[0] };
           }
         }
       }
 
+      // Never cache a failed lookup, or a short outage would be remembered as
+      // "not bookmarked" for the whole cache TTL.
       if (urlMatches.ok) {
         cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
       }
@@ -336,6 +391,13 @@ async function checkBookmark(url, title, signal = null) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+/**
+ * Asks the server for bookmarks with exactly this URL.
+ * @param {string} url - The URL to search for (normalized by the caller if wanted).
+ * @param {AbortSignal|null} [signal]
+ * @returns {Promise<Object>} `{ok, found, matches, count}`, with the first
+ *   match's fields merged in when found; `ok: false` if the request failed.
+ */
 async function checkByUrl(url, signal = null) {
   // OPTIMIZATION: URL is already normalized by caller when needed
   // No need to normalize again - just use the URL as-is
@@ -380,6 +442,14 @@ async function checkByUrl(url, signal = null) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+/**
+ * Looks for bookmarks with a title similar to `title` among the user's most
+ * recent bookmarks (only a limited number is fetched, for speed).
+ * @param {string} title
+ * @param {AbortSignal|null} [signal]
+ * @returns {Promise<Array<Object>>} Matching bookmarks with a `similarity`
+ *   score, best first; [] on any failure.
+ */
 async function checkByTitle(title, signal = null) {
   log(DEBUG, 'Checking by title similarity:', title);
 
@@ -423,6 +493,13 @@ async function checkByTitle(title, signal = null) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+/**
+ * Combines URL and title matches into one list without duplicates (by
+ * bookmark ID). URL matches come first, then title matches by similarity.
+ * @param {Array<Object>} urlMatches
+ * @param {Array<Object>} titleMatches
+ * @returns {Array<Object>} Matches tagged with `matchType` ('url'|'title').
+ */
 function mergeMatches(urlMatches, titleMatches) {
   // Create a Map to avoid duplicates based on bookmark ID
   const matchMap = new Map();

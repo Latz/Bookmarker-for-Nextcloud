@@ -14,6 +14,9 @@ import { notifyUser } from '../browser/notification.js';
  * @returns {Promise<void>}
  */
 export async function saveBookmark(data, folderIDs, bookmarkID) {
+  // A positive ID means the page is already bookmarked: update it in place
+  // (PUT on the bookmark's own URL). Otherwise create a new one (POST on the
+  // collection URL).
   const endpoint =
     bookmarkID > 0
       ? `index.php/apps/bookmarks/public/rest/v2/bookmark/${bookmarkID}`
@@ -21,6 +24,8 @@ export async function saveBookmark(data, folderIDs, bookmarkID) {
   const method = bookmarkID > 0 ? 'PUT' : 'POST';
 
   let response;
+  // Disk badge on the toolbar icon as progress feedback: the popup has
+  // already closed, so this is the only sign that the save is running.
   chrome.action.setBadgeText({ text: '💾' });
   try {
     response = await apiCall(endpoint, method, data);
@@ -30,13 +35,18 @@ export async function saveBookmark(data, folderIDs, bookmarkID) {
       console.error('Error storing last folders:', error);
     });
   } catch (error) {
+    // Normalise a thrown error into the same shape apiCall returns for
+    // failures, so notifyUser below handles both paths identically.
     response = { status: 'error', statusText: error?.message ?? String(error) };
   } finally {
     // Always cleared, otherwise a throw leaves the badge stuck on the disk icon.
     chrome.action.setBadgeText({ text: '' });
   }
+  // Success or error notification (which one is decided by response.status).
   notifyUser(response);
 
+  // Only successful saves feed the keyword cache. Not awaited: the user
+  // already has their notification, and a cache failure is only logged.
   if (response.status === 'success') {
     updateKeywordCache(data).catch((error) => {
       console.error('Error updating cache:', error);
@@ -52,11 +62,13 @@ export async function saveBookmark(data, folderIDs, bookmarkID) {
  * @returns {Promise<void>}
  */
 async function updateKeywordCache(data) {
+  // The tags travel as repeated `tags[]` fields; drop empty entries.
   const keywords = new URLSearchParams(data)
     .getAll('tags[]')
     .filter((tag) => tag.length > 0);
   if (keywords.length === 0) return;
 
+  // Compare case-insensitively so "JavaScript" is not added next to "javascript".
   const cachedTags = new Set(
     (await cacheGet('keywords')).map((tag) => tag.toLowerCase()),
   );

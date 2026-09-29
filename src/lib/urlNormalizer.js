@@ -41,6 +41,8 @@ export function normalizeUrl(urlString, options = {}) {
   }
 
   try {
+    // Work on a parsed URL object so the pieces are changed structurally
+    // instead of with string surgery. Throws on an invalid URL (see catch).
     let url = new URL(urlString);
 
     // Normalize protocol: http → https
@@ -53,7 +55,9 @@ export function normalizeUrl(urlString, options = {}) {
       url.hostname = url.hostname.substring(4);
     }
 
-    // Sort query parameters alphabetically
+    // Sort query parameters alphabetically by name, so ?a=1&b=2 and ?b=2&a=1
+    // count as the same page. (The sort is stable, so repeated names keep
+    // their relative order.)
     if (sortQueryParams && url.search) {
       const params = new URLSearchParams(url.search);
       const sortedParams = new URLSearchParams(
@@ -67,6 +71,8 @@ export function normalizeUrl(urlString, options = {}) {
       url.hash = '';
     }
 
+    // URL.toString() adds a "/" to a bare host ("https://example.com" becomes
+    // "https://example.com/"), which is why the root path is special-cased below.
     let normalizedUrl = url.toString();
 
     // Remove trailing slash (but not for root paths like https://example.com/)
@@ -81,7 +87,9 @@ export function normalizeUrl(urlString, options = {}) {
     // Cache the result
     normalizeCache.set(cacheKey, normalizedUrl);
 
-    // Implement LRU: remove oldest entry if cache is full
+    // Implement LRU: remove oldest entry if cache is full. A Map iterates in
+    // insertion order, so the first key is the least recently used one (hits
+    // above re-insert their key at the end).
     if (normalizeCache.size > CACHE_MAX_SIZE) {
       const firstKey = normalizeCache.keys().next().value;
       normalizeCache.delete(firstKey);

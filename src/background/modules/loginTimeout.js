@@ -6,6 +6,8 @@
 function insertTimeOutMessage() {
   const loginForm = document.getElementById('login-form');
   const appTokenLogin = document.getElementById('app-token-login');
+  // Empty the form, then build the message and a close button from scratch
+  // (DOM API instead of innerHTML, so no markup is parsed).
   loginForm.replaceChildren();
   const msg = document.createElement('div');
   msg.setAttribute(
@@ -19,13 +21,17 @@ function insertTimeOutMessage() {
   button.setAttribute('class', 'login primary');
   button.setAttribute('style', 'padding: 0 30px 0 30px');
   button.innerText = 'Close';
+  // Listener on the whole document: any click closes the tab, not only one
+  // on the button.
   document.addEventListener('click', (event) => {
     window.close();
   });
   loginForm.appendChild(button);
 
+  // Without these the button would submit the (now meaningless) login form.
   loginForm.removeAttribute('action'); // reset default action
   loginForm.removeAttribute('method'); // reset default action
+  // Remove the app-token fallback section as well; it is useless after a timeout.
   appTokenLogin.replaceChildren();
 }
 
@@ -42,6 +48,8 @@ export async function maxAttemptsError(loginPage) {
       func: insertTimeOutMessage,
     });
   } catch (e) {
+    // The login tab may have been closed by the user in the meantime, in
+    // which case injecting fails; there is nothing left to update.
     console.log('!!!', e);
   }
 }

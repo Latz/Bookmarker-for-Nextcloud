@@ -43,6 +43,8 @@ async function warmupConnection() {
   const server = await load_data('credentials', 'server');
   if (!server) return;
 
+  // The cheapest useful request: one bookmark of the first page. The response
+  // is discarded; the request only exists for its side effects on the caches.
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
   const data = new URLSearchParams({ page: 0, limit: 1 }).toString();
   await apiCall(endpoint, 'GET', data);
@@ -76,12 +78,16 @@ export async function init() {
     initializeErrorIconCache(),
     getOption('cbx_enableZen'),
   ]);
+  // The first result (icon) already logs its own failure inside
+  // applyThemedIcon, so only the other two are checked here.
   for (const result of [iconCache, zenModeEnabled]) {
     if (result.status === 'rejected') {
       console.error('[startup] init step failed:', result.reason);
     }
   }
 
+  // The zen entry is only offered if the option is on; if reading it failed,
+  // fall back to the regular menu without it.
   await createContextMenus(
     zenModeEnabled.status === 'fulfilled' ? zenModeEnabled.value : false,
   );

@@ -1,4 +1,7 @@
 // @ts-check
+// Builders for the popup's non-form screens: retry hint, error box, authorize
+// button and reconnect banner. All DOM is built with createElement/textContent
+// (never innerHTML), so no server- or page-supplied text is parsed as markup.
 
 /**
  * Shows a retry message in the popup
@@ -59,6 +62,10 @@ export function createErrorBox(data) {
   document.body.replaceChildren(parent);
 }
 // --------------------------------------------------------------------------------------------------
+/**
+ * Replaces the form with a single "Authorize extension" button. Clicking it
+ * asks the service worker to open the login page and closes the popup.
+ */
 export function createAuthorizeButton() {
   const form = document.getElementById('bookmarkForm');
   form.setAttribute('class', 'flex justify-center w-full');
@@ -105,6 +112,8 @@ export function createReconnectBanner(server, onGranted) {
   button.setAttribute('class', 'btn btn-primary w-full');
 
   button.addEventListener('click', async () => {
+    // The permission is requested for the server's origin only. An unusable
+    // stored URL cannot be granted anything, so report it like a denial.
     let origin;
     try {
       origin = new URL(server).origin;
@@ -113,6 +122,8 @@ export function createReconnectBanner(server, onGranted) {
       return;
     }
 
+    // permissions.request must be called from a user gesture, which is why it
+    // sits directly in this click handler.
     // A second click while the request/form flow runs would build the form twice
     button.disabled = true;
     try {

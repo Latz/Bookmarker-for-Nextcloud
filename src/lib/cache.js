@@ -1,4 +1,10 @@
 // @ts-check
+// Local cache (IndexedDB database "BookmarkerCache") for data that is expensive
+// to get from the Nextcloud server:
+//   - keywords / folders: cached for 24 hours (cacheGet / cacheAdd)
+//   - bookmarkChecks: "is this URL already bookmarked?" results, cached for a
+//     configurable number of minutes (cacheBookmarkCheck & co)
+// The database schema lives in cacheSchema.js.
 import { openDB } from 'idb';
 import apiCall from './apiCall.js';
 import { preRenderFolders } from '../background/modules/bookmarks/getFolders.js';
@@ -17,6 +23,17 @@ let connectionIdleTimeout = null;
 const CONNECTION_IDLE_TIME = 5 * 60 * 1000; // 5 minutes
 
 // ---------------------------------------------------------------------
+/**
+ * Returns the cached list for `type`, loading it from the server if there is
+ * no usable cache entry (missing, in an outdated format or older than 24h).
+ *
+ * Each entry is stored as two records in its store: `{item: type, value}` with
+ * the data and `{item: '<type>_created', value: timestamp}` for expiry.
+ *
+ * @param {'keywords'|'folders'} type - Which list to read.
+ * @param {boolean} [forceServer] - Skip the cache and refetch (manual refresh).
+ * @returns {Promise<Array<any>>} The list, or [] if the server call failed.
+ */
 export async function cacheGet(type, forceServer = false) {
   const db = await getDBConnection();
 
@@ -74,6 +91,13 @@ export async function cacheGet(type, forceServer = false) {
 }
 
 // ---------------------------------------------------------------------
+/**
+ * Stores a list in the cache and stamps it with the current time (which
+ * starts its 24h lifetime).
+ * @param {'keywords'|'folders'} type
+ * @param {Array<any>} data
+ * @returns {Promise<void>}
+ */
 export async function cacheAdd(type, data) {
   const db = await getDBConnection();
 
@@ -85,8 +109,15 @@ export async function cacheAdd(type, data) {
 }
 
 // ---------------------------------------------------------------------
-// If the user enters a tag that's not already in the tags collection,
-// add it to the local cache
+/**
+ * If the user enters a tag that's not already in the tags collection,
+ * add it to the local cache (so it is suggested next time without waiting for
+ * the server list to be refetched). The creation time is not touched, so the
+ * entry still expires on schedule.
+ * @param {'keywords'} type
+ * @param {Array<string>} newTags
+ * @returns {Promise<void>}
+ */
 export function cacheTempAdd(type, newTags) {
   // Read-modify-write, so two overlapping calls (e.g. a popup save and a zen
   // mode save) would both read the same list and the later write would drop the
@@ -97,8 +128,16 @@ export function cacheTempAdd(type, newTags) {
   return run;
 }
 
+// Tail of the queue of pending cacheTempAdd calls.
 let tempAddQueue = Promise.resolve();
 
+/**
+ * The actual read-modify-write behind cacheTempAdd: merges the new tags into
+ * the cached list (duplicates ignored, case-insensitively) and stores it sorted.
+ * @param {string} type
+ * @param {Array<string>} newTags
+ * @returns {Promise<void>}
+ */
 async function addTempTags(type, newTags) {
   const cachedTags = await cacheGet(type);
   // case-insensitive, like the caller's own check: concurrent saves of the same
@@ -116,6 +155,16 @@ async function addTempTags(type, newTags) {
 }
 
 // ---------------------------------------------------------------------
+/**
+ * Whether a cache entry has to be refetched: always when forced or when it
+ * has no creation record, and when it is older than 24 hours (in which case
+ * the stale records are also deleted in the background).
+ * @param {any} db - Open database.
+ * @param {string} type - Store name.
+ * @param {{value: number}|undefined} created - The `<type>_created` record.
+ * @param {boolean} forceServer
+ * @returns {boolean}
+ */
 function elementExpired(db, type, created, forceServer) {
   // if the refresh is forced or no entry has been created, return true
   // fetch can be forced by setting forceServer to true
@@ -225,7 +274,10 @@ function hashUrl(url) {
     return cached;
   }
 
-  // Fast hash using simple string hash algorithm
+  // Fast hash using simple string hash algorithm (the classic `hash * 31 + char`,
+  // as in Java's String.hashCode). It is not collision-free, which is why the
+  // URL length is appended to the key below and the full URL is stored with
+  // each record.
   let hash = 0;
   for (let i = 0; i < url.length; i++) {
     const char = url.codePointAt(i);
@@ -374,6 +426,7 @@ export function closeDBConnection() {
 // ---------------------------------------------------------------------
 
 // Register cleanup handler for when extension is suspended/unloaded
+// (the guard keeps the module importable in tests, where `chrome` is absent).
 if (typeof chrome !== 'undefined' && chrome.runtime) {
   chrome.runtime.onSuspend?.addListener(() => {
     closeDBConnection();

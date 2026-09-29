@@ -4,14 +4,18 @@ import log from '../../../../lib/log.js';
 const DEBUG = false;
 
 // Site- and markup-specific keyword sources. Each takes the (mock) document
-// and returns the keywords it found, or [] -- getKeywords tries them in order
-// and stops at the first that finds any.
+// and returns the keywords it found, or [] -- getKeywords asks all of them and
+// merges the results (see getKeywords.js).
 
 // ------------------------------------------------------------------------------
 // try <a href="" rel="tag">
 // (https://www.lenfestinstitute.org/solution-set/i-canceled-22-digital-newspaper-subscriptions-heres-what-i-learned-about-digital-retention-strategies/)
 // ------------------------------------------------------------------------------
-/** @returns {Array<string>} */
+/**
+ * Text of all `<a rel="tag">` links (the WordPress/blog convention for tags).
+ * @param {any} document - The (mock) document.
+ * @returns {Array<string>}
+ */
 export function extractRelTagKeywords(document) {
   const keywords = [];
   const relsTag = document.querySelectorAll('a[rel=tag]');
@@ -21,7 +25,11 @@ export function extractRelTagKeywords(document) {
 
 // ------------------------------------------------
 // try <a href="" rel="category">
-/** @returns {Array<string>} */
+/**
+ * Text of all `<a rel="category">` links (the blog convention for categories).
+ * @param {any} document - The (mock) document.
+ * @returns {Array<string>}
+ */
 export function extractRelCategoryKeywords(document) {
   const keywords = [];
   const relsCategories = document.querySelectorAll('a[rel=category]');
@@ -50,10 +58,14 @@ const PUSH_CALL = 'dataLayer.push(';
 function readBalancedObject(text, start) {
   const limit = Math.min(text.length, start + MAX_PUSH_OBJECT_CHARS);
   let depth = 0;
+  // `depth` counts open braces; `quote` holds the quote character while we are
+  // inside a string literal (braces there are ignored).
   let quote = null;
   for (let i = start; i < limit; i++) {
     const ch = text[i];
     if (quote) {
+      // A backslash escapes the next character, so an escaped quote does not
+      // end the string.
       if (ch === '\\') i++;
       else if (ch === quote) quote = null;
     } else if (ch === '"' || ch === "'") {
@@ -119,7 +131,12 @@ export function extractGtmKeywords(document) {
 // ------------------------------------------------------------------------------------------
 // Github
 // ------------------------------------------------------------------------------------------
-/** @returns {Array<string>} */
+/**
+ * Topics of a GitHub repository page. The selectors are tried in order and the
+ * first one that yields any topic wins.
+ * @param {any} document - The (mock) document.
+ * @returns {Array<string>}
+ */
 export function extractGithubKeywords(document) {
   log(DEBUG, 'github');
   let keywords = [];
@@ -157,7 +174,12 @@ export function extractGithubKeywords(document) {
 // ------------------------------------------------------------------------------------------
 // Next.js: props.pageProps.post.tags in __NEXT_DATA__
 // ------------------------------------------------------------------------------------------
-/** @returns {Array<string>} */
+/**
+ * Comma-separated post tags from the JSON blob a Next.js page embeds in
+ * `<script id="__NEXT_DATA__">`.
+ * @param {any} document - The (mock) document.
+ * @returns {Array<string>} Tags, or [] if the page is not a Next.js page or has no tags.
+ */
 export function extractNextDataKeywords(document) {
   let keywords = [];
   log(DEBUG, 'Next_data');
@@ -165,8 +187,10 @@ export function extractNextDataKeywords(document) {
   try {
     next_data = document.getElementById('__NEXT_DATA__').innerText;
   } catch (e) {
+    // No __NEXT_DATA__ element (getElementById returned null): not a Next.js page.
     return [];
   }
+  // May throw on malformed JSON; getKeywords catches per source.
   const json = JSON.parse(next_data);
   try {
     const tags = json.props.pageProps.post.tags;

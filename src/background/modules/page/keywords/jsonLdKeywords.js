@@ -1,4 +1,8 @@
 // @ts-check
+// Keyword extraction from JSON-LD structured data
+// (<script type="application/ld+json">). Sites publish keywords in several
+// shapes, so the helpers below each handle one shape; the exported functions
+// at the bottom combine them.
 
 // schema.org Article and its subtypes. News sites mostly use NewsArticle,
 // blogs BlogPosting (https://www.sciencenews.org/article/true-blue-rose-pigment-copigment).
@@ -25,6 +29,7 @@ const ARTICLE_TYPES = new Set([
 ]);
 
 /**
+ * @param {any} node - A JSON-LD node (may be anything, structured data is untrusted).
  * @returns {boolean} Whether a JSON-LD node is an Article (or subtype); `@type` may be a string or an array.
  */
 function isArticle(node) {
@@ -96,6 +101,7 @@ function extractKeywordsFromMainEntity(jsonld) {
  * the first item that yields keywords wins.
  */
 export function extractKeywordsFromJsonLd(jsonld) {
+  // Top-level array: recurse into each item.
   if (Array.isArray(jsonld)) {
     for (const item of jsonld) {
       if (!item || typeof item !== 'object') continue;
@@ -109,6 +115,8 @@ export function extractKeywordsFromJsonLd(jsonld) {
     }
     return [];
   }
+  // Single object: try the known locations in priority order. Each helper
+  // returns null for "not my shape", which lets `??` fall through to the next.
   return (
     extractKeywordsFromGraphArticle(jsonld) ??
     extractKeywordsFromKeywordsField(jsonld) ??

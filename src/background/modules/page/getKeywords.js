@@ -47,8 +47,28 @@ export function mergeKeywords(keywords) {
   return merged;
 }
 
+/**
+ * Determines the keyword suggestions for a page.
+ *
+ * Strategy, from most to least reliable:
+ *  1. Ask every structured source (meta tags, rel=tag links, JSON-LD, GTM,
+ *     GitHub topics, Next.js data, IEEE data) and merge what they return.
+ *  2. If none found anything, use the loose brute-force search result.
+ *  3. If there are still no keywords and the user enabled "extended
+ *     keywords", match words of the description/headlines against the
+ *     keywords already stored on the server.
+ * Steps 1 and 2 are then filtered by reduceKeywords (only keywords that exist
+ * on the server are kept) unless the user turned that off.
+ *
+ * @param {Object} parsedData - Values read in-page by extractPageData.
+ * @param {any} document - The (mock) document built from the page HTML.
+ * @returns {Promise<Array<string>>} Keywords, or [] if the user disabled
+ *   automatic tags or nothing was found.
+ */
 export default async function getKeywords(parsedData, document) {
-  // Every source is asked; their keywords are merged in this order.
+  // Every source is asked; their keywords are merged in this order (earlier
+  // sources win when the same keyword appears in several). Each source is a
+  // function so that one throwing can be caught individually below.
   const sources = [
     () => extractMetaKeywords(document),
     () => extractRelTagKeywords(document),
@@ -70,6 +90,7 @@ export default async function getKeywords(parsedData, document) {
     'input_headings_slider',
   ]);
 
+  // The user switched automatic keywords off entirely.
   if (!options.cbx_autoTags) return [];
 
   // Collect the keywords of all sources, so tags declared in more than one

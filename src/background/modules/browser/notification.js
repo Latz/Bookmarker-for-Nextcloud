@@ -1,3 +1,5 @@
+// Desktop notifications shown by the service worker: save success, save/API
+// errors and cache refresh. Icons follow the browser theme.
 import { getOption } from '../../../lib/storage.js';
 import getBrowserTheme from './getBrowserTheme.js';
 
@@ -7,18 +9,29 @@ const NOTIFICATION_TITLE = 'Bookmarker for Nextcloud';
 // Cache which themes have error icons (checked once at startup)
 let errorIconsAvailable = {}; // { 'light': true/false, 'dark': true/false }
 
-/** Reset error icon availability cache — for test isolation only. */
+/**
+ * Reset error icon availability cache — for test isolation only.
+ * @param {{light?: boolean, dark?: boolean}} [cache] - State to start from.
+ */
 export function _resetErrorIconCacheForTesting(cache = {}) {
   errorIconsAvailable = cache;
 }
 
-// OPTIMIZATION: Get icon URL with browser theme (reusable helper)
+/**
+ * URL of the regular notification icon for the current browser theme.
+ * @returns {Promise<string>}
+ */
 async function getIconUrl() {
   const browserTheme = await getBrowserTheme();
   return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}.png`);
 }
 
-// Initialize error icon availability cache at startup
+/**
+ * Finds out which themes ship a `-error` icon variant and remembers the answer
+ * (in memory and in session storage), so showing an error never has to probe
+ * for the file. Called once from init().
+ * @returns {Promise<void>}
+ */
 export async function initializeErrorIconCache() {
   // Try session storage first (persists across SW termination)
   if (chrome.storage?.session) {
@@ -66,7 +79,11 @@ export async function initializeErrorIconCache() {
   }
 }
 
-// OPTIMIZATION: Get error icon URL with fallback to regular icon (cached check)
+/**
+ * URL of the error icon for the current browser theme, or of the regular icon
+ * if that theme has no error variant.
+ * @returns {Promise<string>}
+ */
 async function getIconErrorUrl() {
   const browserTheme = await getBrowserTheme();
 
@@ -81,6 +98,18 @@ async function getIconErrorUrl() {
   return chrome.runtime.getURL(`/images/icon-128x128-${browserTheme}.png`);
 }
 
+/**
+ * Tells the user how an API call went.
+ *
+ * Errors are always shown and stay until dismissed (requireInteraction);
+ * success is a short-lived notification that the user can turn off in the
+ * options (cbx_successMessage).
+ *
+ * @param {{status: string, statusText?: string}} response - The apiCall result.
+ *   Anything with `status === 'error'` is treated as a failure, everything
+ *   else as success.
+ * @returns {Promise<void>}
+ */
 export async function notifyUser(response) {
   if (response.status === 'error') {
     // There was an error - always show error notifications (regardless of successMessage setting)
@@ -140,6 +169,10 @@ export function dismissNotification(notificationId) {
   }
 }
 
+/**
+ * Confirms a manual cache refresh with a plain notification.
+ * @returns {Promise<void>}
+ */
 export async function cacheRefreshNotification() {
   const iconUrl = await getIconUrl();
   try {

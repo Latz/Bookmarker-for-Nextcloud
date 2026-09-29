@@ -1,5 +1,11 @@
 // @ts-check
 // https://developer.chrome.com/docs/extensions/mv3/options/
+//
+// Options page. Settings are stored as soon as they change (there is no save
+// button). The form elements are linked to stored options by their id prefix:
+//   cbx_*    checkbox  -> boolean option
+//   input_*  text/number/slider -> value option
+// Everything is stored in the 'options' store via storage.js.
 import {
   load_data_all,
   load_data,
@@ -22,10 +28,14 @@ const OPTION_STORE = 'options';
 // `vite build --mode development` keeps the developer tools; production hides them.
 const IS_DEV_BUILD =
   import.meta.env?.DEV || import.meta.env?.MODE === 'development';
+// The Tagify instance of the zen keywords field (used by saveZenTags).
 let tagify;
 
+// Page setup once the document is loaded: translations, tab state, zen
+// keywords and zen folders.
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
+    // Translate all elements marked with an i18n-data attribute.
     document.querySelectorAll('[i18n-data]').forEach((element) => {
       element.innerText = chrome.i18n.getMessage(
         element.getAttribute('i18n-data'),
@@ -42,8 +52,12 @@ document.onreadystatechange = async () => {
       document.getElementById(activeTabId).classList.add('tab-active');
     }
 
+    // Fill the form from the stored values (not awaited: the tab handling
+    // below does not depend on it).
     setOptions();
 
+    // Tab switching: show the content that belongs to the clicked tab and
+    // remember the choice, so the page reopens on the same tab.
     const tabs = document.getElementById('tabs');
     activeTab.classList.add('tab-active');
     const activeContent = document.getElementById(`content_${activeTab.id}`);
@@ -121,11 +135,17 @@ document.onreadystatechange = async () => {
   }
 };
 
+/** Stores the current zen keyword tags (Tagify add/remove handler). */
 function saveZenTags() {
   const tags = tagify.value.map((tag) => tag.value);
   store_data(OPTION_STORE, { input_zenKeywords: tags });
 }
 
+// --- headings depth ---------------------------------------------------------------
+// The "headings depth" setting (how many heading levels h1..hN are searched for
+// keywords) can be changed in two ways that must stay in sync: by clicking one
+// of the numbers next to the slider (handler below) or by moving the slider
+// itself (handler further down).
 //
 // set slider if the user clicks on a heading number
 document
@@ -239,6 +259,8 @@ async function setOptions() {
     );
   }
 
+  // One delegated click listener for the whole options area: checkboxes are
+  // stored immediately, buttons trigger the maintenance actions below.
   options.addEventListener('click', async (event) => {
     if (event.target.type === 'checkbox') {
       const { id, checked } = event.target;
@@ -286,6 +308,8 @@ async function setOptions() {
       }
     }
 
+    // Developer views of the stored options / cached keywords, opened as a
+    // small popup window (see displayJson.js).
     if (event.target.id === 'btn_show_options') {
       window.open('displayJson.html?type=options', 'Options', 'popup');
     }
@@ -295,6 +319,11 @@ async function setOptions() {
   });
 }
 
+/**
+ * Development helper: recreates the database in an older schema version (the
+ * version is taken from the input field) to test upgrades.
+ * @returns {Promise<any>}
+ */
 function createDB() {
   const dbVersion = document.getElementById('input_dbVersion').value;
   return createOldDatabase(dbVersion);

@@ -33,6 +33,14 @@ export function extractMetaKeywords(document) {
 }
 
 /**
+ * Turns the raw values of one meta source into a clean keyword list.
+ *
+ * Several values (one meta element per tag) are used as they are. A single
+ * value is split on the first divider found, in the order comma, semicolon,
+ * space, `&amp;` -- comma wins because it is by far the most common separator
+ * and a comma-separated list may itself contain spaces ("web design, css").
+ * Quotes are stripped and whitespace trimmed at the end.
+ *
  * @param {Array<string>} metaKeywords - Values of the first matching meta source.
  * @param {boolean} splitOnSpace - Whether a lone value may be split on spaces.
  * @returns {Array<string>}
@@ -60,7 +68,9 @@ function splitMetaKeywords(metaKeywords, splitOnSpace) {
       // (https://david.alvarezrosa.com/posts/self-hosting-on-the-dark-web/)
       keywords = [metaKeywords[0]];
     }
-  } else keywords = metaKeywords;
+  } else keywords = metaKeywords; // several values (or an empty one): already a list
+  // `keywords` is still undefined when a divider was detected but no branch
+  // above handled it; in that case nothing is returned.
   if (keywords) {
     keywords = keywords
       .map((keyword) => keyword.replaceAll('"', ''))

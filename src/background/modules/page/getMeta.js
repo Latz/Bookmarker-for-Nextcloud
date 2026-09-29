@@ -1,15 +1,23 @@
 import log from '../../../lib/log.js';
-/**
-+ * Returns an array containing the values of specified meta tags in the given document, 
-+ * based on the passed meta tag names.
-+ *
-+ * @param {Object} document - The HTML document object.
-+ * @param {...Object} metaNames - The meta tag names to get values for. 
-+ * @return {Array} An array containing the values of specified meta tags.
-+ */
 
 const DEBUG = false;
 
+/**
+ * Returns the `content` values of the first group of meta-like elements that
+ * yields any non-empty value.
+ *
+ * The candidates are tried in the order given, so callers list them by
+ * priority (e.g. `og:description` before `description`). Matching is
+ * case-insensitive (the ` i` flag in the attribute selector), because real
+ * pages write `Description`, `OG:Title` and so on.
+ *
+ * @param {Object} document - The HTML document object.
+ * @param {...{type: string, id: string}} metaNames - Candidates in priority
+ *   order: `type` is the attribute name to look at (`name`, `property`, ...),
+ *   `id` the value it must have.
+ * @return {string[]} The values of the first candidate that matched, or an
+ *   empty array if none did.
+ */
 export default function getMeta(document, ...metaNames) {
   log(DEBUG, 'GetMeta');
 

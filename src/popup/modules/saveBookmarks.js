@@ -1,6 +1,10 @@
 // @ts-check
 import { getOption } from '../../lib/storage.js';
 
+/**
+ * Wires the Save button of the popup form to the save handler below.
+ * Must be called after createForm(), which creates the button's form.
+ */
 export default function addSaveBookmarkButtonListener() {
   document
     .getElementById('saveBookmark')
@@ -18,7 +22,15 @@ function valueOf(id) {
   return element?.value ?? '';
 }
 
+/**
+ * Click handler: reads the form, builds the API payload and hands it to the
+ * service worker, which does the actual request (the popup closes right after,
+ * which would abort a request made from here).
+ * @param {Event} event
+ * @returns {Promise<void>}
+ */
 async function saveBookmark(event) {
+  // Do not let the browser submit the form (that would reload the popup).
   event.preventDefault();
 
   try {
@@ -40,6 +52,8 @@ async function saveBookmark(event) {
     const { showDescription, showKeywords, displayFolders } =
       await loadDisplayOptions();
 
+    // Tagify serialises its tags as a JSON array of {value: ...} objects into
+    // the input's value. Broken JSON simply means "no keywords".
     let keywords = /** @type {Array<{value: string}>} */ ([]);
     try {
       if (showKeywords) keywords = JSON.parse(rawKeywords);
@@ -67,6 +81,8 @@ async function saveBookmark(event) {
     for (const keyword of keywords) {
       params.append('tags[]', keyword.value);
     }
+    // Without a folder selector the bookmark always goes to the root folder
+    // (ID -1).
     if (displayFolders) {
       for (const id of folderIDs) params.append('folders[]', id);
     } else {
@@ -84,6 +100,8 @@ async function saveBookmark(event) {
   } catch (error) {
     console.error('[popup] saving the bookmark failed:', error);
   } finally {
+    // Close in every case, including after an error: the popup has nothing
+    // useful left to show, and the service worker reports the outcome.
     window.close();
   }
 }

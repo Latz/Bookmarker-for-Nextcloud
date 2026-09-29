@@ -1,5 +1,14 @@
 // @ts-check
 // https://docs.nextcloud.com/server/latest/developer_manual/client_apis/LoginFlow/index.html
+//
+// Login page, implementing Nextcloud's Login Flow v2:
+//   1. POST <server>/index.php/login/v2 -> returns a `login` URL and a poll
+//      endpoint + token.
+//   2. The `login` URL is opened in a new tab, where the user authorizes the app.
+//   3. Meanwhile this page polls the endpoint with the token (once a second)
+//      until the server answers 200 with loginName + appPassword + server.
+//   4. Those credentials are stored (see storage.js) -- the user's real
+//      password is never seen by the extension.
 
 import apiCall from '../lib/apiCall.js';
 import { store_data } from '../lib/storage.js';
@@ -28,6 +37,10 @@ const httpStatusReasons = {
   504: 'Gateway Timeout',
 };
 
+/**
+ * @param {number} statusCode - HTTP status code.
+ * @returns {string} Its reason phrase, or 'Unknown Status' for codes not in the table.
+ */
 function getReasonPhrase(statusCode) {
   return httpStatusReasons[statusCode] || 'Unknown Status';
 }
@@ -71,6 +84,8 @@ function normalizeServerHost(input) {
     ? trimmed
     : `https://${trimmed}`;
 }
+// Page setup, once the document is loaded: set the translated button label and
+// start the login flow on button click or on Enter in the server field.
 document.onreadystatechange = async () => {
   if (document.readyState === 'complete') {
     document.getElementById('msg').innerText = '';
@@ -100,7 +115,15 @@ document.onreadystatechange = async () => {
 let currentFlow = 0;
 let currentLoginTabId = null;
 
+/**
+ * Step 1 of the login flow: validates the entered server address, obtains the
+ * host permission for it, starts Login Flow v2 and hands over to loginPoll.
+ * Errors are shown in the page's error element.
+ * @returns {Promise<void>}
+ */
 async function openServerPage() {
+  // Number of this attempt; compared with `currentFlow` after every await to
+  // detect that a newer click has superseded this one.
   const flow = ++currentFlow;
   // clear possible error message
   document.getElementById('error').textContent = '';
@@ -116,6 +139,7 @@ async function openServerPage() {
     return;
   }
 
+  // Only now is it safe to add the https:// prefix (see normalizeServerHost).
   const host = normalizeServerHost(rawHost);
 
   // The extension holds no static host permission for an arbitrary
@@ -155,12 +179,16 @@ async function openServerPage() {
   const endpoint = 'index.php/login/v2';
   const method = 'POST';
 
+  // `host` and `loginflow` are call options for apiCall: use this server (it
+  // is not stored yet) and send no Authorization header.
   try {
     const response = await apiCall(endpoint, method, {
       host,
       loginflow: true,
     });
     if (flow !== currentFlow) return; // superseded while the request was running
+    // A valid answer contains a `login` URL; anything else is an error result
+    // from apiCall (or an unrelated page at that address).
     if (!response.login) {
       serverError(response);
     } else if (!isTrustedLoginResponse(response, host)) {
@@ -200,6 +228,15 @@ function isTrustedLoginResponse(response, host) {
   }
 }
 
+/**
+ * Steps 2-4 of the login flow: opens the server's login page in a new tab,
+ * polls until the user has authorized the app (or the attempts run out) and
+ * stores the received credentials.
+ * @param {{login: string, poll: {endpoint: string, token: string}}} request -
+ *   The (already validated) Login Flow v2 answer.
+ * @param {number} flow - Attempt number; the loop stops when a newer one starts.
+ * @returns {Promise<void>}
+ */
 async function loginPoll(request, flow) {
   let authorized = false;
   let authCheck;
@@ -218,6 +255,9 @@ async function loginPoll(request, flow) {
   const loginPage = await chrome.tabs.create({ url: request.login });
   currentLoginTabId = loginPage.id;
 
+  // The server answers with an error status (404) until the user has
+  // authorized the app; `ok` turns true exactly once, with the credentials in
+  // the body. Network errors are only logged, the next round retries.
   while (!authorized && attempts < maxAttempts && flow === currentFlow) {
     try {
       authCheck = await fetch(request.poll.endpoint, {
@@ -243,7 +283,9 @@ async function loginPoll(request, flow) {
   if (flow !== currentFlow) return;
   currentLoginTabId = null;
 
-  // User did not interact after maxAttempts iterations
+  // User did not interact after maxAttempts iterations (~5 minutes). The
+  // service worker replaces the login tab's content with a timeout message
+  // (see loginTimeout.js).
   if (!authorized) {
     chrome.runtime.sendMessage({ msg: 'maxAttempts', loginPage });
     document.getElementById('testServer').textContent =
@@ -270,6 +312,11 @@ async function loginPoll(request, flow) {
   }
 }
 
+/**
+ * Shows a login error: a generic headline plus, if available, the HTTP status
+ * with its reason phrase or the error text.
+ * @param {{status?: number|string, statusText?: string}} response
+ */
 function serverError(response) {
   // display error message
   const msg = document.getElementById('msg');

@@ -16,6 +16,11 @@ const WORD_SEPARATORS = /[^\p{L}\p{N}]+/u;
 /**
  * Scans headlines from h1 up to hMaxLevel for words matching stored
  * keywords, level by level, stopping at the first headline that matches.
+ * Higher-level headings (h1) describe the page best, so they are tried first.
+ * @param {any} document - The (mock) document.
+ * @param {number} maxLevel - Deepest heading level to scan (1-6).
+ * @param {Set<string>|null} keywordLookup - Lowercased stored keywords.
+ * @param {boolean|null} reduceEnabled - Pre-fetched cbx_reduceKeywords.
  * @returns {Promise<Array<string>>} Reduced keywords, or [] if none matched.
  */
 async function findKeywordsInHeadlines(
@@ -29,6 +34,9 @@ async function findKeywordsInHeadlines(
     const headlines = document.querySelectorAll(`h${level}`);
 
     for (const headline of headlines) {
+      // Split the headline into single words; each word is then checked
+      // against the stored keywords (force=true: this runs even if the user
+      // disabled reduction for the regular sources).
       const words = headline.innerText.split(WORD_SEPARATORS);
       const reducedKw = await reduceKeywords(
         words,

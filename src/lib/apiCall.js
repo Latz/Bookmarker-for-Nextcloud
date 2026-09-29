@@ -1,4 +1,8 @@
 // @ts-check
+// Single entry point for all requests to the Nextcloud Bookmarks REST API.
+// Handles server URL + Basic-auth lookup, a configurable timeout and turns
+// every failure into a `{ status: 'error', statusText }` result, so callers
+// never have to deal with thrown errors.
 import { getOption, load_data } from './storage.js';
 import { timeoutMilliseconds } from './networkTimeout.js';
 
@@ -7,7 +11,11 @@ let cachedNetworkTimeout = null;
 let timeoutCacheExpiry = 0;
 const TIMEOUT_CACHE_TTL = 60000; // 1 minute
 
-// Export function to clear caches (for testing)
+/**
+ * Clears the cached timeout and auth header. Used by tests, and by the
+ * service worker when credentials change (login / logout) so the old header
+ * is not sent for up to a minute.
+ */
 export function clearApiCallCache() {
   cachedNetworkTimeout = null;
   timeoutCacheExpiry = 0;
@@ -21,6 +29,14 @@ let authCacheExpiry = 0;
 
 // ---------------------------------------------------------------------------------------------------
 // https://dmitripavlutin.com/timeout-fetch-request/
+/**
+ * `fetch` with a timeout: the request is aborted after `options.timeout` ms
+ * (default: the user's network timeout setting, cached for a minute). A caller-
+ * supplied `signal` still works and aborts the request as well.
+ * @param {string} resource - URL to fetch.
+ * @param {RequestInit & {timeout?: number}} [options]
+ * @returns {Promise<Response>}
+ */
 async function timeoutFetch(resource, options = {}) {
   // OPTIMIZATION: Use cached timeout if available and not expired
   const now = Date.now();
@@ -52,7 +68,17 @@ async function timeoutFetch(resource, options = {}) {
     externalSignal?.removeEventListener('abort', onExternalAbort);
   }
 }
+/**
+ * Determines which server to call and which Authorization header to send.
+ *
+ * `data` is normally a query string. As an object it carries call options:
+ * `host` overrides the stored server (the login flow talks to a server that is
+ * not saved yet) and `loginflow` means "send no Authorization header".
+ * @param {object|string} data
+ * @returns {Promise<{server: string|undefined, authHeader: string|null}>}
+ */
 async function resolveServerAndAuth(data) {
+  // Explicit host (login flow): use it instead of the stored server.
   if (typeof data === 'object' && 'host' in data) {
     let authHeader = null;
     if (!data.loginflow) authHeader = await authentication();
@@ -83,6 +109,8 @@ export default async function apiCall(
 ) {
   let { server, authHeader } = await resolveServerAndAuth(data);
 
+  // Nothing to call without a server, and (except during the login flow)
+  // without usable credentials.
   if (!server || (!authHeader && !data?.loginflow)) {
     return { status: 'error', statusText: 'Not configured' };
   }
@@ -116,7 +144,10 @@ export default async function apiCall(
     fetchInfo.signal = signal;
   }
 
-  // Construct the API call URL
+  // Construct the API call URL. The payload always travels in the query
+  // string (a string `data` is the already-encoded query; an object carries
+  // options, not payload), even for POST/PUT, which is what the Bookmarks API
+  // accepts.
   const url = `${server}${endpoint}?${typeof data === 'string' ? data : ''}`;
 
   // Every failure resolves to { status: 'error', statusText }: callers such as
@@ -132,6 +163,9 @@ export default async function apiCall(
     }
     return await response.json();
   } catch (error) {
+    // Map the low-level error to a message a user can act on: an abort here
+    // is our own timeout; a SyntaxError means the body was not JSON (e.g. an
+    // HTML login page from a wrong server URL).
     let statusText = error?.message || String(error);
     if (error?.name === 'AbortError') statusText = 'Timeout';
     else if (error instanceof SyntaxError) statusText = 'Invalid response';
@@ -142,9 +176,11 @@ export default async function apiCall(
 const AUTH_CACHE_TTL = 60000; // 1 minute
 
 /**
- * Generates an authentication token for the API.
+ * Builds the HTTP Basic `Authorization` header from the stored login name and
+ * app password (cached for a minute).
  *
- * @returns {Promise<string>} The generated authentication token.
+ * @returns {Promise<string|null>} The header value, or null if the credentials
+ *   are missing or incomplete.
  */
 async function authentication() {
   // OPTIMIZATION: Use cached auth header if available and not expired

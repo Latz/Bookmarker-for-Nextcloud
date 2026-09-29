@@ -1,6 +1,16 @@
 // @ts-check
+// Persistent storage of the extension, in the IndexedDB database "Bookmarker"
+// with the stores:
+//   credentials - server, loginname, appPassword
+//   options     - all user settings (see DEFAULT_OPTIONS below)
+//   misc, hashes - reserved
+// Every record has the shape `{ item: <key>, value: <value> }`.
+// (The separate cache database is handled in cache.js.)
+//
+// Options are cached in memory for a short time, because the popup reads many
+// of them on every open.
 const database = 'Bookmarker';
-const dbVersion = 2; // since v0.3
+const dbVersion = 2; // since v0.3 -- bump when a store is added; upgrade steps go in initDatabase
 
 import { openDB, deleteDB } from 'idb';
 import { cacheDbVersion, initCacheStores } from './cacheSchema.js';
@@ -42,6 +52,12 @@ export function _resetMainConnectionForTesting() {
   mainDbConnectionPromise = null;
 }
 
+/**
+ * Returns the shared connection to the main database, opening it on first use
+ * (or again after it was closed/invalidated). Concurrent callers share one
+ * pending open. A schema upgrade runs initDatabase.
+ * @returns {Promise<import('idb').IDBPDatabase<any>>}
+ */
 async function getMainDBConnection() {
   if (mainDbConnection) {
     try {
@@ -109,6 +125,8 @@ export async function load_data(storeName, ...items) {
   let result = {};
 
   for (let item of items) {
+    // A failed read is treated like a missing record (the catch returns an
+    // object without `.value`, so the entry ends up undefined below).
     const data = await db.get(storeName, item).catch(() => {
       return result;
     });
@@ -152,6 +170,9 @@ export async function store_data(storeName, ...items) {
   // Deliberately not logged: login.js writes the app password through here.
   const db = await getMainDBConnection();
   const puts = [];
+  // Each argument is an object; every key/value pair becomes one record, e.g.
+  // store_data('options', { a: 1, b: 2 }) writes {item:'a',value:1} and
+  // {item:'b',value:2}. All writes run in parallel.
   for (const item of items) {
     for (const [key, value] of Object.entries(item)) {
       puts.push(db.put(storeName, { item: key, value }));
@@ -159,10 +180,11 @@ export async function store_data(storeName, ...items) {
   }
   await Promise.all(puts);
 
-  // Clear cache if we're updating options
+  // Clear cache if we're updating options, so the next read sees the new value
   if (storeName === 'options') {
     clearOptionsCache();
   }
+  // New credentials: the service worker must drop its cached auth header.
   if (storeName === 'credentials') {
     await notifyCredentialsChanged();
   }
@@ -239,6 +261,8 @@ export async function getOption(optionName) {
   // Cache miss or expired - fetch from IndexedDB
   const pending = (async () => {
     let data = await load_data('options', optionName);
+    // An option that was never stored reads as `false`, so callers can use
+    // plain truthiness checks (`if (await getOption('cbx_...'))`).
     if (data === undefined) data = false;
 
     // Update cache with value and timestamp
@@ -334,6 +358,7 @@ export async function getOptions(optionNames) {
 // ---------------------------------------------------------------------
 /**
  * Initialize the necessary object stores in the given database.
+ * Must run inside an upgrade transaction (createObjectStore is only allowed there).
  * @param {IDBDatabase} db - The database to initialize the object stores in.
  */
 async function InitializeStores(db) {
@@ -389,7 +414,10 @@ export async function clearData(subject) {
 }
 // -----------------------------------------------------------------------
 /**
- * Initializes default options and opens the 'Bookmarker' database.
+ * Runs the schema setup/migration when the 'Bookmarker' database is created
+ * or upgraded.
+ * @param {IDBDatabase} db - The database being upgraded.
+ * @param {number} oldVersion - The version before the upgrade (0 = new install).
  * @returns {Promise<void>}
  */
 export async function initDatabase(db, oldVersion) {
@@ -419,6 +447,11 @@ export async function initDatabase(db, oldVersion) {
 }
 
 // -----------------------------------------------------------------------
+/**
+ * Writes every default option, overwriting the stored values (used on a fresh
+ * install and by "Reset options").
+ * @returns {Promise<void>}
+ */
 export function initDefaults() {
   // One store_data call: it already iterates Object.entries internally and
   // issues the puts in parallel, so this is a single pass over one connection
@@ -444,6 +477,10 @@ export async function ensureDefaults() {
   }
 }
 
+// Default value of every option. Naming convention: cbx_ = checkbox (boolean),
+// input_ = text/number field, select_ = dropdown; the rest are internal values.
+// A new option must be added here so that ensureDefaults() can supply it to
+// existing installs.
 const DEFAULT_OPTIONS = {
   cbx_showUrl: true,
   cbx_showDescription: true,
@@ -475,6 +512,13 @@ const DEFAULT_OPTIONS = {
 
 // -----------------------------------------------------------------------
 
+/**
+ * Development helper: deletes the real databases and, for version 1, recreates
+ * the old schema with fake credentials, to test the upgrade path in
+ * initDatabase. Destructive -- the options page only offers it in dev builds.
+ * @param {number} [version] - The schema version to recreate (only 1 is supported).
+ * @returns {Promise<void>}
+ */
 export async function createOldDatabase(version) {
   await deleteDB('Bookmarker');
   await deleteDB('Cache');

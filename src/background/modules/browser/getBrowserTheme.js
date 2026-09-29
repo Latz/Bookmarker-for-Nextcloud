@@ -1,4 +1,10 @@
 // -------------------------------------------------------------------------------------------------------
+// Detects whether the browser UI is light or dark, to pick a toolbar/notification
+// icon that contrasts with it. A service worker has no matchMedia, so the check
+// is done in an offscreen document (see offscreen/offscreen.js). The result is
+// cached in memory and in session storage, because it cannot change while the
+// browser runs and an offscreen round trip is slow.
+//
 // https://stackoverflow.com/questions/58880234/toggle-chrome-extension-icon-based-on-light-or-dark-mode-browser
 
 // Request deduplication: prevent multiple simultaneous offscreen document creations
@@ -132,6 +138,12 @@ export default async function getBrowserTheme() {
   }
 }
 
+/**
+ * Asks the offscreen document for the browser's color scheme.
+ * @returns {Promise<'light'|'dark'|null>} The icon theme to use, or null if
+ *   detection failed (timeout, missing document, unexpected reply). null lets
+ *   the caller fall back without caching a wrong value.
+ */
 async function detectTheme() {
   try {
     await ensureOffscreenDocument();

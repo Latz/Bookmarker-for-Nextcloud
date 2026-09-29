@@ -110,6 +110,8 @@ export function createMockDocument(parsedData) {
       trim: () => text.trim(),
     }));
 
+  // Only the selectors the keyword code actually uses are supported; any other
+  // selector returns an empty result rather than throwing.
   const mockDoc = {
     // querySelectorAll implementation - handles both simple and complex selectors
     querySelectorAll: function (selector) {

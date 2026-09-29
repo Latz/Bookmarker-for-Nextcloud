@@ -40,9 +40,12 @@ export async function getDataWithRetry() {
     // Fall back to the default count rather than failing the whole flow
     console.error('[popup] reading the retry count failed:', error);
   }
+  // Use the configured count if it is a positive number, otherwise default to 5.
   const retryCount =
     Number.isFinite(maxRetries) && maxRetries > 0 ? Math.round(maxRetries) : 5;
 
+  // The last failed reply, returned if every attempt fails. The first
+  // iteration awaits the request dispatched above instead of sending another.
   let lastError = null;
 
   for (let attempt = 0; attempt < retryCount; attempt++) {

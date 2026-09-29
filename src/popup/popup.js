@@ -1,4 +1,17 @@
 // @ts-check
+// -----------------------------------------------------------------------------
+// Popup entry point.
+//
+// On open, the popup decides which of four screens to show:
+//   1. no app password stored       -> "Authorize" button (login flow)
+//   2. zen mode enabled             -> ask the service worker to save, close
+//   3. host permission missing      -> "Reconnect" banner (asks for permission)
+//   4. otherwise                    -> bookmark form filled with the page data
+//
+// Speed matters here: the slowest step is the getData round trip to the
+// service worker, so it is started at module load (see session.js), in
+// parallel with the DOM being built.
+// -----------------------------------------------------------------------------
 import { createForm, hydrateForm } from './modules/hydrateForm.js';
 import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
 import { getDataWithRetry } from './modules/dataRequest.js';
@@ -60,6 +73,10 @@ async function runFormFlow(dataPromise) {
   addSaveBookmarkButtonListener(data.bookmarked);
 }
 
+/**
+ * Zen mode: hand the whole job to the service worker and close the popup
+ * immediately; the result is reported through a notification.
+ */
 function zenMode() {
   chrome.runtime.sendMessage({ msg: 'zenMode' });
   window.close();
@@ -75,15 +92,20 @@ const boot = (async () => {
   await domReady;
 
   if (apppwd === undefined) {
+    // Screen 1: not logged in yet.
     createAuthorizeButton();
   } else if (enableZen) {
+    // Screen 2: zen mode.
     zenMode();
   } else if (needsReconnect) {
+    // Screen 3: once the permission is granted the banner runs the form flow
+    // itself; no data request was started before, so start one now.
     createReconnectBanner(server, () => {
       prefetchFormOptions();
       return runFormFlow(getDataWithRetry());
     });
   } else {
+    // Screen 4: the normal case; the request is already in flight.
     await runFormFlow(dataPromise);
   }
 })();

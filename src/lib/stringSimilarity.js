@@ -62,6 +62,15 @@ function fastPreFilter(s1, s2, threshold = 0.75) {
   return null;
 }
 
+/**
+ * First step of the Jaro algorithm: pairs up equal characters that are not
+ * further apart than half the length of the longer string (minus one). Each
+ * character can be used in at most one pair.
+ * @param {string} s1
+ * @param {string} s2
+ * @returns {{matches: number, s1Matches: boolean[], s2Matches: boolean[]}}
+ *   Number of pairs and, per string, which positions were paired.
+ */
 function findMatches(s1, s2) {
   const matchWindow = Math.floor(Math.max(s1.length, s2.length) / 2) - 1;
   const s1Matches = new Array(s1.length).fill(false);
@@ -82,6 +91,16 @@ function findMatches(s1, s2) {
   return { matches, s1Matches, s2Matches };
 }
 
+/**
+ * Second step of the Jaro algorithm: walks the paired characters of both
+ * strings in order and counts the positions where they differ. Each such pair
+ * counts as half a transposition in the final formula (see jaroSimilarity).
+ * @param {string} s1
+ * @param {string} s2
+ * @param {boolean[]} s1Matches - Paired positions in s1 (from findMatches).
+ * @param {boolean[]} s2Matches - Paired positions in s2.
+ * @returns {number} The number of out-of-order pairs (not yet halved).
+ */
 function countTranspositions(s1, s2, s1Matches, s2Matches) {
   let transpositions = 0;
   let k = 0;
@@ -108,6 +127,8 @@ function jaroSimilarity(s1, s2) {
   if (matches === 0) return 0.0;
 
   const transpositions = countTranspositions(s1, s2, s1Matches, s2Matches);
+  // Jaro formula: the mean of (matches / length of s1), (matches / length of
+  // s2) and the share of matches that are in the right order.
   return (
     (matches / s1.length +
       matches / s2.length +
@@ -189,10 +210,13 @@ export function calculateSimilarity(str1, str2, options = {}) {
     return cached;
   }
 
-  // Fast pre-filter for early rejection/acceptance
+  // Fast pre-filter for early rejection/acceptance. Note that a pre-filter
+  // score is only an estimate that depends on the threshold, yet it is cached
+  // under the plain string pair like an exact score.
   const preFilterResult = fastPreFilter(s1, s2, threshold);
   if (preFilterResult !== null) {
-    // Cache and return
+    // Cache and return. The Map iterates in insertion order, so on overflow
+    // the first key is the least recently used one (hits re-insert their key).
     similarityCache.set(cacheKey, preFilterResult);
     if (similarityCache.size > CACHE_MAX_SIZE) {
       const firstKey = similarityCache.keys().next().value;
@@ -313,7 +337,9 @@ export function batchSimilarityCheck(
     // Skip if candidate doesn't have a title or title is not a string
     if (!candidate.title || typeof candidate.title !== 'string') continue;
 
-    // Use current best score for pre-filtering optimization
+    // Use current best score for pre-filtering optimization: candidates that
+    // are clearly worse than the best so far are rejected cheaply. The 0.9
+    // factor leaves some slack so near-best candidates still get a full score.
     const effectiveThreshold = Math.max(threshold, bestScore * 0.9);
 
     const score = calculateSimilarity(target, candidate.title, {

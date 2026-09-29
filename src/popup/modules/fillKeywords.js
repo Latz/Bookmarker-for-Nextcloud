@@ -22,6 +22,13 @@ export function preloadKeywordAssets() {
   preloaded.catch(() => {});
 }
 
+/**
+ * Loads Tagify (dynamic import, so it is a separate chunk that is only fetched
+ * when the keywords field is shown) and the cached keyword suggestions in
+ * parallel.
+ * @returns {Promise<[any, any]>} The Tagify module and the cached keyword list
+ *   ([] if the cache read failed).
+ */
 function loadKeywordAssets() {
   return Promise.all([
     import('@yaireo/tagify'),
@@ -32,31 +39,44 @@ function loadKeywordAssets() {
   ]);
 }
 
+/**
+ * Turns the keywords input into a Tagify tag field, with the cached keywords
+ * of the server as autocomplete suggestions, and adds the keywords extracted
+ * from the page as initial tags.
+ *
+ * @param {Array<string>} [keywords] - Keywords extracted from the page.
+ * @returns {Promise<void>}
+ */
 export default async function fillKeywords(keywords) {
   const tagsInput = document.getElementById('keywords');
   // Bail out before importing Tagify: when the keywords field is hidden the
   // element does not exist, and Tagify is ~78 KB of the popup bundle.
   if (!tagsInput) return;
 
+  // Use the preload started by popup.js if there is one. It is consumed
+  // (reset to null) so a later call loads fresh data.
   const assets = preloaded ?? loadKeywordAssets();
   preloaded = null;
   const [{ default: Tagify }, cachedTags] = await assets;
 
+  // Tagify draws its own bordered box; drop the daisyUI input classes so the
+  // two do not stack visually.
   tagsInput.classList.remove('input-sm', 'input');
 
   let tags = cachedTags;
 
+  // Guard against a corrupt cache entry (Tagify needs an array whitelist).
   if (!Array.isArray(tags)) {
     tags = [];
   }
 
   const tagify = new Tagify(tagsInput, {
-    whitelist: tags,
-    backspace: 'edit',
+    whitelist: tags, // autocomplete suggestions
+    backspace: 'edit', // backspace turns the last tag back into editable text
     dropdown: {
-      maxItems: 5,
-      highlightFirst: true,
-      includeSelectedTags: true,
+      maxItems: 5, // keep the suggestion list short in the small popup
+      highlightFirst: true, // Enter accepts the top suggestion
+      includeSelectedTags: true, // suggest tags even if already added
     },
   });
   // keep already-added tags matchable in the dropdown even if they weren't
@@ -67,6 +87,7 @@ export default async function fillKeywords(keywords) {
     }
   });
 
+  // No page keywords: the empty field is ready for manual input.
   if (!keywords || (Array.isArray(keywords) && keywords.length === 0)) {
     return;
   }
