@@ -2,7 +2,7 @@
 // Builds the popup's bookmark form (createForm) and fills it with the data
 // received from the service worker (hydrateForm). The two steps are separate
 // so the form can be built while the data request is still in flight.
-import fillKeywords from './fillKeywords.js';
+import fillKeywords, { replaceKeywords } from './fillKeywords.js';
 import fillFolders from './fillFolders.js';
 import { getOptions } from '../../lib/storage.js';
 
@@ -112,6 +112,14 @@ export async function createForm() {
     addTextInput(form, 'keywords', options.cbx_showKeywords);
   addTextArea(form, 'description', options.cbx_showDescription);
 
+  // applyBookmarkStatus must not overwrite what the user has typed by the time
+  // the server answers: fields they touch are marked.
+  for (const id of ['url', 'title', 'description']) {
+    document.getElementById(id)?.addEventListener('input', (event) => {
+      event.target.dataset.touched = 'true';
+    });
+  }
+
   // The "already bookmarked?" check runs on the server side of getData; show
   // a spinner until hydrateForm replaces it with the result.
   if (options.cbx_alreadyStored) {
@@ -124,11 +132,118 @@ export async function createForm() {
       loaderSpan,
     );
     document.getElementById('sub_message').replaceChildren(checkingDiv);
+    // Saving before the answer is in could create a second bookmark for a page
+    // that is already stored (the ID to update is not known yet). The button is
+    // released by applyBookmarkStatus.
+    document.getElementById('saveBookmark').disabled = true;
   }
 
   addHiddenInput(form, 'bookmarkID');
   document.getElementById('saveBookmark').textContent =
     chrome.i18n.getMessage('saveBookmark');
+}
+
+// ---------------------------------------------------------------------------------------------------
+/** Releases the Save button that createForm locked while the lookup ran. */
+function enableSaveButton() {
+  const button = /** @type {HTMLButtonElement | null} */ (
+    document.getElementById('saveBookmark')
+  );
+  if (button) button.disabled = false;
+}
+
+/**
+ * Writes the "already bookmarked" / "server unreachable" / nothing message
+ * next to the Save button.
+ * @param {Object} data - Has `found` (with `added` / `lastmodified`) or a
+ *   `checkBookmark` whose `ok` says whether the server could be reached.
+ */
+function showBookmarkStatus(data) {
+  const message = document.getElementById('sub_message');
+  // If the the data object contains tags, it has been loaded from the server
+  if (data.found) {
+    // The server sends Unix timestamps in seconds: start at the epoch and add
+    // the seconds, then format in the user's locale.
+    const dateAdded = new Date(0);
+    dateAdded.setUTCSeconds(data.added);
+    message.replaceChildren(
+      `${chrome.i18n.getMessage('alreadyBookmarked')}!`,
+      document.createElement('br'),
+      `${chrome.i18n.getMessage('Created')}: ${dateAdded.toLocaleString(navigator.language)}`,
+    );
+    // Only mention a modification date if the bookmark was edited after creation.
+    if (data.added !== data.lastmodified) {
+      const dateModified = new Date(0);
+      dateModified.setUTCSeconds(data.lastmodified);
+      message.append(
+        document.createElement('br'),
+        ` ${chrome.i18n.getMessage('Modified')}: ${dateModified.toLocaleString(navigator.language)} `,
+      );
+    }
+  } else if (!data.checkBookmark?.ok) {
+    // Not found, and the lookup itself failed: the server is unreachable, so
+    // say so instead of implying the page is new.
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'text-red-500 text-center font-bold';
+    errorDiv.textContent = 'Error';
+    const connDiv = document.createElement('div');
+    connDiv.className = 'text-center';
+    connDiv.textContent = chrome.i18n.getMessage('ConnectionError');
+    message.replaceChildren(errorDiv, connDiv);
+  } else {
+    message.replaceChildren();
+  }
+}
+
+/**
+ * Completes a form that hydrateForm filled while the "already bookmarked?"
+ * lookup was still running (`checkPending`): shows the result and, if the page
+ * is already bookmarked, swaps in the stored bookmark's data -- the same fields
+ * a full getData reply would have filled. Fields the user has already edited
+ * are left alone. Always releases the Save button, whatever the answer.
+ *
+ * @param {Object} status - The reply to the getBookmarkStatus request; a reply
+ *   with `ok: false` (lookup failed) is shown as a connection error.
+ * @returns {Promise<void>}
+ */
+export async function applyBookmarkStatus(status) {
+  try {
+    if (status?.ok && status.found) {
+      await fillStoredFields(status);
+      showBookmarkStatus(status);
+    } else {
+      showBookmarkStatus(status?.ok ? status : {});
+    }
+    // -1 for a page that is not bookmarked yet, otherwise the ID to update
+    document.getElementById('bookmarkID').value = status?.bookmarkID ?? -1;
+  } finally {
+    enableSaveButton();
+  }
+}
+
+/**
+ * Puts the stored bookmark's data into the fields the user has not touched.
+ * @param {Object} stored - url, title, description, keywords of the bookmark.
+ * @returns {Promise<void>}
+ */
+async function fillStoredFields(stored) {
+  const setIfUntouched = (id, value) => {
+    const field = /** @type {HTMLInputElement | null} */ (
+      document.getElementById(id)
+    );
+    if (field && value !== undefined && field.dataset?.touched !== 'true') {
+      field.value = value;
+    }
+  };
+  setIfUntouched('url', stored.url);
+  setIfUntouched('title', stored.title);
+
+  // Same rule as hydrateForm for the extracted description.
+  const options = await getOptions(['cbx_showDescription', 'cbx_autoDescription']);
+  if (options.cbx_showDescription && options.cbx_autoDescription) {
+    setIfUntouched('description', stored.description);
+  }
+  replaceKeywords(stored.keywords);
 }
 
 // ---------------------------------------------------------------------------------------------------
@@ -166,39 +281,12 @@ export async function hydrateForm(data) {
   ]);
   // Observed by the await below; this only covers an early throw in between.
   filling.catch(() => {});
-  const message = document.getElementById('sub_message');
-  // If the the data object contains tags, it has been loaded from the server
-  if (data.found) {
-    // The server sends Unix timestamps in seconds: start at the epoch and add
-    // the seconds, then format in the user's locale.
-    const dateAdded = new Date(0);
-    dateAdded.setUTCSeconds(data.added);
-    message.replaceChildren(
-      `${chrome.i18n.getMessage('alreadyBookmarked')}!`,
-      document.createElement('br'),
-      `${chrome.i18n.getMessage('Created')}: ${dateAdded.toLocaleString(navigator.language)}`,
-    );
-    // Only mention a modification date if the bookmark was edited after creation.
-    if (data.added !== data.lastmodified) {
-      const dateModified = new Date(0);
-      dateModified.setUTCSeconds(data.lastmodified);
-      message.append(
-        document.createElement('br'),
-        ` ${chrome.i18n.getMessage('Modified')}: ${dateModified.toLocaleString(navigator.language)} `,
-      );
-    }
-  } else if (!data.checkBookmark.ok) {
-    // Not found, and the lookup itself failed: the server is unreachable, so
-    // say so instead of implying the page is new.
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'text-red-500 text-center font-bold';
-    errorDiv.textContent = 'Error';
-    const connDiv = document.createElement('div');
-    connDiv.className = 'text-center';
-    connDiv.textContent = chrome.i18n.getMessage('ConnectionError');
-    message.replaceChildren(errorDiv, connDiv);
+  if (data.checkPending) {
+    // The "already bookmarked?" lookup is still running: the spinner stays and
+    // applyBookmarkStatus completes the picture when it is answered.
   } else {
-    message.replaceChildren();
+    showBookmarkStatus(data);
+    enableSaveButton();
   }
 
   await filling;

@@ -1,6 +1,10 @@
 // @ts-check
 import { load_data, getOption, getOptions } from '../../lib/storage.js';
-import { getDataWithRetry } from './dataRequest.js';
+import {
+  getDataWithRetry,
+  PAGE_DATA_REQUEST,
+  BOOKMARK_STATUS_REQUEST,
+} from './dataRequest.js';
 import { preloadKeywordAssets } from './fillKeywords.js';
 
 /**
@@ -47,7 +51,11 @@ export function prefetchFormOptions() {
  * injects a script into the active tab, which is wasted work and needless page
  * access when we are only going to show the authorize button or fire zen mode.
  *
- * @returns {Promise<{apppwd: any, enableZen: any, server: string|undefined, needsReconnect: boolean, dataPromise: Promise<Object>|null}>}
+ * The page data and the "already bookmarked?" lookup are requested separately
+ * (dataPromise / statusPromise): the lookup is a server round trip, and the
+ * form can be filled without it.
+ *
+ * @returns {Promise<{apppwd: any, enableZen: any, server: string|undefined, needsReconnect: boolean, dataPromise: Promise<Object>|null, statusPromise: Promise<Object>|null}>}
  */
 export async function startSession() {
   // Fetch credential and zen mode in parallel (independent)
@@ -64,6 +72,7 @@ export async function startSession() {
   const needsForm = apppwd !== undefined && !enableZen;
   let needsReconnect = false;
   let dataPromise = null;
+  let statusPromise = null;
 
   if (needsForm) {
     // Existing users lose their previously-granted broad host access on
@@ -85,11 +94,19 @@ export async function startSession() {
       : false;
 
     if (hasPermission) {
-      dataPromise = getDataWithRetry();
+      dataPromise = getDataWithRetry(PAGE_DATA_REQUEST);
+      statusPromise = getDataWithRetry(BOOKMARK_STATUS_REQUEST);
     } else {
       needsReconnect = true;
     }
   }
 
-  return { apppwd, enableZen, server, needsReconnect, dataPromise };
+  return {
+    apppwd,
+    enableZen,
+    server,
+    needsReconnect,
+    dataPromise,
+    statusPromise,
+  };
 }

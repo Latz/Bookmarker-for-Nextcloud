@@ -24,8 +24,48 @@ function copyLoginHtmlPlugin() {
   };
 }
 
+// The popup's scripts form a chain of imports (popup -> cache -> apiCall ->
+// storage). A module script only reveals its imports once it has been fetched
+// and parsed, so they load in successive rounds -- about 25 ms on a warm
+// start, more on the first open after a browser start (measured in a Chrome
+// trace). Listing all of them in popup.html lets Chrome fetch them in
+// parallel, right after the HTML is parsed.
+//
+// Vite's own preload tags are switched off below (modulePreload: false): they
+// carry a `crossorigin` attribute, which never matches the extension-page
+// fetches and only adds console warnings. These are plain tags without it.
+function popupModulePreloadPlugin() {
+  return {
+    name: 'popup-module-preload',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!ctx.bundle || !ctx.chunk || !/popup[\\/]popup\.html$/.test(ctx.filename ?? '')) {
+          return undefined;
+        }
+        const files = new Set();
+        const collect = (fileName) => {
+          const chunk = ctx.bundle[fileName];
+          if (chunk?.type !== 'chunk') return;
+          for (const imported of chunk.imports) {
+            if (files.has(imported)) continue;
+            files.add(imported);
+            collect(imported);
+          }
+        };
+        collect(ctx.chunk.fileName);
+        return [...files].map((file) => ({
+          tag: 'link',
+          attrs: { rel: 'modulepreload', href: `/${file}` },
+          injectTo: 'head',
+        }));
+      },
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
-  plugins: [crx({ manifest }), copyLoginHtmlPlugin()],
+  plugins: [crx({ manifest }), copyLoginHtmlPlugin(), popupModulePreloadPlugin()],
 
   build: {
     outDir: 'dist',

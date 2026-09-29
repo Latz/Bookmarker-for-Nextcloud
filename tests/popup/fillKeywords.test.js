@@ -14,13 +14,32 @@ vi.mock('../../src/lib/cache.js', () => ({
 // Note: vi.mock() is hoisted, so we can't use local variables
 vi.mock('@yaireo/tagify', () => {
   const mockAddTags = vi.fn();
+  const mockRemoveAllTags = vi.fn();
+  // DOM events the user causes in the field, keyed by event name
+  const scopeListeners = {};
   const mockTagifyConstructor = vi.fn(function () {
-    return { addTags: mockAddTags, on: vi.fn(), whitelist: [] };
+    return {
+      addTags: mockAddTags,
+      removeAllTags: mockRemoveAllTags,
+      on: vi.fn(),
+      whitelist: [],
+      DOM: {
+        scope: {
+          addEventListener: vi.fn((name, callback) => {
+            scopeListeners[name] = callback;
+          }),
+        },
+      },
+    };
   });
 
   // Store references on global object for tests to access
   // eslint-disable-next-line no-undef
   globalThis.__mockAddTags = mockAddTags;
+  // eslint-disable-next-line no-undef
+  globalThis.__mockRemoveAllTags = mockRemoveAllTags;
+  // eslint-disable-next-line no-undef
+  globalThis.__mockScopeListeners = scopeListeners;
   // eslint-disable-next-line no-undef
   globalThis.__mockTagifyConstructor = mockTagifyConstructor;
 
@@ -38,6 +57,7 @@ vi.mock('@yaireo/tagify', () => {
 import '@yaireo/tagify';
 import fillKeywords, {
   preloadKeywordAssets,
+  replaceKeywords,
 } from '../../src/popup/modules/fillKeywords.js';
 import { cacheGet } from '../../src/lib/cache.js';
 
@@ -427,6 +447,55 @@ describe('fillKeywords', () => {
         'input-sm',
         'input',
       );
+    });
+  });
+
+  describe('replaceKeywords', () => {
+    let removeAllTags;
+    let scopeListeners;
+
+    beforeEach(async () => {
+      removeAllTags = globalThis.__mockRemoveAllTags;
+      scopeListeners = globalThis.__mockScopeListeners;
+      removeAllTags.mockClear();
+      globalThis.document = {
+        getElementById: vi.fn().mockReturnValue(mockTagsInput),
+      };
+      cacheGet.mockResolvedValue([]);
+      await fillKeywords(['from-the-page']);
+      mockAddTags.mockClear();
+    });
+
+    it('swaps the tags of the field', () => {
+      expect(replaceKeywords(['stored1', 'stored2'])).toBe(true);
+
+      expect(removeAllTags).toHaveBeenCalledTimes(1);
+      expect(mockAddTags).toHaveBeenCalledWith(['stored1', 'stored2']);
+    });
+
+    it('empties the field for a bookmark without tags', () => {
+      expect(replaceKeywords([])).toBe(true);
+
+      expect(removeAllTags).toHaveBeenCalledTimes(1);
+      expect(mockAddTags).not.toHaveBeenCalled();
+    });
+
+    it.each(['keydown', 'paste', 'input', 'click', 'drop'])(
+      'leaves the field alone once the user has caused a %s in it',
+      (eventName) => {
+        scopeListeners[eventName]();
+
+        expect(replaceKeywords(['stored'])).toBe(false);
+        expect(removeAllTags).not.toHaveBeenCalled();
+        expect(mockAddTags).not.toHaveBeenCalled();
+      },
+    );
+
+    it('starts from scratch when the field is built again', async () => {
+      scopeListeners.keydown();
+      await fillKeywords(['again']);
+
+      expect(replaceKeywords(['stored'])).toBe(true);
     });
   });
 

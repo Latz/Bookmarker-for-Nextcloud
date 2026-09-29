@@ -12,9 +12,17 @@
 // service worker, so it is started at module load (see session.js), in
 // parallel with the DOM being built.
 // -----------------------------------------------------------------------------
-import { createForm, hydrateForm } from './modules/hydrateForm.js';
+import {
+  applyBookmarkStatus,
+  createForm,
+  hydrateForm,
+} from './modules/hydrateForm.js';
 import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
-import { getDataWithRetry } from './modules/dataRequest.js';
+import {
+  BOOKMARK_STATUS_REQUEST,
+  PAGE_DATA_REQUEST,
+  getDataWithRetry,
+} from './modules/dataRequest.js';
 import { prefetchFormOptions, startSession } from './modules/session.js';
 import {
   createAuthorizeButton,
@@ -43,10 +51,16 @@ const domReady =
  * Shared by the default boot path and the reconnect banner's success path so
  * the two don't duplicate (and drift from) the same handful of steps.
  *
- * @param {Promise<Object>} dataPromise - The in-flight (or about-to-start) getData result.
+ * The form is filled as soon as the page data is in; the "already bookmarked?"
+ * lookup (statusPromise) is a server round trip and is folded in when it
+ * arrives.
+ *
+ * @param {Promise<Object>} dataPromise - The in-flight (or about-to-start) page data request.
+ * @param {Promise<Object>|null} [statusPromise] - The in-flight lookup, if the
+ *   page data was requested without it (`checkPending`).
  * @returns {Promise<void>}
  */
-async function runFormFlow(dataPromise) {
+async function runFormFlow(dataPromise, statusPromise = null) {
   // createForm is async; await it so hydrateForm cannot race the elements
   // it builds. The data round trip is already in flight either way.
   const [data] = await Promise.all([dataPromise, createForm()]);
@@ -71,6 +85,17 @@ async function runFormFlow(dataPromise) {
     return;
   }
   addSaveBookmarkButtonListener(data.bookmarked);
+
+  if (data.checkPending) {
+    // Not awaited: the form is already usable. The Save button stays locked
+    // until this settles (applyBookmarkStatus releases it in every case).
+    (statusPromise ?? Promise.resolve({ ok: false }))
+      .then(applyBookmarkStatus)
+      .catch((error) => {
+        console.error('[popup] applying the bookmark status failed:', error);
+        return applyBookmarkStatus({ ok: false });
+      });
+  }
 }
 
 /**
@@ -87,8 +112,14 @@ function zenMode() {
 // chain -- including the getData network round trip -- settles, instead of
 // returning once the module body finishes executing as the tests expect.
 const boot = (async () => {
-  const { apppwd, enableZen, server, needsReconnect, dataPromise } =
-    await sessionPromise;
+  const {
+    apppwd,
+    enableZen,
+    server,
+    needsReconnect,
+    dataPromise,
+    statusPromise,
+  } = await sessionPromise;
   await domReady;
 
   if (apppwd === undefined) {
@@ -102,11 +133,14 @@ const boot = (async () => {
     // itself; no data request was started before, so start one now.
     createReconnectBanner(server, () => {
       prefetchFormOptions();
-      return runFormFlow(getDataWithRetry());
+      return runFormFlow(
+        getDataWithRetry(PAGE_DATA_REQUEST),
+        getDataWithRetry(BOOKMARK_STATUS_REQUEST),
+      );
     });
   } else {
     // Screen 4: the normal case; the request is already in flight.
-    await runFormFlow(dataPromise);
+    await runFormFlow(dataPromise, statusPromise);
   }
 })();
 

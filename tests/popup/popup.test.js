@@ -32,6 +32,7 @@ globalThis.chrome = {
 vi.mock('../../src/popup/modules/hydrateForm.js', () => ({
   createForm: vi.fn(),
   hydrateForm: vi.fn(),
+  applyBookmarkStatus: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../../src/lib/storage.js', () => ({
@@ -51,7 +52,11 @@ vi.mock('textfit', () => ({
 }));
 
 // Import after mocking
-import { createForm, hydrateForm } from '../../src/popup/modules/hydrateForm.js';
+import {
+  applyBookmarkStatus,
+  createForm,
+  hydrateForm,
+} from '../../src/popup/modules/hydrateForm.js';
 import { load_data, getOption } from '../../src/lib/storage.js';
 import addSaveBookmarkButtonListener from '../../src/popup/modules/saveBookmarks.js';
 import textFit from 'textfit';
@@ -220,6 +225,94 @@ describe('popup.js', () => {
       expect(globalThis.window.close).toHaveBeenCalled();
     });
 
+    describe('page data first, bookmark status later', () => {
+      const pageData = {
+        ok: true,
+        url: 'https://example.com',
+        title: 'Example',
+        keywords: ['a'],
+        bookmarkID: -1,
+        checkPending: true,
+      };
+
+      // Answers each of the two popup requests on its own.
+      function answer({ page, status }) {
+        globalThis.chrome.runtime.sendMessage.mockImplementation(async (request) =>
+          request.msg === 'getBookmarkStatus' ? status : page,
+        );
+      }
+
+      beforeEach(() => {
+        load_data.mockImplementation((store, key) =>
+          Promise.resolve(
+            key === 'appPassword' ? 'pw' : key === 'server' ? 'https://example.com' : undefined,
+          ),
+        );
+        getOption.mockResolvedValue(false);
+      });
+
+      it('fills the form from the page data, then applies the lookup result', async () => {
+        const status = { ok: true, found: false, bookmarkID: -1, checkBookmark: { ok: true } };
+        answer({ page: pageData, status });
+
+        await import('../../src/popup/popup.js');
+        await flush();
+
+        expect(hydrateForm).toHaveBeenCalledWith(pageData);
+        expect(applyBookmarkStatus).toHaveBeenCalledTimes(1);
+        expect(applyBookmarkStatus).toHaveBeenCalledWith(status);
+        expect(addSaveBookmarkButtonListener).toHaveBeenCalled();
+      });
+
+      it('shows the form before the lookup has answered', async () => {
+        let answerLookup;
+        const lookup = new Promise((resolve) => {
+          answerLookup = resolve;
+        });
+        globalThis.chrome.runtime.sendMessage.mockImplementation((request) =>
+          request.msg === 'getBookmarkStatus' ? lookup : Promise.resolve(pageData),
+        );
+
+        await import('../../src/popup/popup.js');
+        await flush();
+
+        // the slow server round trip has not returned, the form is already up
+        expect(hydrateForm).toHaveBeenCalledWith(pageData);
+        expect(applyBookmarkStatus).not.toHaveBeenCalled();
+
+        const status = { ok: true, found: true, bookmarkID: 7, keywords: ['x'] };
+        answerLookup(status);
+        await flush();
+
+        expect(applyBookmarkStatus).toHaveBeenCalledWith(status);
+      });
+
+      it('still releases the Save button when the lookup request fails', async () => {
+        answer({ page: pageData, status: { ok: false, retryable: false, error: 'boom' } });
+
+        await import('../../src/popup/popup.js');
+        await flush();
+
+        // applyBookmarkStatus releases the button whatever it is given
+        expect(applyBookmarkStatus).toHaveBeenCalledWith(
+          expect.objectContaining({ ok: false }),
+        );
+      });
+
+      it('does not ask for a status when the page data already carries it', async () => {
+        answer({
+          page: { ...pageData, checkPending: undefined, checkBookmark: { ok: true } },
+          status: { ok: true },
+        });
+
+        await import('../../src/popup/popup.js');
+        await flush();
+
+        expect(hydrateForm).toHaveBeenCalled();
+        expect(applyBookmarkStatus).not.toHaveBeenCalled();
+      });
+    });
+
     it('should create form and hydrate data when credentials exist and zen mode is disabled', async () => {
       // Mock credentials exist
       load_data.mockImplementation((store, key) => {
@@ -255,9 +348,14 @@ describe('popup.js', () => {
       // Verify form was created
       expect(createForm).toHaveBeenCalled();
 
-      // Verify getData message was sent
+      // Verify the page data was requested without the server lookup ...
       expect(globalThis.chrome.runtime.sendMessage).toHaveBeenCalledWith({
         msg: 'getData',
+        data: { deferCheck: true },
+      });
+      // ... which is asked for on its own
+      expect(globalThis.chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        msg: 'getBookmarkStatus',
       });
 
       // Verify form was hydrated

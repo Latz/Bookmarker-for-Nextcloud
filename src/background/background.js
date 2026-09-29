@@ -11,7 +11,7 @@
 // start, and every module-level variable is reset (see the session-storage
 // caches in the modules for how that cost is reduced).
 // -----------------------------------------------------------------------------
-import getData from './modules/bookmarks/getData.js';
+import getData, { getBookmarkStatus } from './modules/bookmarks/getData.js';
 import { zenMode } from './modules/bookmarks/zenMode.js';
 import { saveBookmark } from './modules/bookmarks/saveBookmark.js';
 import { handleContextMenuClick } from './modules/browser/contextMenu.js';
@@ -75,6 +75,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       })();
       // Only this branch answers asynchronously, so only this branch needs the
       // message channel held open.
+      return true;
+    case 'getBookmarkStatus':
+      // The server lookup of getData on its own (see getData's `deferCheck`):
+      // is the active tab's page already bookmarked? Answered asynchronously.
+      void (async () => {
+        try {
+          sendResponse(await getBookmarkStatus());
+        } catch (error) {
+          // Includes the AbortError of a lookup superseded by a newer one.
+          console.error('[background] getBookmarkStatus failed:', error);
+          sendResponse({
+            ok: false,
+            error: error?.message ?? String(error),
+          });
+        }
+      })();
       return true;
     case 'authorize':
       // Opens the login page in a new tab (the Nextcloud login flow v2 runs there).

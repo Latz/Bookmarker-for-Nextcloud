@@ -5,6 +5,16 @@ import '@yaireo/tagify/dist/tagify.css';
 /** @type {Promise<[any, any]>|null} */
 let preloaded = null;
 
+// The Tagify instance of the keywords field, and whether the user has worked
+// in it. replaceKeywords needs both: it must not wipe what the user typed.
+/** @type {any} */
+let activeTagify = null;
+let editedByUser = false;
+
+// Events the user causes in the field. Tagify's own programmatic changes
+// (addTags, removeAllTags) raise none of these DOM events.
+const USER_EDIT_EVENTS = ['keydown', 'paste', 'input', 'click', 'drop'];
+
 /**
  * Starts loading Tagify and the cached keyword whitelist.
  *
@@ -37,6 +47,20 @@ function loadKeywordAssets() {
       return [];
     }),
   ]);
+}
+
+/**
+ * Replaces the tags of the keywords field, e.g. with the tags of the stored
+ * bookmark once the server lookup has found the page. Does nothing if there is
+ * no field yet, or if the user has already typed in it.
+ * @param {Array<string>} [keywords]
+ * @returns {boolean} Whether the tags were replaced.
+ */
+export function replaceKeywords(keywords) {
+  if (!activeTagify || editedByUser) return false;
+  activeTagify.removeAllTags();
+  if (keywords && keywords.length > 0) activeTagify.addTags(keywords);
+  return true;
 }
 
 /**
@@ -79,6 +103,14 @@ export default async function fillKeywords(keywords) {
       includeSelectedTags: true, // suggest tags even if already added
     },
   });
+  activeTagify = tagify;
+  editedByUser = false;
+  for (const eventName of USER_EDIT_EVENTS) {
+    tagify.DOM?.scope?.addEventListener(eventName, () => {
+      editedByUser = true;
+    });
+  }
+
   // keep already-added tags matchable in the dropdown even if they weren't
   // in the initial whitelist
   tagify.on('add', ({ detail }) => {

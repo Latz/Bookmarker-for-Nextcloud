@@ -32,7 +32,9 @@ vi.mock('../../src/lib/stringSimilarity.js', () => ({
   batchSimilarityCheck: vi.fn(),
 }));
 
-import getData from '../../src/background/modules/bookmarks/getData.js';
+import getData, {
+  getBookmarkStatus,
+} from '../../src/background/modules/bookmarks/getData.js';
 import { getFolders } from '../../src/background/modules/bookmarks/getFolders.js';
 import apiCall from '../../src/lib/apiCall.js';
 import { getOptions } from '../../src/lib/storage.js';
@@ -137,6 +139,165 @@ describe('getData - folder list', () => {
     await getData({ skipFolders: 'yes' });
 
     expect(getFolders).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('getData - deferCheck', () => {
+  it('returns the page data without any server lookup', async () => {
+    options.cbx_cacheBookmarkChecks = true;
+
+    const result = await getData({ deferCheck: true });
+
+    expect(apiCall).not.toHaveBeenCalled();
+    expect(getCachedBookmarkCheck).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      ok: true,
+      url: URL_A,
+      title: 'Title',
+      description: 'desc',
+      keywords: ['kw'],
+      folders: [1],
+      bookmarkID: -1,
+      checkPending: true,
+    });
+    expect(result.checkBookmark).toBeUndefined();
+  });
+
+  it('still honours skipFolders', async () => {
+    const result = await getData({ deferCheck: true, skipFolders: true });
+
+    expect(result.folders).toEqual([]);
+  });
+
+  it('reports a page that cannot be bookmarked like the full lookup', async () => {
+    chrome.tabs.query.mockResolvedValue([tab(1, 'chrome://settings')]);
+
+    const result = await getData({ deferCheck: true });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'URL is not bookmarkable',
+      retryable: false,
+    });
+  });
+
+  it('does not cancel a lookup that is running for the same tab', async () => {
+    const lookup = deferred();
+    apiCall.mockReturnValueOnce(lookup.promise);
+
+    const status = getBookmarkStatus();
+    await tick();
+    await getData({ deferCheck: true }); // same tab, must leave the lookup alone
+    lookup.resolve({ status: 'success', data: [] });
+
+    await expect(status).resolves.toMatchObject({ ok: true, found: false });
+  });
+});
+
+describe('getBookmarkStatus', () => {
+  it('reports a page that is not bookmarked', async () => {
+    const result = await getBookmarkStatus();
+
+    expect(result).toEqual({
+      ok: true,
+      found: false,
+      bookmarkID: -1,
+      checkBookmark: EMPTY_CHECK,
+    });
+  });
+
+  it('returns the stored bookmark in the shape getData uses for it', async () => {
+    apiCall.mockResolvedValueOnce({
+      status: 'success',
+      data: [
+        {
+          id: 42,
+          url: URL_A,
+          title: 'Stored',
+          description: 'Stored description',
+          tags: ['x', 'y'],
+          added: 100,
+          lastmodified: 200,
+        },
+      ],
+    });
+
+    const result = await getBookmarkStatus();
+
+    expect(result).toMatchObject({
+      ok: true,
+      found: true,
+      bookmarkID: 42,
+      keywords: ['x', 'y'],
+      title: 'Stored',
+      description: 'Stored description',
+      url: URL_A,
+      added: 100,
+      lastmodified: 200,
+    });
+    expect(result.checkBookmark.found).toBe(true);
+  });
+
+  it('marks an unreachable server without pretending the page is new', async () => {
+    apiCall.mockResolvedValueOnce({ status: -1, statusText: 'Failed to fetch' });
+
+    const result = await getBookmarkStatus();
+
+    expect(result.ok).toBe(true);
+    expect(result.found).toBe(false);
+    expect(result.bookmarkID).toBe(-1);
+    expect(result.checkBookmark.ok).toBe(false);
+  });
+
+  it('skips the server when the check is disabled', async () => {
+    options.cbx_alreadyStored = false;
+
+    const result = await getBookmarkStatus();
+
+    expect(apiCall).not.toHaveBeenCalled();
+    expect(result.checkBookmark).toEqual(EMPTY_CHECK);
+  });
+
+  it('fails without an active tab', async () => {
+    chrome.tabs.query.mockResolvedValue([]);
+
+    expect(await getBookmarkStatus()).toEqual({
+      ok: false,
+      error: 'No active tab found',
+    });
+  });
+
+  it('fails for a page that cannot be bookmarked, without a request', async () => {
+    chrome.tabs.query.mockResolvedValue([tab(1, 'chrome://settings')]);
+
+    const result = await getBookmarkStatus();
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'URL is not bookmarkable',
+      retryable: false,
+    });
+    expect(apiCall).not.toHaveBeenCalled();
+  });
+
+  it('cancels the previous lookup of the same tab', async () => {
+    const first = deferred();
+    apiCall.mockReturnValueOnce(first.promise);
+    apiCall.mockResolvedValueOnce({ status: 'success', data: [] });
+    // Another URL in the same tab (a navigation): an identical URL would join
+    // the lookup that is already running instead of starting its own.
+    chrome.tabs.query
+      .mockResolvedValueOnce([tab(1)])
+      .mockResolvedValueOnce([tab(1, 'https://example.com/b')]);
+
+    const firstStatus = getBookmarkStatus();
+    firstStatus.catch(() => {});
+    await tick();
+    const secondStatus = getBookmarkStatus();
+
+    await expect(secondStatus).resolves.toMatchObject({ ok: true });
+    first.resolve({ status: 'success', data: [] });
+    await expect(firstStatus).rejects.toMatchObject({ name: 'AbortError' });
   });
 });
 

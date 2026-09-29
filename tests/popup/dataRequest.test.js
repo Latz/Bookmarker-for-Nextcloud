@@ -13,7 +13,11 @@ vi.mock('../../src/popup/modules/screens.js', () => ({
 
 import { getOption } from '../../src/lib/storage.js';
 import { showRetryMessage } from '../../src/popup/modules/screens.js';
-import { getDataWithRetry } from '../../src/popup/modules/dataRequest.js';
+import {
+  getDataWithRetry,
+  PAGE_DATA_REQUEST,
+  BOOKMARK_STATUS_REQUEST,
+} from '../../src/popup/modules/dataRequest.js';
 
 describe('dataRequest.js', () => {
   let sendMessage;
@@ -48,6 +52,27 @@ describe('dataRequest.js', () => {
     expect(data).toEqual({ ok: true, url: 'https://example.com' });
     expect(sendMessage).toHaveBeenCalledTimes(1);
     expect(sendMessage).toHaveBeenCalledWith({ msg: 'getData' });
+  });
+
+  it('sends the request it is given, on every attempt', async () => {
+    sendMessage
+      .mockResolvedValueOnce({ ok: false, error: 'busy' })
+      .mockResolvedValueOnce({ ok: true, found: false });
+
+    const result = getDataWithRetry(BOOKMARK_STATUS_REQUEST);
+    await vi.runAllTimersAsync();
+
+    expect(await result).toEqual({ ok: true, found: false });
+    expect(sendMessage).toHaveBeenCalledTimes(2);
+    expect(sendMessage).toHaveBeenNthCalledWith(1, { msg: 'getBookmarkStatus' });
+    expect(sendMessage).toHaveBeenNthCalledWith(2, { msg: 'getBookmarkStatus' });
+  });
+
+  it('defines the two popup requests', () => {
+    // The page data is asked for without the server lookup, which is a
+    // separate request.
+    expect(PAGE_DATA_REQUEST).toEqual({ msg: 'getData', data: { deferCheck: true } });
+    expect(BOOKMARK_STATUS_REQUEST).toEqual({ msg: 'getBookmarkStatus' });
   });
 
   it('dispatches the first request before the retry count is read', () => {

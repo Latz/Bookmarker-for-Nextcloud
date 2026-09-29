@@ -18,6 +18,7 @@ const createMockElement = () => ({
 // Mock dependencies
 vi.mock('../../src/popup/modules/fillKeywords.js', () => ({
   default: vi.fn(),
+  replaceKeywords: vi.fn(),
 }));
 
 vi.mock('../../src/popup/modules/fillFolders.js', () => ({
@@ -38,10 +39,14 @@ vi.mock('../../src/lib/storage.js', () => {
 });
 
 // Import the module after mocking
-import fillKeywords from '../../src/popup/modules/fillKeywords.js';
+import fillKeywords, { replaceKeywords } from '../../src/popup/modules/fillKeywords.js';
 import fillFolders from '../../src/popup/modules/fillFolders.js';
 import { getOption } from '../../src/lib/storage.js';
-import { createForm, hydrateForm } from '../../src/popup/modules/hydrateForm.js';
+import {
+  applyBookmarkStatus,
+  createForm,
+  hydrateForm,
+} from '../../src/popup/modules/hydrateForm.js';
 
 describe('createForm', () => {
   let mockForm;
@@ -336,6 +341,26 @@ describe('createForm', () => {
   });
 
   describe('Save button', () => {
+    const options = (alreadyStored) => (key) =>
+      Promise.resolve({ cbx_alreadyStored: alreadyStored }[key]);
+
+    it('is locked while the server lookup is running', async () => {
+      getOption.mockImplementation(options(true));
+
+      await createForm();
+
+      // saving now could create a second bookmark for a stored page
+      expect(mockSaveButton.disabled).toBe(true);
+    });
+
+    it('is not locked when there is no lookup to wait for', async () => {
+      getOption.mockImplementation(options(false));
+
+      await createForm();
+
+      expect(mockSaveButton.disabled).toBeUndefined();
+    });
+
     it('should set save button text', async () => {
       getOption.mockResolvedValue(false);
 
@@ -696,5 +721,199 @@ describe('hydrateForm', () => {
     const data = { url: 'https://example.com', title: 'Test', bookmarkID: 1 };
     // Should not throw
     await expect(hydrateForm(data)).rejects.toThrow();
+  });
+});
+
+// -----------------------------------------------------------------------------
+// The lookup arrives after the form has been filled
+// -----------------------------------------------------------------------------
+describe('pending lookup', () => {
+  let elements;
+  let subMessage;
+
+  const field = (value = '') => ({ value, dataset: {} });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    subMessage = {
+      textContent: '',
+      replaceChildren: vi.fn(function (...nodes) {
+        subMessage.textContent = nodes
+          .map((n) => (typeof n === 'string' ? n : (n.textContent ?? '')))
+          .join('');
+      }),
+      append: vi.fn(function (...nodes) {
+        subMessage.textContent += nodes
+          .map((n) => (typeof n === 'string' ? n : (n.textContent ?? '')))
+          .join('');
+      }),
+    };
+    elements = {
+      url: field('https://example.com/page'),
+      title: field('Page title'),
+      description: field('from the page'),
+      bookmarkID: field('-1'),
+      folders: { options: [] },
+      sub_message: subMessage,
+      saveBookmark: { disabled: true },
+    };
+    globalThis.document = {
+      getElementById: vi.fn((id) => elements[id] ?? null),
+      createElement: vi.fn(() => ({
+        className: '',
+        textContent: '',
+        setAttribute: vi.fn(),
+        appendChild: vi.fn(),
+      })),
+    };
+    globalThis.chrome = {
+      i18n: {
+        getMessage: vi.fn((key) => key),
+      },
+    };
+    vi.stubGlobal('navigator', { language: 'en-US' });
+    getOption.mockImplementation((key) =>
+      Promise.resolve({ cbx_showDescription: true, cbx_autoDescription: true }[key]),
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete globalThis.chrome;
+    vi.unstubAllGlobals();
+  });
+
+  describe('hydrateForm with checkPending', () => {
+    const pageData = {
+      url: 'https://example.com/page',
+      title: 'Page title',
+      description: 'from the page',
+      keywords: ['a'],
+      folders: [],
+      bookmarkID: -1,
+      checkPending: true,
+    };
+
+    it('fills the form but leaves the spinner and the locked Save button', async () => {
+      await hydrateForm(pageData);
+
+      expect(elements.title.value).toBe('Page title');
+      expect(elements.description.value).toBe('from the page');
+      expect(fillKeywords).toHaveBeenCalledWith(['a']);
+      // no status text yet, and no crash for the missing lookup result
+      expect(subMessage.replaceChildren).not.toHaveBeenCalled();
+      expect(elements.saveBookmark.disabled).toBe(true);
+    });
+
+    it('releases the Save button when the data already carries the lookup', async () => {
+      await hydrateForm({ ...pageData, checkPending: undefined, checkBookmark: { ok: true } });
+
+      expect(elements.saveBookmark.disabled).toBe(false);
+    });
+  });
+
+  describe('applyBookmarkStatus', () => {
+    const stored = {
+      ok: true,
+      found: true,
+      bookmarkID: 42,
+      url: 'https://example.com/stored',
+      title: 'Stored title',
+      description: 'Stored description',
+      keywords: ['x', 'y'],
+      added: 1700000000,
+      lastmodified: 1700000000,
+      checkBookmark: { ok: true },
+    };
+
+    it('swaps in the stored bookmark for a page that is already bookmarked', async () => {
+      await applyBookmarkStatus(stored);
+
+      expect(elements.url.value).toBe('https://example.com/stored');
+      expect(elements.title.value).toBe('Stored title');
+      expect(elements.description.value).toBe('Stored description');
+      expect(replaceKeywords).toHaveBeenCalledWith(['x', 'y']);
+      expect(elements.bookmarkID.value).toBe(42);
+      expect(subMessage.textContent).toContain('alreadyBookmarked');
+      expect(elements.saveBookmark.disabled).toBe(false);
+    });
+
+    it('mentions the modification date only if it differs from the creation date', async () => {
+      await applyBookmarkStatus({ ...stored, lastmodified: 1700086400 });
+
+      expect(subMessage.textContent).toContain('Modified');
+    });
+
+    it('keeps the fields the user has already edited', async () => {
+      elements.title.value = 'My own title';
+      elements.title.dataset.touched = 'true';
+
+      await applyBookmarkStatus(stored);
+
+      expect(elements.title.value).toBe('My own title');
+      expect(elements.url.value).toBe('https://example.com/stored');
+    });
+
+    it('leaves the description alone when it is not prefilled from the page', async () => {
+      getOption.mockImplementation((key) =>
+        Promise.resolve({ cbx_showDescription: true, cbx_autoDescription: false }[key]),
+      );
+
+      await applyBookmarkStatus(stored);
+
+      expect(elements.description.value).toBe('from the page');
+    });
+
+    it('needs no stored value to be present', async () => {
+      await applyBookmarkStatus({ ok: true, found: true, bookmarkID: 5, checkBookmark: { ok: true } });
+
+      expect(elements.title.value).toBe('Page title');
+      expect(elements.bookmarkID.value).toBe(5);
+    });
+
+    it('clears the spinner for a page that is not bookmarked', async () => {
+      await applyBookmarkStatus({
+        ok: true,
+        found: false,
+        bookmarkID: -1,
+        checkBookmark: { ok: true },
+      });
+
+      expect(subMessage.replaceChildren).toHaveBeenCalledWith();
+      expect(replaceKeywords).not.toHaveBeenCalled();
+      expect(elements.title.value).toBe('Page title');
+      expect(elements.bookmarkID.value).toBe(-1);
+      expect(elements.saveBookmark.disabled).toBe(false);
+    });
+
+    it('says so when the server could not be reached', async () => {
+      await applyBookmarkStatus({
+        ok: true,
+        found: false,
+        bookmarkID: -1,
+        checkBookmark: { ok: false },
+      });
+
+      expect(subMessage.textContent).toContain('ConnectionError');
+      expect(elements.saveBookmark.disabled).toBe(false);
+    });
+
+    it('treats a failed request like an unreachable server', async () => {
+      await applyBookmarkStatus({ ok: false, error: 'boom' });
+
+      expect(subMessage.textContent).toContain('ConnectionError');
+      expect(elements.bookmarkID.value).toBe(-1);
+      expect(elements.saveBookmark.disabled).toBe(false);
+    });
+
+    it('releases the Save button even when filling the form throws', async () => {
+      replaceKeywords.mockImplementationOnce(() => {
+        throw new Error('tagify broke');
+      });
+
+      await expect(applyBookmarkStatus(stored)).rejects.toThrow('tagify broke');
+
+      expect(elements.saveBookmark.disabled).toBe(false);
+    });
   });
 });

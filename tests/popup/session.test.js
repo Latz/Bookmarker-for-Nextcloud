@@ -8,6 +8,8 @@ vi.mock('../../src/lib/storage.js', () => ({
 }));
 vi.mock('../../src/popup/modules/dataRequest.js', () => ({
   getDataWithRetry: vi.fn(),
+  PAGE_DATA_REQUEST: { msg: 'getData', data: { deferCheck: true } },
+  BOOKMARK_STATUS_REQUEST: { msg: 'getBookmarkStatus' },
 }));
 vi.mock('../../src/popup/modules/fillKeywords.js', () => ({
   preloadKeywordAssets: vi.fn(),
@@ -50,9 +52,17 @@ describe('startSession', () => {
     expect(chrome.permissions.contains).toHaveBeenCalledWith({
       origins: ['https://cloud.example.com/*'],
     });
-    expect(getDataWithRetry).toHaveBeenCalledTimes(1);
+    // The page data and the "already bookmarked?" lookup are two requests, so
+    // the form does not have to wait for the server round trip.
+    expect(getDataWithRetry).toHaveBeenCalledTimes(2);
+    expect(getDataWithRetry).toHaveBeenNthCalledWith(1, {
+      msg: 'getData',
+      data: { deferCheck: true },
+    });
+    expect(getDataWithRetry).toHaveBeenNthCalledWith(2, { msg: 'getBookmarkStatus' });
     expect(session.needsReconnect).toBe(false);
     await expect(session.dataPromise).resolves.toEqual({ ok: true });
+    await expect(session.statusPromise).resolves.toEqual({ ok: true });
   });
 
   it('asks to reconnect instead of calling getData when the permission is missing', async () => {
@@ -65,6 +75,7 @@ describe('startSession', () => {
     expect(getDataWithRetry).not.toHaveBeenCalled();
     expect(session.needsReconnect).toBe(true);
     expect(session.dataPromise).toBeNull();
+    expect(session.statusPromise).toBeNull();
   });
 
   it.each([

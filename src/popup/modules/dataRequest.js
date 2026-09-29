@@ -3,16 +3,25 @@ import { getOption } from '../../lib/storage.js';
 import { showRetryMessage } from './screens.js';
 
 /**
- * Asks the service worker for the page data. Never rejects: a throw (e.g. the
+ * The two requests the popup makes when it opens. They are sent together and
+ * answered independently, so the form can be filled with the page data without
+ * waiting for the server round trip of the "already bookmarked?" lookup.
+ */
+export const PAGE_DATA_REQUEST = { msg: 'getData', data: { deferCheck: true } };
+export const BOOKMARK_STATUS_REQUEST = { msg: 'getBookmarkStatus' };
+
+/**
+ * Sends one request to the service worker. Never rejects: a throw (e.g. the
  * worker is still waking up: "Receiving end does not exist") or a missing/
  * malformed reply becomes a retryable error result, so the retry loop treats
  * it like any other failed attempt.
+ * @param {{msg: string, data?: Object}} request
  * @returns {Promise<Object>} The background's reply or a retryable error object
  */
-async function requestData() {
+async function requestData(request) {
   const fallback = () => chrome.i18n.getMessage('ConnectionError') || 'Error';
   try {
-    const data = await chrome.runtime.sendMessage({ msg: 'getData' });
+    const data = await chrome.runtime.sendMessage(request);
     if (data && typeof data === 'object') return data;
     return { ok: false, retryable: true, error: fallback() };
   } catch (error) {
@@ -23,16 +32,18 @@ async function requestData() {
 /**
  * Gets data from the background with retry logic
  * Retries the connection when it fails, up to the configured number of retries
+ * @param {{msg: string, data?: Object}} [request] - What to ask for: the
+ *   complete data (default), or one of the two popup requests above.
  * @returns {Promise<Object>} The data from the background or error object
  */
-export async function getDataWithRetry() {
+export async function getDataWithRetry(request = { msg: 'getData' }) {
   // Dispatch first, read the retry count alongside it. Awaiting the option
   // before the first sendMessage would put a storage read in front of the
   // round trip this whole module is arranged to start as early as possible --
   // the count is not needed until the first attempt has already failed.
   // requestData never rejects, so an in-flight failure cannot surface as an
   // unhandled rejection while the option read below is still pending.
-  let pending = requestData();
+  let pending = requestData(request);
   let maxRetries;
   try {
     maxRetries = await getOption('input_numberOfRetries');
@@ -49,7 +60,7 @@ export async function getDataWithRetry() {
   let lastError = null;
 
   for (let attempt = 0; attempt < retryCount; attempt++) {
-    const data = await (pending ?? requestData());
+    const data = await (pending ?? requestData(request));
     pending = null;
 
     // If the data is ok, return it immediately

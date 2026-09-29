@@ -66,6 +66,7 @@ vi.mock('../../src/lib/apiCall.js', () => ({
 
 vi.mock('../../src/background/modules/bookmarks/getData.js', () => ({
   default: vi.fn(() => Promise.resolve({ ok: true })),
+  getBookmarkStatus: vi.fn(() => Promise.resolve({ ok: true })),
 }));
 
 vi.mock('../../src/lib/storage.js', () => ({
@@ -108,7 +109,9 @@ vi.mock('../../src/background/modules/bookmarks/zenMode.js', () => ({
 
 // Import after mocking
 import apiCall from '../../src/lib/apiCall.js';
-import getData from '../../src/background/modules/bookmarks/getData.js';
+import getData, {
+  getBookmarkStatus,
+} from '../../src/background/modules/bookmarks/getData.js';
 import {
   store_data,
   getOption,
@@ -278,6 +281,42 @@ describe('background.js', () => {
 
       // Without this the popup would wait until the service worker dies.
       expect(sendResponse).toHaveBeenCalledWith({ ok: false, error: 'boom' });
+      consoleError.mockRestore();
+    });
+
+    it('answers a getBookmarkStatus request with the lookup result', async () => {
+      const sendResponse = vi.fn();
+      getBookmarkStatus.mockResolvedValueOnce({ ok: true, bookmarkID: -1 });
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      const result = messageListener({ msg: 'getBookmarkStatus' }, {}, sendResponse);
+      expect(result).toBe(true);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(getBookmarkStatus).toHaveBeenCalledTimes(1);
+      expect(sendResponse).toHaveBeenCalledWith({ ok: true, bookmarkID: -1 });
+    });
+
+    it('always answers a getBookmarkStatus request, even when it throws', async () => {
+      const sendResponse = vi.fn();
+      getBookmarkStatus.mockRejectedValueOnce(new Error('aborted'));
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      messageListener({ msg: 'getBookmarkStatus' }, {}, sendResponse);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(sendResponse).toHaveBeenCalledWith({ ok: false, error: 'aborted' });
       consoleError.mockRestore();
     });
 

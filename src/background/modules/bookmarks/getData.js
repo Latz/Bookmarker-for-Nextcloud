@@ -74,14 +74,19 @@ function isValidBookmarkableUrl(url) {
  * tags as `keywords`, added, lastmodified, ...) replace the extracted ones,
  * otherwise `bookmarkID` is -1.
  *
- * @param {{skipFolders?: boolean}} [options] - `skipFolders`: leave the folder
- *   list out (`folders` is then []). For callers that never show it, such as
- *   zen mode: the list is a cache read at best and a server request once its
- *   24h cache has expired.
+ * @param {{skipFolders?: boolean, deferCheck?: boolean}} [options]
+ *   `skipFolders`: leave the folder list out (`folders` is then []). For
+ *   callers that never show it, such as zen mode: the list is a cache read at
+ *   best and a server request once its 24h cache has expired.
+ *   `deferCheck`: do not look the page up on the server. The result then holds
+ *   the page data only, with `bookmarkID: -1` and `checkPending: true`; the
+ *   popup asks for the lookup separately (getBookmarkStatus) so it can show the
+ *   form without waiting for the server round trip.
  * @returns {Promise<Object>}
  */
 export default async function getData(options) {
   const skipFolders = options?.skipFolders === true;
+  const deferCheck = options?.deferCheck === true;
   let data = { ok: true };
 
   // Needed before extraction can run (bounds how many heading levels the
@@ -100,25 +105,11 @@ export default async function getData(options) {
   data.url = activeTab.url;
   data.title = activeTab.title;
 
-  // Cancel any previous request for this specific tab (e.g. the popup was
-  // reopened while the last lookup was still running).
+  // Cancels any previous lookup for this tab (e.g. the popup was reopened
+  // while the last one was still running). Without a lookup there is nothing
+  // to cancel or to register.
   const tabId = activeTab.id;
-  if (abortControllers.has(tabId)) {
-    const previousController = abortControllers.get(tabId);
-    previousController.abort();
-    log(DEBUG, `Cancelled previous request for tab ${tabId}`);
-  }
-
-  // Create new abort controller for this tab's request
-  const abortController = new AbortController();
-  abortControllers.set(tabId, abortController);
-
-  // Schedule cleanup of this abort controller
-  setTimeout(() => {
-    if (abortControllers.get(tabId) === abortController) {
-      abortControllers.delete(tabId);
-    }
-  }, ABORT_CONTROLLER_CLEANUP_MS);
+  const abortController = deferCheck ? null : startTabRequest(tabId);
 
   // Pre-flight validation: check if URL is bookmarkable
   if (!isValidBookmarkableUrl(data.url)) {
@@ -134,8 +125,10 @@ export default async function getData(options) {
   // The check needs only url/title, so its network round trip overlaps with
   // the page extraction below instead of queueing behind it. The no-op catch
   // prevents an unhandled rejection when we return early before awaiting it.
-  const checkPromise = checkBookmark(data.url, data.title, abortController.signal);
-  checkPromise.catch(() => {});
+  const checkPromise = abortController
+    ? checkBookmark(data.url, data.title, abortController.signal)
+    : null;
+  checkPromise?.catch(() => {});
 
   const { input_headings_slider: headingLevel = 3 } = await headingLevelPromise;
 
@@ -171,6 +164,22 @@ export default async function getData(options) {
   // This allows getKeywords and getDescription to work without modification
   const mockDoc = createMockDocument(parsedData);
 
+  if (deferCheck) {
+    const [description, keywords, folders] = await Promise.all([
+      Promise.resolve(getDescription(mockDoc)),
+      getKeywords(parsedData, mockDoc),
+      skipFolders ? [] : getFolders(),
+    ]);
+    return {
+      ...data,
+      description,
+      keywords,
+      folders,
+      bookmarkID: -1,
+      checkPending: true,
+    };
+  }
+
   // --- Run parallel operations for speed
   const [description, keywords, bookmarkCheckResult, folders] =
     await Promise.all([
@@ -203,6 +212,68 @@ export default async function getData(options) {
     log(DEBUG, 'data', data);
     return data;
   }
+}
+
+/**
+ * Registers a new lookup for a tab: aborts the previous one still running for
+ * the same tab and returns the controller of the new one (dropped from the
+ * registry again after ABORT_CONTROLLER_CLEANUP_MS).
+ * @param {number} tabId
+ * @returns {AbortController}
+ */
+function startTabRequest(tabId) {
+  if (abortControllers.has(tabId)) {
+    abortControllers.get(tabId).abort();
+    log(DEBUG, `Cancelled previous request for tab ${tabId}`);
+  }
+
+  const abortController = new AbortController();
+  abortControllers.set(tabId, abortController);
+
+  setTimeout(() => {
+    if (abortControllers.get(tabId) === abortController) {
+      abortControllers.delete(tabId);
+    }
+  }, ABORT_CONTROLLER_CLEANUP_MS);
+
+  return abortController;
+}
+
+/**
+ * The server lookup of getData on its own: is the active tab's page already
+ * bookmarked? The popup asks for it next to the page data
+ * (getData with `deferCheck`), so the form does not wait for this round trip.
+ *
+ * The result always has `ok` and `bookmarkID`, and `checkBookmark` (the raw
+ * lookup, whose own `ok: false` means the server could not be reached). If the
+ * page is bookmarked it also carries the stored bookmark's fields -- `found`,
+ * `keywords` (its tags), `title`, `description`, `url`, `added`,
+ * `lastmodified` -- exactly what getData puts in its result in that case.
+ * Fails like getData for a tab that cannot be bookmarked.
+ *
+ * @returns {Promise<Object>}
+ */
+export async function getBookmarkStatus() {
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!activeTab) {
+    return { ok: false, error: 'No active tab found' };
+  }
+  if (!isValidBookmarkableUrl(activeTab.url)) {
+    return { ok: false, error: 'URL is not bookmarkable', retryable: false };
+  }
+
+  const { signal } = startTabRequest(activeTab.id);
+  const checkBookmarkResult = await checkBookmark(activeTab.url, activeTab.title, signal);
+
+  if (checkBookmarkResult.ok && checkBookmarkResult.found) {
+    return {
+      ...checkBookmarkResult,
+      keywords: checkBookmarkResult.tags,
+      bookmarkID: checkBookmarkResult.id,
+      checkBookmark: checkBookmarkResult,
+    };
+  }
+  return { ok: true, found: false, bookmarkID: -1, checkBookmark: checkBookmarkResult };
 }
 
 /**
