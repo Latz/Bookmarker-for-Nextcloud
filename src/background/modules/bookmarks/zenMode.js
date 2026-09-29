@@ -15,7 +15,19 @@ import { notifyUser } from '../browser/notification.js';
  * @returns {Promise<void>}
  */
 export async function zenMode() {
-  const data = await getData();
+  // The zen options do not depend on the page data, so they are read while
+  // getData runs instead of one after another around it. The no-op catch keeps
+  // an early return below from leaving a rejection unhandled; the await further
+  // down still throws it.
+  const zenOptions = Promise.all([
+    load_data('options', 'zenFolderIDs'),
+    load_data('options', 'input_zenKeywords'),
+    load_data('options', 'cbx_zenDisplayNotification'),
+  ]);
+  zenOptions.catch(() => {});
+
+  // Zen mode saves into its own folders, so the folder list is not needed.
+  const data = await getData({ skipFolders: true });
 
   // Restricted pages (chrome://, no host access, ...) yield no keywords/title.
   if (data.ok === false) {
@@ -24,8 +36,7 @@ export async function zenMode() {
   }
 
   // Folder IDs and extra keywords the user configured for zen mode.
-  const selectedZenFolderIDs = await load_data('options', 'zenFolderIDs');
-  const zenKeywords = await load_data('options', 'input_zenKeywords');
+  const [selectedZenFolderIDs, zenKeywords, zenNotify] = await zenOptions;
 
   // The Bookmarks API expects a form-encoded body. `page: -1` is the API's
   // convention for "no page" (the bookmark is not tied to a paginated view).
@@ -56,7 +67,6 @@ export async function zenMode() {
   }
   // Errors are always shown; success only if the user has not turned the
   // notification off (the option is on unless explicitly set to false).
-  const zenNotify = await load_data('options', 'cbx_zenDisplayNotification');
   if (response.status === 'error' || zenNotify !== false) {
     void notifyUser(response);
   }

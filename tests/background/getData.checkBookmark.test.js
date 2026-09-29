@@ -33,6 +33,7 @@ vi.mock('../../src/lib/stringSimilarity.js', () => ({
 }));
 
 import getData from '../../src/background/modules/bookmarks/getData.js';
+import { getFolders } from '../../src/background/modules/bookmarks/getFolders.js';
 import apiCall from '../../src/lib/apiCall.js';
 import { getOptions } from '../../src/lib/storage.js';
 import { normalizeUrl } from '../../src/lib/urlNormalizer.js';
@@ -106,6 +107,37 @@ beforeEach(() => {
   chrome.scripting.executeScript.mockResolvedValue([
     { result: emptyParsedData() },
   ]);
+});
+
+describe('getData - folder list', () => {
+  it('loads the folders by default', async () => {
+    getFolders.mockClear();
+
+    const result = await getData();
+
+    expect(getFolders).toHaveBeenCalledTimes(1);
+    expect(result.folders).toEqual([1]);
+  });
+
+  it('leaves the folders out with skipFolders', async () => {
+    getFolders.mockClear();
+
+    const result = await getData({ skipFolders: true });
+
+    expect(getFolders).not.toHaveBeenCalled();
+    expect(result.folders).toEqual([]);
+    // everything else is still collected
+    expect(result.keywords).toEqual(['kw']);
+    expect(result.checkBookmark.ok).toBe(true);
+  });
+
+  it('ignores a non-boolean skipFolders', async () => {
+    getFolders.mockClear();
+
+    await getData({ skipFolders: 'yes' });
+
+    expect(getFolders).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('getData - bookmark check disabled', () => {

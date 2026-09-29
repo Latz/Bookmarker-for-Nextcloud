@@ -91,6 +91,56 @@ describe('zenMode', () => {
   });
 
   describe('Basic zen mode functionality', () => {
+    it('does not ask getData for the folder list', async () => {
+      getData.mockResolvedValueOnce(mockData);
+      load_data.mockResolvedValue(undefined);
+      apiCall.mockResolvedValueOnce({ status: 'success' });
+
+      await zenMode();
+
+      expect(getData).toHaveBeenCalledWith({ skipFolders: true });
+    });
+
+    it('reads the zen options while getData is still running', async () => {
+      let finishGetData;
+      getData.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishGetData = resolve;
+        }),
+      );
+      load_data.mockResolvedValue(undefined);
+      apiCall.mockResolvedValueOnce({ status: 'success' });
+
+      const running = zenMode();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // all three reads are already out, before the page data has arrived
+      expect(load_data.mock.calls.map((call) => call[1]).sort()).toEqual([
+        'cbx_zenDisplayNotification',
+        'input_zenKeywords',
+        'zenFolderIDs',
+      ]);
+      expect(apiCall).not.toHaveBeenCalled();
+
+      finishGetData(mockData);
+      await running;
+      expect(apiCall).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not leave a rejection unhandled when getData reports ok:false', async () => {
+      getData.mockResolvedValueOnce({ ok: false, error: 'not bookmarkable' });
+      load_data.mockRejectedValue(new Error('IndexedDB unavailable'));
+      const unhandled = vi.fn();
+      process.on('unhandledRejection', unhandled);
+
+      await zenMode();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      process.off('unhandledRejection', unhandled);
+
+      expect(unhandled).not.toHaveBeenCalled();
+      expect(apiCall).not.toHaveBeenCalled();
+    });
+
     it('should save bookmark with basic data', async () => {
       getData.mockResolvedValue(mockData);
       load_data

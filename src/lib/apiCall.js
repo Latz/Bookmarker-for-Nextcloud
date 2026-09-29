@@ -11,6 +11,12 @@ let cachedNetworkTimeout = null;
 let timeoutCacheExpiry = 0;
 const TIMEOUT_CACHE_TTL = 60000; // 1 minute
 
+// The stored server URL is cached like the auth header: every call used to
+// read it from IndexedDB. Only a configured server is cached, so a login is
+// picked up at once.
+let cachedServer = null;
+let serverCacheExpiry = 0;
+
 /**
  * Clears the cached timeout and auth header. Used by tests, and by the
  * service worker when credentials change (login / logout) so the old header
@@ -21,6 +27,8 @@ export function clearApiCallCache() {
   timeoutCacheExpiry = 0;
   cachedAuthHeader = null;
   authCacheExpiry = 0;
+  cachedServer = null;
+  serverCacheExpiry = 0;
 }
 
 // Forward declare cache variables for authentication
@@ -87,10 +95,26 @@ async function resolveServerAndAuth(data) {
   // OPTIMIZATION: Fetch server and auth in parallel
   const needsAuth = !data.loginflow;
   const [server, authHeader] = await Promise.all([
-    load_data('credentials', 'server'),
+    storedServer(),
     needsAuth ? authentication() : Promise.resolve(null),
   ]);
   return { server, authHeader };
+}
+
+/**
+ * The server URL from the stored credentials (cached for a minute).
+ * @returns {Promise<string|undefined>} undefined if no server is stored.
+ */
+async function storedServer() {
+  const now = Date.now();
+  if (cachedServer !== null && now <= serverCacheExpiry) return cachedServer;
+
+  const server = await load_data('credentials', 'server');
+  if (server) {
+    cachedServer = server;
+    serverCacheExpiry = now + AUTH_CACHE_TTL;
+  }
+  return server;
 }
 
 /**

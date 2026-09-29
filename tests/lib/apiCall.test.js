@@ -575,3 +575,85 @@ describe('apiCall.js', () => {
     });
   });
 });
+
+describe('apiCall.js - server URL cache', () => {
+  let mockFetch;
+
+  // Server first, then the credentials pair; anything else is unexpected.
+  function stubCredentials(server) {
+    load_data.mockImplementation(async (store, ...keys) => {
+      if (keys[0] === 'server') return server();
+      return { loginname: 'user', appPassword: 'pass' };
+    });
+  }
+  const serverReads = () =>
+    load_data.mock.calls.filter((call) => call[1] === 'server').length;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearApiCallCache();
+    getOption.mockResolvedValue(10);
+    mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ status: 'success' }),
+    });
+    globalThis.fetch = mockFetch;
+  });
+
+  afterEach(() => {
+    load_data.mockReset();
+    vi.restoreAllMocks();
+  });
+
+  it('reads the stored server once for several calls', async () => {
+    stubCredentials(() => 'https://cloud.example.com');
+
+    await apiCall('a', 'GET');
+    await apiCall('b', 'GET');
+    await apiCall('c', 'GET');
+
+    expect(serverReads()).toBe(1);
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(mockFetch.mock.calls[2][0]).toContain('https://cloud.example.com/c');
+  });
+
+  it('does not cache a missing server, so a login is picked up at once', async () => {
+    let server;
+    stubCredentials(() => server);
+
+    expect((await apiCall('a', 'GET')).statusText).toBe('Not configured');
+    server = 'https://cloud.example.com';
+    const result = await apiCall('a', 'GET');
+
+    expect(result).toEqual({ status: 'success' });
+    expect(serverReads()).toBe(2);
+  });
+
+  it('reads the server again after clearApiCallCache', async () => {
+    let server = 'https://old.example.com';
+    stubCredentials(() => server);
+    await apiCall('a', 'GET');
+
+    server = 'https://new.example.com';
+    clearApiCallCache(); // what the worker does on 'credentialsChanged'
+    await apiCall('a', 'GET');
+
+    expect(mockFetch.mock.calls[1][0]).toContain('https://new.example.com/');
+    expect(serverReads()).toBe(2);
+  });
+
+  it('reads the server again once the cache has expired', async () => {
+    vi.useFakeTimers();
+    try {
+      stubCredentials(() => 'https://cloud.example.com');
+      await apiCall('a', 'GET');
+
+      vi.advanceTimersByTime(61 * 1000);
+      await apiCall('a', 'GET');
+
+      expect(serverReads()).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

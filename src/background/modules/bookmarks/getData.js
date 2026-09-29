@@ -74,9 +74,14 @@ function isValidBookmarkableUrl(url) {
  * tags as `keywords`, added, lastmodified, ...) replace the extracted ones,
  * otherwise `bookmarkID` is -1.
  *
+ * @param {{skipFolders?: boolean}} [options] - `skipFolders`: leave the folder
+ *   list out (`folders` is then []). For callers that never show it, such as
+ *   zen mode: the list is a cache read at best and a server request once its
+ *   24h cache has expired.
  * @returns {Promise<Object>}
  */
-export default async function getData() {
+export default async function getData(options) {
+  const skipFolders = options?.skipFolders === true;
   let data = { ok: true };
 
   // Needed before extraction can run (bounds how many heading levels the
@@ -172,7 +177,7 @@ export default async function getData() {
       Promise.resolve(getDescription(mockDoc)), // Synchronous, but wrapped for consistency
       getKeywords(parsedData, mockDoc),
       checkPromise,
-      getFolders(),
+      skipFolders ? [] : getFolders(),
     ]);
 
   data.description = description;
