@@ -8,7 +8,7 @@
 
 ### Chrome Extension for bookmarking web pages on your Nextcloud server.
 
-<img src="Readme%20images/icon.png" align="right"
+<img src="docs/assets/icon.png" align="right"
      width="128" height="128">
 
 </p>
@@ -77,27 +77,27 @@ This is an early version of the extension. After updating you might have to re-a
 <div>
 After the installation you have to click the Extensions icon and pin *Bookmarker for Nextcloud* to the toolbar to have it available permanently. There'S currently a problem, that you might have to click the button multiple times to open the login window.
 
-![](Readme%20images/pin2.png)
+![](docs/assets/pin2.png)
 
 _Bookmarker for Nextcloud_ needs to register with your Nextcloud installation. When you click on the icon for the first time, _Bookmarker for Nextcloud_ will display a button:
 
-![](Readme%20images/authorize.png)
+![](docs/assets/authorize.png)
 
 When clicked, a tab will open where you must enter the address of your NextCloud server. Notice: This does not work if the active tab is a system tab (e.g. `chrome://` or `about://`).
 
-![](Readme%20images/login-400x300.png)
+![](docs/assets/login-400x300.png)
 
 After clicking on the "Open login page" button, another tab will open. You will be asked to enter your login details:
 
-![](Readme%20images/nclogin-400x300.png)
+![](docs/assets/nclogin-400x300.png)
 
 If your browser is already logged in to NextCloud, it will simply ask you to grant access:
 
-![](Readme%20images/GrantAccess-400x300.png)
+![](docs/assets/GrantAccess-400x300.png)
 
 The extension is now connected to Nextcloud. You can close the tab.
 
-![](Readme%20images/AccountConnected-400x300.png)
+![](docs/assets/AccountConnected-400x300.png)
 
 </div>
 
@@ -105,7 +105,7 @@ The extension is now connected to Nextcloud. You can close the tab.
 
 Depending on your [options](#-options), the interface can look very different:
 
-![](Readme%20images/example1.png)
+![](docs/assets/example1.png)
 
 > 1.  <u>Page URL</u>  
 >     The URL of the page.
@@ -134,11 +134,11 @@ You can refresh the cache and reload the data from the server by clicking "Refre
 
 You can access the options by right clicking on the extension icon:
 
-![](Readme%20images/menu-options.png)
+![](docs/assets/menu-options.png)
 
 The option page is divided into four main sections:
 
-![](Readme%20images/options.png)
+![](docs/assets/options.png)
 
 **Basic** - Interesting for most users  
 **Advanced** - Fine tuning  
