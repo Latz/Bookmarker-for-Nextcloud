@@ -95,37 +95,49 @@ export function extractGtmKeywords(document) {
     const script = node.text;
     if (!script?.includes('dataLayer.push')) continue;
 
-    // Each push is located with indexOf and read with a bounded scanner, so the
-    // cost is linear in the script size however many unclosed "push(" a
-    // hostile page repeats (a lazy regex retried from every one of them).
-    let from = 0;
-    for (let tried = 0; tried < MAX_PUSHES_PER_SCRIPT; tried++) {
-      const call = script.indexOf(PUSH_CALL, from);
-      if (call === -1) break;
-      from = call + PUSH_CALL.length;
-
-      let start = from;
-      while (/\s/.test(script[start] ?? '')) start++;
-      if (script[start] !== '{') continue;
-      const literal = readBalancedObject(script, start);
-      if (!literal) continue;
-
-      try {
-        // JSON might be broken, so be careful. Only a bare `undefined` value is
-        // replaced, not the word inside a string ("undefined behaviour").
-        const json = JSON.parse(
-          literal.replace(/([:,[]\s*)undefined(?=\s*[,}\]])/g, '$1"x"'),
-        );
-        const keywords = json.content.keywords;
-        if (typeof keywords === 'string' && keywords.trim()) {
-          return keywords.split('|');
-        }
-      } catch (e) {
-        log(DEBUG, 'GTM dataLayer push was not usable JSON, skipping:', e);
-      }
-    }
+    const keywords = keywordsFromPushes(script);
+    if (keywords) return keywords;
   }
   return [];
+}
+
+/**
+ * Tries the dataLayer.push({...}) calls of one script until one carries
+ * `content.keywords`.
+ * @param {string} script - The script text.
+ * @returns {Array<string>|null} The keywords, or null if no push had any.
+ */
+function keywordsFromPushes(script) {
+  // Each push is located with indexOf and read with a bounded scanner, so the
+  // cost is linear in the script size however many unclosed "push(" a
+  // hostile page repeats (a lazy regex retried from every one of them).
+  let from = 0;
+  for (let tried = 0; tried < MAX_PUSHES_PER_SCRIPT; tried++) {
+    const call = script.indexOf(PUSH_CALL, from);
+    if (call === -1) break;
+    from = call + PUSH_CALL.length;
+
+    let start = from;
+    while (/\s/.test(script[start] ?? '')) start++;
+    if (script[start] !== '{') continue;
+    const literal = readBalancedObject(script, start);
+    if (!literal) continue;
+
+    try {
+      // JSON might be broken, so be careful. Only a bare `undefined` value is
+      // replaced, not the word inside a string ("undefined behaviour").
+      const json = JSON.parse(
+        literal.replace(/([:,[]\s*)undefined(?=\s*[,}\]])/g, '$1"x"'),
+      );
+      const keywords = json.content.keywords;
+      if (typeof keywords === 'string' && keywords.trim()) {
+        return keywords.split('|');
+      }
+    } catch (e) {
+      log(DEBUG, 'GTM dataLayer push was not usable JSON, skipping:', e);
+    }
+  }
+  return null;
 }
 
 // ------------------------------------------------------------------------------------------
@@ -183,10 +195,10 @@ export function extractGithubKeywords(document) {
 export function extractNextDataKeywords(document) {
   let keywords = [];
   log(DEBUG, 'Next_data');
-  let next_data = '';
+  let next_data;
   try {
     next_data = document.getElementById('__NEXT_DATA__').innerText;
-  } catch (e) {
+  } catch {
     // No __NEXT_DATA__ element (getElementById returned null): not a Next.js page.
     return [];
   }

@@ -73,6 +73,7 @@ export async function getDataWithRetry() {
         showRetryMessage(attempt + 1, retryCount);
       }
       // Wait 500ms before retrying (exponential backoff could be added)
+      // NOSONAR: retries are sequential by design
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }

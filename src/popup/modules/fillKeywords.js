@@ -15,7 +15,7 @@ let preloaded = null;
  * @returns {void}
  */
 export function preloadKeywordAssets() {
-  if (preloaded) return;
+  if (preloaded !== null) return;
   preloaded = loadKeywordAssets();
   // fillKeywords observes the real outcome; this only prevents an unhandled
   // rejection if the popup never gets that far.

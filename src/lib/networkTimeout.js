@@ -30,7 +30,10 @@ export function timeoutMilliseconds(seconds) {
  *   (an empty field is not stored).
  */
 export function clampTimeoutSetting(input) {
-  const value = Number.parseInt(String(input), 10);
+  const value = Number.parseInt(
+    typeof input === 'number' || typeof input === 'string' ? String(input) : '',
+    10,
+  );
   if (!Number.isFinite(value)) return null;
   return Math.min(Math.max(value, MIN_TIMEOUT_SETTING), MAX_TIMEOUT_SECONDS);
 }

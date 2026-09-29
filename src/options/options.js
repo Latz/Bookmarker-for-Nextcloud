@@ -54,7 +54,7 @@ document.onreadystatechange = async () => {
 
     // Fill the form from the stored values (not awaited: the tab handling
     // below does not depend on it).
-    setOptions();
+    void setOptions();
 
     // Tab switching: show the content that belongs to the clicked tab and
     // remember the choice, so the page reopens on the same tab.
@@ -68,7 +68,7 @@ document.onreadystatechange = async () => {
       activeTab.classList.remove('tab-active');
       changeContent(activeTab, event.target);
       activeTab = event.target;
-      store_data(OPTION_STORE, { activeTab: activeTab.id });
+      void store_data(OPTION_STORE, { activeTab: activeTab.id });
     });
 
     // --- zen keywords ----------------------------------------------------------------
@@ -110,7 +110,7 @@ document.onreadystatechange = async () => {
       const selected = Array.from(input_zenFolders.options)
         .filter((f) => f.selected)
         .map((f) => f.value);
-      store_data(OPTION_STORE, { zenFolderIDs: selected });
+      void store_data(OPTION_STORE, { zenFolderIDs: selected });
     });
 
     try {
@@ -138,7 +138,7 @@ document.onreadystatechange = async () => {
 /** Stores the current zen keyword tags (Tagify add/remove handler). */
 function saveZenTags() {
   const tags = tagify.value.map((tag) => tag.value);
-  store_data(OPTION_STORE, { input_zenKeywords: tags });
+  void store_data(OPTION_STORE, { input_zenKeywords: tags });
 }
 
 // --- headings depth ---------------------------------------------------------------
@@ -165,7 +165,7 @@ document
     document
       .getElementById(`${event.target.id}`)
       ?.classList.add('selected_heading');
-    store_data(OPTION_STORE, {
+    void store_data(OPTION_STORE, {
       input_headings_slider: Number.parseInt(slider.value),
     });
   });
@@ -182,7 +182,7 @@ slider.addEventListener('input', () => {
     ?.classList.remove('selected_heading');
   document.getElementById(`${slider.value}`)?.classList.add('selected_heading');
   slider.setAttribute('data', slider.value);
-  store_data(OPTION_STORE, {
+  void store_data(OPTION_STORE, {
     input_headings_slider: Number.parseInt(slider.value),
   });
 });
@@ -240,7 +240,7 @@ async function setOptions() {
     // value would make every request abort at once.
     const seconds = clampTimeoutSetting(input_networkTimeout.value);
     if (seconds !== null) {
-      store_data(OPTION_STORE, { input_networkTimeout: seconds });
+      void store_data(OPTION_STORE, { input_networkTimeout: seconds });
     }
   });
   // Show the value that is actually in effect once the user leaves the field
@@ -265,7 +265,7 @@ async function setOptions() {
     if (event.target.type === 'checkbox') {
       const { id, checked } = event.target;
 
-      store_data(OPTION_STORE, { [id]: checked });
+      void store_data(OPTION_STORE, { [id]: checked });
     }
     if (event.target.type === 'submit') {
       const button = event.target;

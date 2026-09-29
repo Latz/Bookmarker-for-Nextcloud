@@ -71,10 +71,10 @@ export async function startSession() {
     // does not prompt for a permission *reduction*, so nothing re-grants
     // this automatically -- check before dispatching getData, which would
     // otherwise fail with no clear reason.
-    let origin = null;
+    let origin;
     try {
       origin = server ? new URL(server).origin : null;
-    } catch (e) {
+    } catch {
       origin = null;
     }
     // The prefetch only reads options, so it can overlap the permission check

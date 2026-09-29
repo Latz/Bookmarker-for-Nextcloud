@@ -152,7 +152,7 @@ export function extractPageData(headingLevel) {
         xplJson.keywords.forEach((tags) => {
           tags.kwd.forEach((tag) => xplKeywords.push(tag));
         });
-      } catch (e) {
+      } catch {
         // leave xplKeywords = []
       }
     }

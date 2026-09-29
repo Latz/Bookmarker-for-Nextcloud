@@ -28,7 +28,7 @@ function insertTimeOutMessage() {
   button.innerText = 'Close';
   // Listener on the whole document: any click closes the tab, not only one
   // on the button.
-  document.addEventListener('click', (event) => {
+  document.addEventListener('click', () => {
     window.close();
   });
   loginForm.appendChild(button);

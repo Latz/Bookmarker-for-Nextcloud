@@ -19,7 +19,7 @@ export async function zenMode() {
 
   // Restricted pages (chrome://, no host access, ...) yield no keywords/title.
   if (data.ok === false) {
-    notifyUser({ status: 'error', statusText: data.error });
+    void notifyUser({ status: 'error', statusText: data.error });
     return;
   }
 
@@ -58,6 +58,6 @@ export async function zenMode() {
   // notification off (the option is on unless explicitly set to false).
   const zenNotify = await load_data('options', 'cbx_zenDisplayNotification');
   if (response.status === 'error' || zenNotify !== false) {
-    notifyUser(response);
+    void notifyUser(response);
   }
 }

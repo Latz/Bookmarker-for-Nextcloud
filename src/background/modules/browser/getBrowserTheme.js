@@ -36,7 +36,7 @@ export async function ensureOffscreenDocument() {
       if (hasDocument) {
         return; // Document already exists
       }
-    } catch (error) {
+    } catch {
       // hasDocument might not be available, fall through to getContexts
     }
 
@@ -49,7 +49,7 @@ export async function ensureOffscreenDocument() {
       if (existingContexts.length > 0) {
         return; // Document already exists
       }
-    } catch (error) {
+    } catch {
       // getContexts might fail, continue to creation
     }
 

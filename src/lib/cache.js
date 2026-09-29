@@ -82,7 +82,7 @@ export async function cacheGet(type, forceServer = false) {
     await cacheAdd(type, data).catch((error) => {
       console.error(`Error caching ${type}:`, error);
     });
-    if (forceServer) cacheRefreshNotification();
+    if (forceServer) void cacheRefreshNotification();
     return data;
   } else {
     // data was found in cache -> return cache elements
@@ -151,7 +151,12 @@ async function addTempTags(type, newTags) {
     added.push(tag);
   }
   const db = await getDBConnection();
-  await db.put(type, { item: type, value: cachedTags.concat(added).sort() });
+  await db.put(type, {
+    item: type,
+    value: cachedTags
+      .concat(added)
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+  });
 }
 
 // ---------------------------------------------------------------------

@@ -117,7 +117,7 @@ export function createReconnectBanner(server, onGranted) {
     let origin;
     try {
       origin = new URL(server).origin;
-    } catch (e) {
+    } catch {
       msg.textContent = chrome.i18n.getMessage('reconnectDenied');
       return;
     }

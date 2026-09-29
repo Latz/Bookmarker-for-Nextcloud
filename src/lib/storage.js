@@ -127,6 +127,7 @@ export async function load_data(storeName, ...items) {
   for (let item of items) {
     // A failed read is treated like a missing record (the catch returns an
     // object without `.value`, so the entry ends up undefined below).
+    // NOSONAR: reads are kept sequential on purpose
     const data = await db.get(storeName, item).catch(() => {
       return result;
     });
@@ -529,17 +530,17 @@ export async function createOldDatabase(version) {
         InitializeStores(db);
       },
     });
-    db.put('credentials', {
+    void db.put('credentials', {
       item: 'appPassword',
       value: 'ThisistheApppassword',
     });
-    db.put('credentials', { item: 'loginname', value: 'admin' });
-    db.put('credentials', { item: 'server', value: 'https://pascal:9025' });
-    db.put('options', { item: 'cbx_autoDesc', value: true });
-    db.put('options', { item: 'cbx_autoTags', value: true });
-    db.put('options', { item: 'cbx_displayFolders', value: true });
+    void db.put('credentials', { item: 'loginname', value: 'admin' });
+    void db.put('credentials', { item: 'server', value: 'https://pascal:9025' });
+    void db.put('options', { item: 'cbx_autoDesc', value: true });
+    void db.put('options', { item: 'cbx_autoTags', value: true });
+    void db.put('options', { item: 'cbx_displayFolders', value: true });
 
-    openDB('Cache', dbVersion, {
+    void openDB('Cache', dbVersion, {
       upgrade(db) {
         db.createObjectStore('folders', { keyPath: 'item' });
         db.createObjectStore('tags', { keyPath: 'item' });

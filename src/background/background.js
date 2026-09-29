@@ -60,7 +60,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'getData':
       // Collects title, description, keywords, folders and existing-bookmark
       // info for the popup. Answered asynchronously (see `return true` below).
-      (async () => {
+      void (async () => {
         try {
           sendResponse(await getData(request.data));
         } catch (error) {
@@ -92,7 +92,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'maxAttempts':
       // The login page gave up polling for the app token; replace its form
       // with a "timeout" message.
-      maxAttemptsError(request.loginPage);
+      void maxAttemptsError(request.loginPage);
       break;
     case 'zenMode':
       // One-click save of the current page with the pre-configured zen

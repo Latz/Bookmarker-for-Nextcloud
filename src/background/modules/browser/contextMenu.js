@@ -25,7 +25,7 @@ function setZenModeMenu(zenModeEnabled) {
           checked: false,
         });
     updating?.catch?.(() => {});
-  } catch (error) {
+  } catch {
     // Menu item may not exist yet if SW cold-started for this event
   }
 }
@@ -49,7 +49,7 @@ export function handleContextMenuClick(info) {
   }
   // Development helper (its menu entry is commented out in createContextMenus).
   if (info.menuItemId === 'menuOldDatabase') {
-    createOldDatabase();
+    void createOldDatabase();
   }
   // Zen Mode checkbox: persist the new state so the popup and the toolbar
   // click behaviour follow it, then update the menu title.

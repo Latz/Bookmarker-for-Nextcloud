@@ -248,7 +248,7 @@ async function waitForInflightRequest(inflightPromise, signal) {
     };
     signal.addEventListener('abort', abortHandler);
 
-    (async () => {
+    void (async () => {
       try {
         resolve(await inflightPromise);
       } catch (error) {
@@ -349,7 +349,7 @@ async function checkBookmark(url, title, signal = null) {
         log(DEBUG, 'Found exact URL match - skipping title check');
         // Fire-and-forget: the response must not wait on an IndexedDB write
         // (cacheBookmarkCheck handles its own errors).
-        cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
+        void cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
         return urlMatches;
       }
 
@@ -374,7 +374,7 @@ async function checkBookmark(url, title, signal = null) {
       // Never cache a failed lookup, or a short outage would be remembered as
       // "not bookmarked" for the whole cache TTL.
       if (urlMatches.ok) {
-        cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
+        void cacheBookmarkCheck(cacheKey, urlMatches, allOptions);
       }
 
       log(DEBUG, 'checkBookmark response', urlMatches);

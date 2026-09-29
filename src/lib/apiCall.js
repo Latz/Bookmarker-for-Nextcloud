@@ -195,7 +195,8 @@ async function authentication() {
     if (!data?.loginname || !data?.appPassword) return null;
 
     // Generate the authentication token using the loginname and appPassword
-    cachedAuthHeader = `Basic ${toBase64(`${data.loginname}:${data.appPassword}`)}`;
+    const credentialPair = `${data.loginname}:${data.appPassword}`;
+    cachedAuthHeader = `Basic ${toBase64(credentialPair)}`;
     authCacheExpiry = now + AUTH_CACHE_TTL;
   }
 
@@ -211,5 +212,5 @@ async function authentication() {
  */
 function toBase64(text) {
   const bytes = new TextEncoder().encode(text);
-  return btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));
+  return btoa(Array.from(bytes, (b) => String.fromCodePoint(b)).join(''));
 }

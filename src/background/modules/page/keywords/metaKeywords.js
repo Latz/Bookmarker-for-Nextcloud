@@ -46,35 +46,32 @@ export function extractMetaKeywords(document) {
  * @returns {Array<string>}
  */
 function splitMetaKeywords(metaKeywords, splitOnSpace) {
-  let keywords;
   // If there is exactly one keywords string it might be a collection of keywords devided by comma, semicolo, or spaces
   // Try these possibilities otherwise return given keyword string
-  // TODO: Vielleicht erst Wörter zwischen Anführungszeichen raus suchen
-  if (metaKeywords.length === 1 && metaKeywords[0]) {
-    const dividers = [',', ';', '&amp;'];
-    if (splitOnSpace) dividers.push(' ');
-    if (dividers.some((v) => metaKeywords[0].includes(v))) {
-      // https://www.heise.de
-      if (metaKeywords[0].includes(',')) keywords = metaKeywords[0].split(',');
-      else if (metaKeywords[0].includes(';'))
-        keywords = metaKeywords[0].split(';');
-      else if (splitOnSpace && metaKeywords[0].includes(' '))
-        keywords = metaKeywords[0].split(' ');
-      else if (metaKeywords[0].includes('&amp;'))
-        // https://www.epa.gov/mold/mold-course-introduction
-        keywords = metaKeywords[0].split(/&amp;/g);
-    } else {
-      // A lone keyword without dividers, e.g. <meta property="article:tag" content="self-hosting">
-      // (https://david.alvarezrosa.com/posts/self-hosting-on-the-dark-web/)
-      keywords = [metaKeywords[0]];
-    }
-  } else keywords = metaKeywords; // several values (or an empty one): already a list
-  // `keywords` is still undefined when a divider was detected but no branch
-  // above handled it; in that case nothing is returned.
-  if (keywords) {
-    keywords = keywords
-      .map((keyword) => keyword.replaceAll('"', ''))
-      .map((keyword) => keyword.trim());
-  } else keywords = [];
-  return keywords;
+  // Possible improvement: look for words between quotation marks first
+  const keywords =
+    metaKeywords.length === 1 && metaKeywords[0]
+      ? splitLoneValue(metaKeywords[0], splitOnSpace)
+      : metaKeywords; // several values (or an empty one): already a list
+  return keywords
+    .map((keyword) => keyword.replaceAll('"', ''))
+    .map((keyword) => keyword.trim());
+}
+
+/**
+ * Splits a single meta value on the first divider it contains.
+ * @param {string} value - The lone keywords string.
+ * @param {boolean} splitOnSpace - Whether a space counts as a divider.
+ * @returns {Array<string>} The parts, or the value itself if it has no divider.
+ */
+function splitLoneValue(value, splitOnSpace) {
+  // https://www.heise.de
+  if (value.includes(',')) return value.split(',');
+  if (value.includes(';')) return value.split(';');
+  if (splitOnSpace && value.includes(' ')) return value.split(' ');
+  // https://www.epa.gov/mold/mold-course-introduction
+  if (value.includes('&amp;')) return value.split(/&amp;/g);
+  // A lone keyword without dividers, e.g. <meta property="article:tag" content="self-hosting">
+  // (https://david.alvarezrosa.com/posts/self-hosting-on-the-dark-web/)
+  return [value];
 }

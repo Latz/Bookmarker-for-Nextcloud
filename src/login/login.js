@@ -93,7 +93,7 @@ document.onreadystatechange = async () => {
       chrome.i18n.getMessage('OpenLoginPage');
 
     document.getElementById('testServer').addEventListener('click', () => {
-      openServerPage();
+      void openServerPage();
     });
 
     document
@@ -103,7 +103,7 @@ document.onreadystatechange = async () => {
           event.preventDefault();
           // A held-down Enter would restart the flow (and reopen the login tab)
           // on every auto-repeat.
-          if (!event.repeat) openServerPage();
+          if (!event.repeat) void openServerPage();
         }
       });
   }
@@ -152,10 +152,10 @@ async function openServerPage() {
   // unparseable input (e.g. the field left blank) is not a new case this fix
   // needs to own: it falls through to apiCall exactly as before, which fails
   // there with its own pre-existing error surface for invalid input.
-  let origin = null;
+  let origin;
   try {
     origin = new URL(host).origin;
-  } catch (e) {
+  } catch {
     origin = null;
   }
 
@@ -163,7 +163,7 @@ async function openServerPage() {
     let granted;
     try {
       granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
-    } catch (e) {
+    } catch {
       granted = false;
     }
     if (!granted) {
@@ -259,7 +259,9 @@ async function loginPoll(request, flow) {
   // authorized the app; `ok` turns true exactly once, with the credentials in
   // the body. Network errors are only logged, the next round retries.
   while (!authorized && attempts < maxAttempts && flow === currentFlow) {
+    // NOSONAR: currentFlow is changed by newer login attempts
     try {
+      // NOSONAR: polling must be sequential
       authCheck = await fetch(request.poll.endpoint, {
         credentials: 'omit',
         method: 'POST',
@@ -273,6 +275,7 @@ async function loginPoll(request, flow) {
       console.log('!!!', e);
     }
     // put a little pause between requests
+    // NOSONAR: sequential by design
     await new Promise((resolve) => {
       setTimeout(() => resolve(), 1000);
     });

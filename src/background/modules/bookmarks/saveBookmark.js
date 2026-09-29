@@ -43,7 +43,7 @@ export async function saveBookmark(data, folderIDs, bookmarkID) {
     chrome.action.setBadgeText({ text: '' });
   }
   // Success or error notification (which one is decided by response.status).
-  notifyUser(response);
+  void notifyUser(response);
 
   // Only successful saves feed the keyword cache. Not awaited: the user
   // already has their notification, and a cache failure is only logged.
