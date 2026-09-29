@@ -3,6 +3,11 @@
 // Injected into the login page via chrome.scripting.executeScript({ func }),
 // so it is serialised: it must stay self-contained and not reference anything
 // from this module or its imports.
+/**
+ * Replaces the login form with a "Timeout" message and a close button.
+ * Runs inside the login page, not in the service worker.
+ * @returns {void}
+ */
 function insertTimeOutMessage() {
   const loginForm = document.getElementById('login-form');
   const appTokenLogin = document.getElementById('app-token-login');

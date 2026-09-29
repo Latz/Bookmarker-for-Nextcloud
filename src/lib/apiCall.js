@@ -204,6 +204,11 @@ async function authentication() {
 
 // btoa() throws on anything above Latin-1 (e.g. an umlaut in the login name);
 // Nextcloud expects the credentials UTF-8 encoded.
+/**
+ * Base64-encodes a string as UTF-8.
+ * @param {string} text
+ * @returns {string}
+ */
 function toBase64(text) {
   const bytes = new TextEncoder().encode(text);
   return btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''));

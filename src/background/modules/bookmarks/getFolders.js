@@ -72,6 +72,11 @@ export function preRenderFolders(folders) {
   // follow their parent). `x` is the indent prefix: two figure spaces
   // (U+2007) per level -- unlike normal spaces they are not collapsed by
   // <option> rendering, so the hierarchy stays visible in the dropdown.
+  /**
+   * Appends one level of the tree to `folderStructure`, then recurses.
+   * @param {Array<{id: string, title: string, children?: Array}>|undefined} folders - Nodes of this level (sorted in place).
+   * @param {string} [x] - Indent prefix for this level.
+   */
   function json2tree(folders, x = '') {
     if (folders !== undefined) {
       folders.sort((a, b) => collator.compare(a.title, b.title));
