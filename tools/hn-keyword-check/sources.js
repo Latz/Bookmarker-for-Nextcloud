@@ -1,6 +1,6 @@
 // Link sources for the keyword checker: each returns absolute http(s) URLs of
 // the pages worth checking. The parse* functions are pure so they can be
-// unit-tested (tests/checkerSources.test.js); collectUrls does the fetching.
+// unit-tested (tests/tools/checkerSources.test.js); collectUrls does the fetching.
 //
 // Uses jsdom, not happy-dom: happy-dom's HTML parser was found to silently
 // truncate real-world pages with malformed markup (e.g. domainnamewire.com --

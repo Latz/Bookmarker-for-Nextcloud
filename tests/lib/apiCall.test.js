@@ -1,0 +1,577 @@
+// @vitest-environment node
+/**
+ * Unit tests for apiCall.js
+ * Tests the API call functionality with timeout, authentication, and error handling
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Mock Chrome APIs
+globalThis.chrome = {
+  ...globalThis.chrome,
+};
+
+// Mock modules
+vi.mock('../../src/lib/storage.js', () => ({
+  load_data: vi.fn(),
+  getOption: vi.fn(),
+}));
+
+// Import after mocking
+import { load_data, getOption } from '../../src/lib/storage.js';
+import apiCall, { clearApiCallCache } from '../../src/lib/apiCall.js';
+
+describe('apiCall.js', () => {
+  let mockFetch;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+
+    // Clear apiCall caches
+    clearApiCallCache();
+
+    // Mock fetch
+    mockFetch = vi.fn();
+    globalThis.fetch = mockFetch;
+
+    // Mock console.log to suppress output
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('timeoutFetch', () => {
+    it('should use default network timeout when not configured', async () => {
+      // Mock getOption to return undefined (no timeout configured)
+      getOption.mockResolvedValue(undefined);
+
+      // Mock credentials - load_data returns single value for single key
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+
+      // Mock successful fetch
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      // Call apiCall which uses timeoutFetch internally
+      const promise = apiCall('test/endpoint', 'GET');
+
+      // Wait for the promise to resolve
+      const result = await promise;
+
+      // Verify fetch was called
+      expect(mockFetch).toHaveBeenCalled();
+      expect(result).toEqual({ status: 'success' });
+    });
+
+    it('should use configured network timeout', async () => {
+      // Mock getOption to return 5 seconds
+      getOption.mockResolvedValue(5);
+
+      // Mock credentials
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+
+      // Mock successful fetch
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      await apiCall('test/endpoint', 'GET');
+
+      expect(getOption).toHaveBeenCalledWith('input_networkTimeout');
+    });
+
+    it('should handle timeout error', async () => {
+      // Mock getOption to return a short timeout (10ms)
+      getOption.mockResolvedValue(0.01);
+
+      // Mock credentials
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+
+      // Mock fetch that never resolves (simulates slow network)
+      // When aborted, it should throw an AbortError (TypeError)
+      let abortSignal = null;
+      mockFetch.mockImplementation((url, options) => {
+        abortSignal = options.signal;
+        return new Promise((_, reject) => {
+          // Listen for abort and reject with TypeError (like real AbortError)
+          options.signal.addEventListener('abort', () => {
+            reject(new TypeError('The operation was aborted.'));
+          });
+        });
+      });
+
+      // Start the API call
+      const promise = apiCall('test/endpoint', 'GET');
+
+      // Wait a bit for the fetch to be called and timeout to be set up
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Check that signal was created and is not yet aborted
+      expect(abortSignal).toBeDefined();
+
+      // Wait for timeout to trigger (10ms + buffer)
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Signal should now be aborted
+      expect(abortSignal.aborted).toBe(true);
+
+      // The promise should resolve with error result (TypeError is caught)
+      const result = await promise;
+      expect(result.status).toBe('error');
+    });
+  });
+
+  describe('apiCall', () => {
+    it('should construct URL with server from credentials', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      await apiCall('test/endpoint', 'GET');
+
+      // data defaults to empty string, so URL ends with ?
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/test/endpoint?',
+        expect.objectContaining({
+          method: 'GET',
+        }),
+      );
+    });
+
+    it('should add trailing slash to server URL', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      await apiCall('test/endpoint', 'GET');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/test/endpoint?',
+        expect.any(Object),
+      );
+    });
+
+    it('should extract server from data.host when provided', async () => {
+      getOption.mockResolvedValue(10);
+      load_data.mockResolvedValueOnce({
+        loginname: 'testuser',
+        appPassword: 'testpass',
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      const data = { host: 'https://custom-server.com', param: 'value' };
+      await apiCall('test/endpoint', 'POST', data);
+
+      // Object `data` (the login-flow host/param case) is not a query string,
+      // so it must not be interpolated into the URL as "[object Object]".
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://custom-server.com/test/endpoint?',
+        expect.any(Object),
+      );
+    });
+
+    it('should include Authorization header for non-loginflow requests', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      await apiCall('test/endpoint', 'GET');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: expect.stringContaining('Basic '),
+            'OCS-APIREQUEST': 'true',
+            'User-Agent': 'Bookmarker4Nextcloud',
+          }),
+        }),
+      );
+    });
+
+    it('should not include Authorization header for loginflow requests', async () => {
+      load_data.mockResolvedValueOnce('https://example.com');
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      const data = { loginflow: true };
+      await apiCall('test/endpoint', 'POST', data);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.not.objectContaining({
+            Authorization: expect.any(String),
+          }),
+        }),
+      );
+    });
+
+    it('should handle successful response', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      const responseData = { status: 'success', data: { id: 123 } };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await apiCall('test/endpoint', 'GET');
+
+      expect(result).toEqual(responseData);
+    });
+
+    it('should return error object for HTTP error responses', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      });
+
+      const result = await apiCall('test/endpoint', 'GET');
+      expect(result).toEqual({ status: 'error', statusText: 'Not Found' });
+    });
+
+    it('should handle TypeError (network error)', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockRejectedValue(new TypeError('Network error'));
+
+      const result = await apiCall('test/endpoint', 'GET');
+
+      // 'error' (not -1): notifyUser() only treats 'error' as a failure
+      expect(result).toEqual({
+        status: 'error',
+        statusText: 'Network error',
+      });
+    });
+
+    describe('failures never resolve to an object without status', () => {
+      beforeEach(() => {
+        load_data
+          .mockResolvedValueOnce('https://example.com')
+          .mockResolvedValueOnce({
+            loginname: 'testuser',
+            appPassword: 'testpass',
+          });
+        getOption.mockResolvedValue(10);
+      });
+
+      it('reports a timeout (AbortError) as error', async () => {
+        mockFetch.mockRejectedValue(
+          new DOMException('The operation was aborted', 'AbortError'),
+        );
+
+        const result = await apiCall('test/endpoint', 'GET');
+
+        expect(result).toEqual({ status: 'error', statusText: 'Timeout' });
+      });
+
+      it('reports an unparsable body as error', async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.reject(new SyntaxError('Unexpected token <')),
+        });
+
+        const result = await apiCall('test/endpoint', 'GET');
+
+        expect(result).toEqual({
+          status: 'error',
+          statusText: 'Invalid response',
+        });
+      });
+
+      it('falls back to the HTTP code when statusText is empty (HTTP/2)', async () => {
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 503,
+          statusText: '',
+        });
+
+        const result = await apiCall('test/endpoint', 'GET');
+
+        expect(result).toEqual({ status: 'error', statusText: 'HTTP 503' });
+      });
+    });
+
+    it('should handle abort signal', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      const controller = new AbortController();
+
+      // Mock fetch to verify signal is passed
+      let receivedSignal = null;
+      mockFetch.mockImplementation((url, options) => {
+        receivedSignal = options.signal;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ status: 'success' }),
+        });
+      });
+
+      await apiCall('test/endpoint', 'GET', '', controller.signal);
+
+      // timeoutFetch creates its own AbortController but listens to external signal
+      // The signal passed to fetch is the internal controller's signal
+      expect(receivedSignal).toBeDefined();
+      expect(receivedSignal.aborted).toBe(false);
+    });
+
+    it('should add server trailing slash when missing', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      await apiCall('test/endpoint', 'GET');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/test/endpoint?',
+        expect.any(Object),
+      );
+    });
+
+    it('should not add trailing slash when server already has one', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com/')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      await apiCall('test/endpoint', 'GET');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/test/endpoint?',
+        expect.any(Object),
+      );
+    });
+
+    it('should return error object for HTTP error responses (401, 500, etc.)', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'testuser',
+          appPassword: 'testpass',
+        });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+        statusText: 'Unauthorized',
+      });
+
+      const result = await apiCall('test/endpoint', 'GET');
+
+      expect(result).toEqual({ status: 'error', statusText: 'Unauthorized' });
+    });
+  });
+
+  describe('credential robustness', () => {
+    beforeEach(() => {
+      getOption.mockResolvedValue(10);
+    });
+
+    it('returns "Not configured" without sending a request when credentials are missing', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({});
+
+      const result = await apiCall('test/endpoint', 'GET');
+
+      expect(result).toEqual({ status: 'error', statusText: 'Not configured' });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('returns "Not configured" when no server is stored', async () => {
+      load_data.mockResolvedValueOnce(undefined).mockResolvedValueOnce({
+        loginname: 'u',
+        appPassword: 'p',
+      });
+
+      const result = await apiCall('test/endpoint', 'GET');
+
+      expect(result).toEqual({ status: 'error', statusText: 'Not configured' });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it.each([-5, 'abc', 0])(
+      'does not abort requests at once when the stored timeout is %j',
+      async (stored) => {
+        load_data
+          .mockResolvedValueOnce('https://example.com')
+          .mockResolvedValueOnce({ loginname: 'u', appPassword: 'p' });
+        getOption.mockResolvedValue(stored);
+        // Answers after 20 ms and reports whether it was aborted by then
+        mockFetch.mockImplementation(
+          (url, options) =>
+            new Promise((resolve) =>
+              setTimeout(
+                () =>
+                  resolve({
+                    ok: !options.signal.aborted,
+                    status: 500,
+                    statusText: 'aborted',
+                    json: () => Promise.resolve({ status: 'success' }),
+                  }),
+                20,
+              ),
+            ),
+        );
+
+        const result = await apiCall('test/endpoint', 'GET');
+
+        // A negative timeout used to arm setTimeout(-5000): abort immediately
+        expect(result).toEqual({ status: 'success' });
+      },
+    );
+
+    it('UTF-8 encodes credentials instead of throwing on non-Latin1 characters', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({ loginname: 'jürgen', appPassword: 'pw' });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      await apiCall('test/endpoint', 'GET');
+
+      const expected = Buffer.from('jürgen:pw', 'utf8').toString('base64');
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: `Basic ${expected}`,
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('authentication', () => {
+    it('should generate Basic auth header from credentials', async () => {
+      load_data
+        .mockResolvedValueOnce('https://example.com')
+        .mockResolvedValueOnce({
+          loginname: 'admin',
+          appPassword: 'secret123',
+        });
+      getOption.mockResolvedValue(10);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 'success' }),
+      });
+
+      await apiCall('test/endpoint', 'GET');
+
+      // btoa('admin:secret123') = 'YWRtaW46c2VjcmV0MTIz'
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Basic YWRtaW46c2VjcmV0MTIz',
+          }),
+        }),
+      );
+    });
+  });
+});

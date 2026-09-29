@@ -1,0 +1,1127 @@
+/**
+ * Unit tests for background.js
+ * Tests the message center, saveBookmark, and init functionality
+ */
+
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Mock Chrome APIs
+globalThis.chrome = {
+  notifications: {
+    onButtonClicked: { addListener: vi.fn() },
+    onClicked: { addListener: vi.fn() },
+    clear: vi.fn(),
+  },
+  tabs: {
+    query: vi.fn(),
+    create: vi.fn(),
+  },
+  scripting: {
+    executeScript: vi.fn(),
+  },
+  runtime: {
+    onSuspend: {
+      addListener: vi.fn(),
+    },
+    getContexts: vi.fn(),
+    sendMessage: vi.fn(),
+    getURL: vi.fn((path) => `chrome-extension://mock-id/${path}`),
+    onMessage: {
+      addListener: vi.fn(),
+    },
+  },
+  offscreen: {
+    createDocument: vi.fn(),
+    closeDocument: vi.fn(),
+  },
+  storage: {
+    local: {
+      get: vi.fn(),
+      set: vi.fn(),
+    },
+  },
+  contextMenus: {
+    removeAll: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    onClicked: {
+      addListener: vi.fn(),
+    },
+  },
+  action: {
+    setBadgeText: vi.fn(),
+    setIcon: vi.fn(),
+  },
+};
+
+// Capture console methods for testing
+const originalConsoleError = console.error;
+const originalConsoleLog = console.log;
+
+// Mock all imported modules
+vi.mock('../../src/lib/apiCall.js', () => ({
+  default: vi.fn(() => Promise.resolve({ status: 'success', data: [] })),
+  clearApiCallCache: vi.fn(),
+}));
+
+vi.mock('../../src/background/modules/bookmarks/getData.js', () => ({
+  default: vi.fn(() => Promise.resolve({ ok: true })),
+}));
+
+vi.mock('../../src/lib/storage.js', () => ({
+  store_data: vi.fn(() => Promise.resolve()),
+  ensureDefaults: vi.fn(() => Promise.resolve()),
+  createOldDatabase: vi.fn(() => Promise.resolve()),
+  getOption: vi.fn((key) => {
+    const options = {
+      cbx_enableZen: false,
+    };
+    return Promise.resolve(options[key]);
+  }),
+  // Default to "not found", which is what the real load_data returns for a
+  // missing item. The previous `{}` default was truthy, so once
+  // warmupConnection was fixed it fired an apiCall on every background.js
+  // import and consumed mock values queued for other assertions.
+  load_data: vi.fn(() => Promise.resolve(undefined)),
+}));
+
+vi.mock('../../src/background/modules/browser/notification.js', () => ({
+  notifyUser: vi.fn(),
+  dismissNotification: vi.fn(),
+  initializeErrorIconCache: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('../../src/background/modules/browser/getBrowserTheme.js', () => ({
+  default: vi.fn(() => Promise.resolve('light')),
+}));
+
+vi.mock('../../src/lib/cache.js', () => ({
+  cacheGet: vi.fn(() => Promise.resolve()),
+  cacheTempAdd: vi.fn(() => Promise.resolve()),
+}));
+
+vi.mock('../../src/background/modules/bookmarks/zenMode.js', () => ({
+  // async in production; background.js chains .catch() onto the result
+  zenMode: vi.fn().mockResolvedValue(undefined),
+  enableZenMode: vi.fn(),
+}));
+
+// Import after mocking
+import apiCall from '../../src/lib/apiCall.js';
+import getData from '../../src/background/modules/bookmarks/getData.js';
+import {
+  store_data,
+  getOption,
+  createOldDatabase,
+} from '../../src/lib/storage.js';
+import { notifyUser } from '../../src/background/modules/browser/notification.js';
+import getBrowserTheme from '../../src/background/modules/browser/getBrowserTheme.js';
+import { cacheGet, cacheTempAdd } from '../../src/lib/cache.js';
+import { zenMode } from '../../src/background/modules/bookmarks/zenMode.js';
+
+describe('background.js', () => {
+  let messageListener;
+  let contextMenuListener;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules();
+    // MV3 tabs.create returns a promise; background.js chains .catch() onto it
+    chrome.tabs.create.mockResolvedValue(undefined);
+
+    // Capture the message listener when the module is imported
+    // We need to set up the listener mock to capture the callback
+    const listeners = [];
+    chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+      listeners.push(callback);
+      messageListener = callback;
+    });
+
+    const contextMenuListeners = [];
+    chrome.contextMenus.onClicked.addListener.mockImplementation((callback) => {
+      contextMenuListeners.push(callback);
+      contextMenuListener = callback;
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('Message center', () => {
+    it('should handle saveBookmark message correctly', async () => {
+      // Setup
+      const request = {
+        msg: 'saveBookmark',
+        parameters: { url: 'https://example.com', title: 'Test' },
+        folderIDs: [1, 2],
+        bookmarkID: 0,
+      };
+
+      const sender = {};
+      const sendResponse = vi.fn();
+
+      // Mock the message listener
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      // Import the module to register the listener
+      await import('../../src/background/background.js');
+
+      // Call the listener
+      const result = messageListener(request, sender, sendResponse);
+
+      // Fire-and-forget: nothing calls sendResponse, so the channel must close
+      expect(result).toBe(false);
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Verify apiCall was called with correct parameters
+      expect(apiCall).toHaveBeenCalledWith(
+        'index.php/apps/bookmarks/public/rest/v2/bookmark',
+        'POST',
+        { url: 'https://example.com', title: 'Test' },
+      );
+
+      // Verify badge was set
+      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
+      expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '' });
+
+      // Verify folder IDs were stored
+      expect(store_data).toHaveBeenCalledWith('options', { folderIDs: [1, 2] });
+
+      // Verify notification was sent
+      expect(notifyUser).toHaveBeenCalled();
+    });
+
+    it('should handle saveBookmark with existing bookmark ID (update)', async () => {
+      const request = {
+        msg: 'saveBookmark',
+        parameters: { url: 'https://example.com', title: 'Updated Test' },
+        folderIDs: [1],
+        bookmarkID: 123,
+      };
+
+      const sender = {};
+      const sendResponse = vi.fn();
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      messageListener(request, sender, sendResponse);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Verify PUT method and bookmark ID in endpoint
+      expect(apiCall).toHaveBeenCalledWith(
+        'index.php/apps/bookmarks/public/rest/v2/bookmark/123',
+        'PUT',
+        { url: 'https://example.com', title: 'Updated Test' },
+      );
+    });
+
+    it('closes a notification when its Dismiss button or the notification is clicked', async () => {
+      await import('../../src/background/background.js');
+      const { dismissNotification } = await import(
+        '../../src/background/modules/browser/notification.js'
+      );
+
+      // Registered synchronously at top level, like the other listeners
+      expect(chrome.notifications.onButtonClicked.addListener).toHaveBeenCalledWith(
+        dismissNotification,
+      );
+      expect(chrome.notifications.onClicked.addListener).toHaveBeenCalledWith(
+        dismissNotification,
+      );
+    });
+
+    it('drops the cached auth header when the credentials changed elsewhere', async () => {
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      const { clearApiCallCache } = await import('../../src/lib/apiCall.js');
+      const result = messageListener(
+        { msg: 'credentialsChanged' },
+        { id: chrome.runtime.id },
+        vi.fn(),
+      );
+
+      // Otherwise the worker keeps sending the old credentials for up to 60 s
+      expect(clearApiCallCache).toHaveBeenCalledTimes(1);
+      expect(result).toBe(false);
+    });
+
+    it('always answers a getData request, even when getData throws', async () => {
+      const sendResponse = vi.fn();
+      getData.mockRejectedValueOnce(new Error('boom'));
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      const result = messageListener(
+        { msg: 'getData', data: {} },
+        {},
+        sendResponse,
+      );
+      expect(result).toBe(true);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Without this the popup would wait until the service worker dies.
+      expect(sendResponse).toHaveBeenCalledWith({ ok: false, error: 'boom' });
+      consoleError.mockRestore();
+    });
+
+    it('should handle getData message correctly', async () => {
+      const request = {
+        msg: 'getData',
+        data: { url: 'https://example.com' },
+      };
+
+      const sender = {};
+      const sendResponse = vi.fn();
+
+      getData.mockResolvedValueOnce({ ok: true, url: 'https://example.com' });
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      const result = messageListener(request, sender, sendResponse);
+
+      expect(result).toBe(true);
+
+      // Wait for async operation
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(getData).toHaveBeenCalledWith({ url: 'https://example.com' });
+      expect(sendResponse).toHaveBeenCalledWith({
+        ok: true,
+        url: 'https://example.com',
+      });
+    });
+
+    it('should handle authorize message correctly', async () => {
+      const request = {
+        msg: 'authorize',
+      };
+
+      const sender = {};
+      const sendResponse = vi.fn();
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      const result = messageListener(request, sender, sendResponse);
+
+      expect(result).toBe(false);
+
+      expect(chrome.tabs.create).toHaveBeenCalledWith({
+        url: 'login/login.html',
+      });
+    });
+
+    it('should handle maxAttempts message correctly', async () => {
+      const request = {
+        msg: 'maxAttempts',
+        loginPage: { id: 123 },
+      };
+
+      const sender = {};
+      const sendResponse = vi.fn();
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      chrome.scripting.executeScript.mockResolvedValueOnce([]);
+
+      await import('../../src/background/background.js');
+      const result = messageListener(request, sender, sendResponse);
+
+      expect(result).toBe(false);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(chrome.scripting.executeScript).toHaveBeenCalledWith({
+        target: { tabId: 123 },
+        func: expect.any(Function),
+      });
+    });
+
+    it('should handle zenMode message correctly', async () => {
+      const request = {
+        msg: 'zenMode',
+      };
+
+      const sender = {};
+      const sendResponse = vi.fn();
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      // Import zenMode module to mock it properly
+      const zenModeModule =
+        await import('../../src/background/modules/bookmarks/zenMode.js');
+
+      await import('../../src/background/background.js');
+      const result = messageListener(request, sender, sendResponse);
+
+      expect(result).toBe(false);
+
+      expect(zenModeModule.zenMode).toHaveBeenCalled();
+    });
+
+    it('should not hold the channel open for unknown message types', async () => {
+      const request = {
+        msg: 'unknownMessage',
+      };
+
+      const sender = {};
+      const sendResponse = vi.fn();
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      const result = messageListener(request, sender, sendResponse);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('saveBookmark function', () => {
+    it('should set badge to save icon during API call', async () => {
+      const request = {
+        msg: 'saveBookmark',
+        parameters: { url: 'https://example.com', title: 'Test' },
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // First call sets the save icon
+      expect(chrome.action.setBadgeText).toHaveBeenNthCalledWith(1, {
+        text: '💾',
+      });
+      // Second call clears the badge
+      expect(chrome.action.setBadgeText).toHaveBeenNthCalledWith(2, {
+        text: '',
+      });
+    });
+
+    it('should store folder IDs after saving bookmark', async () => {
+      const request = {
+        msg: 'saveBookmark',
+        parameters: { url: 'https://example.com', title: 'Test' },
+        folderIDs: [5, 10, 15],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(store_data).toHaveBeenCalledWith('options', {
+        folderIDs: [5, 10, 15],
+      });
+    });
+
+    it('should notify user with API response', async () => {
+      const mockResponse = { status: 'success', data: { id: 123 } };
+      apiCall.mockResolvedValueOnce(mockResponse);
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: { url: 'https://example.com', title: 'Test' },
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(notifyUser).toHaveBeenCalledWith(mockResponse);
+    });
+
+    it('should add newly-used tags to the keyword cache after a successful save', async () => {
+      apiCall.mockResolvedValueOnce({ status: 'success', data: { id: 123 } });
+      cacheGet.mockResolvedValueOnce(['cached1', 'cached2']);
+
+      const params = new URLSearchParams();
+      params.append('tags[]', '');
+      params.append('tags[]', 'newKeyword1');
+      params.append('tags[]', 'newKeyword2');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(cacheGet).toHaveBeenCalledWith('keywords');
+      expect(cacheTempAdd).toHaveBeenCalledWith('keywords', [
+        'newKeyword1',
+        'newKeyword2',
+      ]);
+    });
+
+    it('should not add tags that already exist in the cache (case-insensitive)', async () => {
+      apiCall.mockResolvedValueOnce({ status: 'success', data: { id: 123 } });
+      cacheGet.mockResolvedValueOnce(['Cached1', 'newkeyword1']);
+
+      const params = new URLSearchParams();
+      params.append('tags[]', 'cached1');
+      params.append('tags[]', 'NewKeyword1');
+      params.append('tags[]', 'newKeyword2');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(cacheTempAdd).toHaveBeenCalledWith('keywords', ['newKeyword2']);
+    });
+
+    it('should not touch the keyword cache when the save fails', async () => {
+      apiCall.mockResolvedValueOnce({ status: 'error', statusText: 'nope' });
+
+      const params = new URLSearchParams();
+      params.append('tags[]', 'newKeyword1');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(cacheGet).not.toHaveBeenCalled();
+      expect(cacheTempAdd).not.toHaveBeenCalled();
+    });
+
+    it('should not touch the keyword cache on a network failure (status -1)', async () => {
+      apiCall.mockResolvedValueOnce({
+        status: -1,
+        statusText: 'Failed to fetch',
+      });
+
+      const params = new URLSearchParams();
+      params.append('tags[]', 'newKeyword1');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(cacheGet).not.toHaveBeenCalled();
+      expect(cacheTempAdd).not.toHaveBeenCalled();
+    });
+
+    it('should not throw when the keyword cache lookup fails', async () => {
+      apiCall.mockResolvedValueOnce({ status: 'success', data: { id: 123 } });
+      cacheGet.mockRejectedValueOnce(new Error('Cache error'));
+      const consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
+
+      const params = new URLSearchParams();
+      params.append('tags[]', 'newKeyword1');
+
+      const request = {
+        msg: 'saveBookmark',
+        parameters: params.toString(),
+        folderIDs: [1],
+        bookmarkID: 0,
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(cacheTempAdd).not.toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error updating cache:',
+        expect.any(Error),
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('init function', () => {
+    it('should set icon based on browser theme', async () => {
+      getBrowserTheme.mockResolvedValueOnce('dark');
+
+      // Import triggers init()
+      await import('../../src/background/background.js');
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(getBrowserTheme).toHaveBeenCalled();
+      // Chrome renders the action icon at 16px (32px at 2x DPR) and downsamples
+      // whatever it is handed, so only 16/32/64/128 are supplied now. Passing
+      // the 256/512 assets meant decoding 50 KB per worker start for nothing.
+      expect(chrome.action.setIcon).toHaveBeenCalledWith({
+        path: {
+          16: '/images/icon-16x16-dark.png',
+          32: '/images/icon-32x32-dark.png',
+          64: '/images/icon-64x64-dark.png',
+          128: '/images/icon-128x128-dark.png',
+        },
+      });
+    });
+
+    it('should handle theme detection errors gracefully', async () => {
+      getBrowserTheme.mockRejectedValueOnce(
+        new Error('Theme detection failed'),
+      );
+
+      await import('../../src/background/background.js');
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Should not throw, icon will use default
+      expect(chrome.action.setIcon).not.toHaveBeenCalled();
+    });
+
+    it('should remove all context menus before creating new ones', async () => {
+      await import('../../src/background/background.js');
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(chrome.contextMenus.removeAll).toHaveBeenCalled();
+    });
+
+    it('should create Zen Mode context menu', async () => {
+      getOption.mockResolvedValueOnce(false); // cbx_enableZen = false
+
+      await import('../../src/background/background.js');
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(chrome.contextMenus.create).toHaveBeenCalledWith({
+        id: 'menuEnableZen',
+        title: 'Zen Mode',
+        contexts: ['action'],
+        type: 'checkbox',
+        checked: false,
+      });
+    });
+
+    it('should create Refresh Cache context menu', async () => {
+      await import('../../src/background/background.js');
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(chrome.contextMenus.create).toHaveBeenCalledWith({
+        id: 'menuRefreshCache',
+        title: 'Refresh Cache',
+        contexts: ['action'],
+      });
+    });
+
+    it('should update Zen Mode menu title when enabled', async () => {
+      getOption.mockResolvedValueOnce(true); // cbx_enableZen = true
+
+      await import('../../src/background/background.js');
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // The setZenModeMenu function should update the menu
+      expect(chrome.contextMenus.update).toHaveBeenCalledWith('menuEnableZen', {
+        title: '⭢Zen Mode',
+        checked: true,
+      });
+    });
+
+    it('should handle context menu creation errors gracefully', async () => {
+      const consoleLogSpy = vi
+        .spyOn(console, 'log')
+        .mockImplementation(() => {});
+
+      chrome.contextMenus.create.mockImplementationOnce(() => {
+        throw new Error('Menu creation failed');
+      });
+
+      await import('../../src/background/background.js');
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Should not throw, error is caught and logged
+      expect(consoleLogSpy).toHaveBeenCalled();
+
+      consoleLogSpy.mockRestore();
+    });
+  });
+
+  describe('warmupConnection', () => {
+    // `load_data` unwraps single-item reads, so `load_data('credentials', 'server')`
+    // resolves to the URL string itself. These mocks previously returned
+    // `{ server: … }`, a shape the real function never produces — which is why
+    // the suite stayed green while warmupConnection always bailed out early.
+    it('should call apiCall with bookmark endpoint when server is configured', async () => {
+      const { load_data } = await import('../../src/lib/storage.js');
+      load_data.mockResolvedValueOnce('https://nextcloud.example.com');
+
+      await import('../../src/background/background.js');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(apiCall).toHaveBeenCalledWith(
+        'index.php/apps/bookmarks/public/rest/v2/bookmark',
+        'GET',
+        'page=0&limit=1',
+      );
+    });
+
+    it('should not call apiCall when server is not configured', async () => {
+      const { load_data } = await import('../../src/lib/storage.js');
+      load_data.mockResolvedValueOnce(undefined);
+
+      await import('../../src/background/background.js');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // apiCall should not have been called (no server = skip warmup)
+      expect(apiCall).not.toHaveBeenCalled();
+    });
+
+    it('should silently ignore errors from the API call', async () => {
+      const { load_data } = await import('../../src/lib/storage.js');
+      load_data.mockResolvedValueOnce('https://nextcloud.example.com');
+      apiCall.mockRejectedValueOnce(new Error('Network error'));
+
+      // Should not throw
+      await expect(
+        import('../../src/background/background.js'),
+      ).resolves.not.toThrow();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  });
+
+  describe('Context menu click handlers', () => {
+    beforeEach(async () => {
+      // Capture context menu listener
+      const listeners = [];
+      chrome.contextMenus.onClicked.addListener.mockImplementation(
+        (callback) => {
+          listeners.push(callback);
+          contextMenuListener = callback;
+        },
+      );
+
+      await import('../../src/background/background.js');
+    });
+
+    it('should handle menuRefreshCache click', async () => {
+      const info = { menuItemId: 'menuRefreshCache' };
+
+      contextMenuListener(info);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(cacheGet).toHaveBeenCalledWith('keywords', true);
+      expect(cacheGet).toHaveBeenCalledWith('folders', true);
+    });
+
+    it('should handle menuOldDatabase click', async () => {
+      const info = { menuItemId: 'menuOldDatabase' };
+
+      contextMenuListener(info);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(createOldDatabase).toHaveBeenCalled();
+    });
+
+    it('should handle menuEnableZen click when checked', async () => {
+      const info = {
+        menuItemId: 'menuEnableZen',
+        checked: true,
+      };
+
+      contextMenuListener(info);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(store_data).toHaveBeenCalledWith('options', {
+        cbx_enableZen: true,
+      });
+      expect(chrome.contextMenus.update).toHaveBeenCalledWith('menuEnableZen', {
+        title: '⭢Zen Mode',
+        checked: true,
+      });
+    });
+
+    it('should handle menuEnableZen click when unchecked', async () => {
+      const info = {
+        menuItemId: 'menuEnableZen',
+        checked: false,
+      };
+
+      contextMenuListener(info);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(store_data).toHaveBeenCalledWith('options', {
+        cbx_enableZen: false,
+      });
+      expect(chrome.contextMenus.update).toHaveBeenCalledWith('menuEnableZen', {
+        title: 'Zen Mode',
+        checked: false,
+      });
+    });
+  });
+
+  describe('insertTimeOutMessage function', () => {
+    it('should create and append timeout message elements', async () => {
+      // Setup DOM environment
+      const mockLoginForm = {
+        innerHTML: '',
+        appendChild: vi.fn(),
+        removeAttribute: vi.fn(),
+        getElementById: vi.fn(),
+      };
+
+      const mockAppTokenLogin = {
+        innerHTML: '',
+      };
+
+      const mockDocument = {
+        getElementById: vi.fn((id) => {
+          if (id === 'login-form') return mockLoginForm;
+          if (id === 'app-token-login') return mockAppTokenLogin;
+          return null;
+        }),
+        createElement: vi.fn((tag) => {
+          const element = {
+            tagName: tag,
+            setAttribute: vi.fn(),
+            innerText: '',
+            addEventListener: vi.fn(),
+          };
+          return element;
+        }),
+        addEventListener: vi.fn(),
+      };
+
+      globalThis.document = mockDocument;
+
+      const request = {
+        msg: 'maxAttempts',
+        loginPage: { id: 123 },
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      chrome.scripting.executeScript.mockImplementationOnce(({ func }) => {
+        // Execute the function in the context
+        if (typeof func === 'function') {
+          func();
+        }
+        return Promise.resolve([]);
+      });
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(chrome.scripting.executeScript).toHaveBeenCalled();
+    });
+  });
+
+  describe('maxAttemptsError function', () => {
+    it('should execute insertTimeOutMessage in the specified tab', async () => {
+      const request = {
+        msg: 'maxAttempts',
+        loginPage: { id: 456 },
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      chrome.scripting.executeScript.mockResolvedValueOnce([]);
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(chrome.scripting.executeScript).toHaveBeenCalledWith({
+        target: { tabId: 456 },
+        func: expect.any(Function),
+      });
+    });
+
+    it('should handle executeScript errors gracefully', async () => {
+      const request = {
+        msg: 'maxAttempts',
+        loginPage: { id: 789 },
+      };
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      chrome.scripting.executeScript.mockRejectedValueOnce(
+        new Error('Script execution failed'),
+      );
+
+      await import('../../src/background/background.js');
+
+      messageListener(request, {}, vi.fn());
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Should log the error but not throw
+      expect(console.log).toHaveBeenCalled();
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should handle saveBookmark API call failure', async () => {
+      // The saveBookmark function in background.js doesn't have try/catch,
+      // so errors will cause unhandled rejections. We test that the badge
+      // is set before the error occurs.
+      // Suppress unhandled rejection warnings for this test
+      const originalHandler = process.listeners('unhandledRejection');
+      const rejectionHandler = () => {};
+      process.removeAllListeners('unhandledRejection');
+      process.on('unhandledRejection', rejectionHandler);
+
+      try {
+        apiCall.mockRejectedValueOnce(new Error('API Error'));
+
+        const request = {
+          msg: 'saveBookmark',
+          parameters: { url: 'https://example.com', title: 'Test' },
+          folderIDs: [1],
+          bookmarkID: 0,
+        };
+
+        chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+          messageListener = callback;
+        });
+
+        await import('../../src/background/background.js');
+
+        // The message listener should not throw even if saveBookmark fails
+        const result = messageListener(request, {}, vi.fn());
+        expect(result).toBe(false);
+
+        // Badge should be set to save icon immediately
+        expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
+
+        // Wait for the async operation to complete (and fail)
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        // Note: The badge is NOT cleared because the error happens during apiCall
+        // before store_data is called. This is expected behavior - the badge
+        // indicates "saving in progress" and stays until the save completes.
+      } finally {
+        // Restore original handler
+        process.removeAllListeners('unhandledRejection');
+        originalHandler.forEach((h) => process.on('unhandledRejection', h));
+      }
+    });
+
+    it('should handle store_data failure gracefully', async () => {
+      // The saveBookmark function in background.js doesn't have try/catch,
+      // so errors will cause unhandled rejections.
+      // In the actual code: apiCall -> store_data -> setBadgeText('') -> notifyUser
+      // So if store_data fails, notifyUser is NOT called.
+      // Suppress unhandled rejection warnings for this test
+      const originalHandler = process.listeners('unhandledRejection');
+      const rejectionHandler = () => {};
+      process.removeAllListeners('unhandledRejection');
+      process.on('unhandledRejection', rejectionHandler);
+
+      try {
+        // First call is for cacheGet('keywords') in getData
+        // Second call is for cacheGet('folders') in getData
+        // Third call is for checkBookmark in getData
+        // Fourth call is for apiCall in saveBookmark
+        const apiCallModule = await import('../../src/lib/apiCall.js');
+        apiCallModule.default = vi
+          .fn()
+          .mockResolvedValueOnce({ status: 'success', data: [] }) // cacheGet('keywords')
+          .mockResolvedValueOnce({ status: 'success', data: [] }) // cacheGet('folders')
+          .mockResolvedValueOnce({ status: 'success', data: [] }) // checkBookmark
+          .mockResolvedValueOnce({ status: 'success', data: { id: 123 } }); // saveBookmark
+
+        store_data.mockRejectedValueOnce(new Error('Storage failed'));
+
+        const request = {
+          msg: 'saveBookmark',
+          parameters: { url: 'https://example.com', title: 'Test' },
+          folderIDs: [1],
+          bookmarkID: 0,
+        };
+
+        chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+          messageListener = callback;
+        });
+
+        await import('../../src/background/background.js');
+
+        messageListener(request, {}, vi.fn());
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        // The bookmark was saved; a failing store_data (remembering the last
+        // folders) must not swallow the notification or strand the badge.
+        expect(notifyUser).toHaveBeenCalledTimes(1);
+        expect(notifyUser).toHaveBeenCalledWith(
+          expect.objectContaining({ status: 'success' }),
+        );
+
+        // Badge is set to the save icon, then always cleared again
+        expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '💾' });
+        expect(chrome.action.setBadgeText).toHaveBeenLastCalledWith({
+          text: '',
+        });
+      } finally {
+        // Restore original handler
+        process.removeAllListeners('unhandledRejection');
+        originalHandler.forEach((h) => process.on('unhandledRejection', h));
+      }
+    });
+  });
+
+  describe('Integration tests', () => {
+    it('should handle multiple message types in sequence', async () => {
+      // Import zenMode module to spy on it
+      const zenModeModule =
+        await import('../../src/background/modules/bookmarks/zenMode.js');
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+
+      // Test authorize message
+      const authorizeRequest = { msg: 'authorize' };
+      messageListener(authorizeRequest, {}, vi.fn());
+      expect(chrome.tabs.create).toHaveBeenCalled();
+
+      // Test getData message
+      const getDataRequest = { msg: 'getData', data: {} };
+      messageListener(getDataRequest, {}, vi.fn());
+      expect(getData).toHaveBeenCalled();
+
+      // Test zenMode message
+      const zenModeRequest = { msg: 'zenMode' };
+      messageListener(zenModeRequest, {}, vi.fn());
+      expect(zenModeModule.zenMode).toHaveBeenCalled();
+    });
+
+    it('should maintain message channel for async responses', async () => {
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      getData.mockResolvedValueOnce({ ok: true, data: 'test' });
+
+      await import('../../src/background/background.js');
+
+      const request = { msg: 'getData', data: {} };
+      const result = messageListener(request, {}, vi.fn());
+
+      // Should return true to keep channel open for async response
+      expect(result).toBe(true);
+    });
+  });
+});

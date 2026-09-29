@@ -1,0 +1,467 @@
+/**
+ * Unit tests for mock document creation
+ * Tests the createMockDocument function that provides DOM-like interface
+ */
+
+import { describe, it, expect, beforeEach } from 'vitest';
+
+// Tests the real createMockDocument. This file previously inlined a copy of the
+// function, so it verified a duplicate that silently drifted from the original
+// (it had never picked up the 2025 GitHub topic selectors, and did not cover
+// the indexed meta lookup at all). The function now lives in its own module so
+// it can be imported directly without getData.js's dependency graph.
+import { createMockDocument } from '../../src/background/modules/page/mockDocument.js';
+
+describe('Mock Document Interface', () => {
+  describe('querySelectorAll', () => {
+    it('should handle a[rel=tag] selector', () => {
+      const parsedData = {
+        aRelTag: ['tag1', 'tag2', 'tag3'],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+      const results = mockDoc.querySelectorAll('a[rel=tag]');
+
+      expect(results).toHaveLength(3);
+      expect(results[0].textContent).toBe('tag1');
+      expect(results[1].textContent).toBe('tag2');
+      expect(results[2].textContent).toBe('tag3');
+    });
+
+    it('should handle a[rel=category] selector', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: ['cat1', 'cat2'],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+      const results = mockDoc.querySelectorAll('a[rel=category]');
+
+      expect(results).toHaveLength(2);
+      expect(results[0].text).toBe('cat1');
+      expect(results[0].textContent).toBe('cat1');
+      expect(results[1].text).toBe('cat2');
+      expect(results[1].textContent).toBe('cat2');
+    });
+
+    it('should handle script[type="application/ld+json"] selector', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: ['{"keywords": ["tech"]}', '{"type": "article"}'],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+      const results = mockDoc.querySelectorAll(
+        'script[type="application/ld+json"]',
+      );
+
+      expect(results).toHaveLength(2);
+      expect(results[0].innerText).toBe('{"keywords": ["tech"]}');
+      expect(results[1].innerText).toBe('{"type": "article"}');
+    });
+
+    it('should handle script selector (all scripts)', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: ['console.log("test");', 'var x = 1;'],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+      const results = mockDoc.querySelectorAll('script');
+
+      expect(results).toHaveLength(2);
+      expect(results[0].text).toBe('console.log("test");');
+      expect(results[1].text).toBe('var x = 1;');
+    });
+
+    it('should handle GitHub topic selector', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: ['JavaScript', 'TypeScript', 'React'],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+      const results = mockDoc.querySelectorAll(
+        'a[data-ga-click="Topic, repository page"]',
+      );
+
+      expect(results).toHaveLength(3);
+      expect(results[0].textContent).toBe('JavaScript');
+      expect(results[0].trim()).toBe('JavaScript');
+      expect(results[1].textContent).toBe('TypeScript');
+      expect(results[2].textContent).toBe('React');
+    });
+
+    it('should handle headline selectors (h1-h6)', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: {
+          h1: ['Main Title'],
+          h2: ['Subtitle 1', 'Subtitle 2'],
+          h3: ['Section'],
+          h4: [],
+          h5: ['Detail'],
+          h6: ['Small'],
+        },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+
+      // Test h1
+      const h1Results = mockDoc.querySelectorAll('h1');
+      expect(h1Results).toHaveLength(1);
+      expect(h1Results[0].textContent).toBe('Main Title');
+      expect(h1Results[0].innerText).toBe('Main Title');
+
+      // Test h2
+      const h2Results = mockDoc.querySelectorAll('h2');
+      expect(h2Results).toHaveLength(2);
+      expect(h2Results[0].textContent).toBe('Subtitle 1');
+      expect(h2Results[1].textContent).toBe('Subtitle 2');
+
+      // Test split functionality
+      const splitResult = h2Results[0].split(/,/);
+      expect(splitResult).toEqual(['Subtitle 1']);
+    });
+
+    it('should handle meta tag selectors with attribute matching', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [
+          {
+            name: 'description',
+            property: null,
+            itemprop: null,
+            httpEquiv: null,
+            content: 'Page description',
+          },
+          {
+            name: null,
+            property: 'og:description',
+            itemprop: null,
+            httpEquiv: null,
+            content: 'OG description',
+          },
+          {
+            name: 'keywords',
+            property: null,
+            itemprop: null,
+            httpEquiv: null,
+            content: 'tech, web',
+          },
+          {
+            name: null,
+            property: 'article:tag',
+            itemprop: null,
+            httpEquiv: null,
+            content: 'article-tag',
+          },
+        ],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+
+      // Test name="description"
+      const descResults = mockDoc.querySelectorAll('meta[name="description"]');
+      expect(descResults).toHaveLength(1);
+      expect(descResults[0].getAttribute('name')).toBe('description');
+      expect(descResults[0].content).toBe('Page description');
+
+      // Test property="og:description"
+      const ogResults = mockDoc.querySelectorAll(
+        'meta[property="og:description"]',
+      );
+      expect(ogResults).toHaveLength(1);
+      expect(ogResults[0].getAttribute('property')).toBe('og:description');
+      expect(ogResults[0].content).toBe('OG description');
+
+      // Test case-insensitive matching
+      const caseInsensitiveResults = mockDoc.querySelectorAll(
+        'meta[name="DESCRIPTION" i]',
+      );
+      expect(caseInsensitiveResults).toHaveLength(1);
+      expect(caseInsensitiveResults[0].content).toBe('Page description');
+    });
+
+    it('should return empty array for unknown selectors', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+
+      expect(mockDoc.querySelectorAll('.unknown-class')).toEqual([]);
+      expect(mockDoc.querySelectorAll('#unknown-id')).toEqual([]);
+      expect(mockDoc.querySelectorAll('div > span')).toEqual([]);
+    });
+  });
+
+  describe('getElementById', () => {
+    it('should return element for __NEXT_DATA__', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '{"props": {"page": "test"}}',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+      const element = mockDoc.getElementById('__NEXT_DATA__');
+
+      expect(element).not.toBeNull();
+      expect(element.innerText).toBe('{"props": {"page": "test"}}');
+      expect(element.textContent).toBe('{"props": {"page": "test"}}');
+    });
+
+    it('should return null for unknown IDs', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+
+      expect(mockDoc.getElementById('unknown-id')).toBeNull();
+      expect(mockDoc.getElementById('some-other-element')).toBeNull();
+    });
+
+    it('should return null when nextData is empty', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+      expect(mockDoc.getElementById('__NEXT_DATA__')).toBeNull();
+    });
+  });
+
+  describe('querySelector', () => {
+    it('should return first matching element', () => {
+      const parsedData = {
+        aRelTag: ['tag1', 'tag2'],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+      const result = mockDoc.querySelector('a[rel=tag]');
+
+      expect(result).not.toBeNull();
+      expect(result.textContent).toBe('tag1');
+    });
+
+    it('should return null when no elements match', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+      const result = mockDoc.querySelector('a[rel=tag]');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Integration with getMeta', () => {
+    it('should work with getMeta function pattern', () => {
+      const parsedData = {
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        metaTags: [
+          {
+            name: 'description',
+            property: null,
+            itemprop: null,
+            httpEquiv: null,
+            content: 'Test description',
+          },
+          {
+            name: null,
+            property: 'og:description',
+            itemprop: null,
+            httpEquiv: null,
+            content: 'OG description',
+          },
+          {
+            name: 'twitter:description',
+            property: null,
+            itemprop: null,
+            httpEquiv: null,
+            content: 'Twitter description',
+          },
+        ],
+        headlines: { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] },
+      };
+
+      const mockDoc = createMockDocument(parsedData);
+
+      // Simulate getMeta function calls
+      const getMeta = (document, ...metaNames) => {
+        const metas = [];
+        for (const { type, id } of metaNames) {
+          const metaNodelist = document.querySelectorAll(`[${type}="${id}" i]`);
+          if (metaNodelist.length > 0) {
+            for (const meta of metaNodelist) {
+              const { content } = meta;
+              if (content !== '' && content !== undefined) {
+                metas.push(content);
+              }
+            }
+            if (metas.length > 0) {
+              return metas;
+            }
+          }
+        }
+        return [];
+      };
+
+      // Test getting description
+      const description = getMeta(mockDoc, { type: 'name', id: 'description' });
+      expect(description).toEqual(['Test description']);
+
+      // Test getting og:description
+      const ogDescription = getMeta(mockDoc, {
+        type: 'property',
+        id: 'og:description',
+      });
+      expect(ogDescription).toEqual(['OG description']);
+
+      // Test getting twitter:description
+      const twitterDescription = getMeta(mockDoc, {
+        type: 'name',
+        id: 'twitter:description',
+      });
+      expect(twitterDescription).toEqual(['Twitter description']);
+    });
+  });
+
+  describe('http-equiv meta tags', () => {
+    // extractPageData stores the attribute as `httpEquiv`; selectors use the DOM
+    // name `http-equiv`. The two never matched, so the http-equiv sources of
+    // getDescription and extractMetaKeywords were dead in the extension (though
+    // they work against a real DOM).
+    const docWith = (metaTags) =>
+      createMockDocument({
+        metaTags,
+        aRelTag: [],
+        aRelCategory: [],
+        jsonLdScripts: [],
+        scripts: [],
+        githubTopics: [],
+        nextData: '',
+        headlines: {},
+      });
+
+    it('matches [http-equiv=...] selectors against httpEquiv data', () => {
+      const doc = docWith([
+        { httpEquiv: 'Description', content: 'from http-equiv' },
+        { name: 'other', content: 'x' },
+      ]);
+
+      const results = doc.querySelectorAll('[http-equiv="description" i]');
+
+      expect(results).toHaveLength(1);
+      expect(results[0].content).toBe('from http-equiv');
+      expect(results[0].getAttribute('http-equiv')).toBe('Description');
+    });
+
+    it('lets getDescription and extractMetaKeywords use their http-equiv sources', async () => {
+      const { default: getDescription } = await import(
+        '../../src/background/modules/page/getDescription.js'
+      );
+      const { extractMetaKeywords } = await import(
+        '../../src/background/modules/page/keywords/metaKeywords.js'
+      );
+      const doc = docWith([
+        { httpEquiv: 'description', content: 'A described page' },
+        { httpEquiv: 'keywords', content: 'one, two' },
+      ]);
+
+      expect(getDescription(doc)).toBe('A described page');
+      expect(extractMetaKeywords(doc)).toEqual(['one', 'two']);
+    });
+  });
+});
