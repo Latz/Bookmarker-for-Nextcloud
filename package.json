@@ -45,16 +45,20 @@
     "sonar:scan": "npm run test:coverage && sonar-scanner",
     "check:hn": "node tools/hn-keyword-check/check.js",
     "perf": "node tools/perf/case-runner.js --root . --case",
-    "perf:compare": "node tools/perf/compare.js"
+    "perf:compare": "node tools/perf/compare.js",
+    "lint": "eslint src"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^3.0.0",
+    "@eslint/js": "^10.0.1",
     "@linthtml/linthtml": "^0.10.2",
     "@tailwindcss/cli": "^4.3.3",
     "@vitest/coverage-v8": "^5.0.2",
     "@vitest/ui": "^5.0.2",
     "daisyui": "^5.7.46",
+    "eslint": "^10.11.0",
     "fake-indexeddb": "^6.2.5",
+    "globals": "^17.12.0",
     "happy-dom": "^20.14.5",
     "jsdom": "^30.1.1",
     "prettier": "^3.9.9",
