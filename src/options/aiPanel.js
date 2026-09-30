@@ -225,6 +225,14 @@ function providerPanel(provider) {
       el('input', { type: 'hidden', id: `input_${id}ApiKey`, value: '' }),
     );
   }
+  // This provider's usage statistics (filled by aiUsagePanel.js)
+  panel.append(
+    el('div', {
+      id: `ai_usage_${id}`,
+      class:
+        'col-span-2 mt-4 max-w-xl rounded-box border border-base-300 bg-base-200 p-3',
+    }),
+  );
   return panel;
 }
 

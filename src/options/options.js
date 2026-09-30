@@ -345,7 +345,7 @@ async function setOptions() {
  * @param {string} [selected] - Stored provider id ('off' or unset: none).
  */
 function setupAiOptions(selected = 'off') {
-  initAiUsage(document.getElementById('ai_usage'));
+  initAiUsage();
   const cards = document.getElementById('ai_providers');
   const panels = document.getElementById('ai_panels');
   const errorBox = document.getElementById('ai_error');

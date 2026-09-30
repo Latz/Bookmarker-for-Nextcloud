@@ -88,11 +88,23 @@ export async function getUsage() {
 }
 
 /**
- * Starts counting from zero. Never throws.
+ * Starts counting from zero -- for one provider, or for all if none is given.
+ * Never throws.
+ * @param {string} [provider] - Provider id.
  * @returns {Promise<void>}
  */
-export async function resetUsage() {
+export async function resetUsage(provider) {
   try {
+    if (provider) {
+      const stats = await getUsage();
+      for (const [key, entry] of Object.entries(stats.models)) {
+        if (entry.provider === provider) delete stats.models[key];
+      }
+      if (Object.keys(stats.models).length > 0) {
+        await chrome.storage.local.set({ [STORAGE_KEY]: stats });
+        return;
+      }
+    }
     await chrome.storage.local.remove(STORAGE_KEY);
   } catch {
     // nothing to reset

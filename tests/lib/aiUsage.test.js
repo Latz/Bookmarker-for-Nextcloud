@@ -90,6 +90,18 @@ describe('aiUsage', () => {
     });
   });
 
+  it('resets only one provider when given, and everything otherwise', async () => {
+    const tokens = { inputTokens: 1, outputTokens: 1 };
+    await recordUsage('openai', 'm', tokens);
+    await recordUsage('claude', 'c', tokens);
+
+    await resetUsage('openai');
+    expect(Object.keys((await getUsage()).models)).toEqual(['claude|c']);
+
+    await resetUsage('claude');
+    expect(await getUsage()).toEqual({ since: 0, models: {} });
+  });
+
   it('resets the statistics', async () => {
     await recordUsage('openai', 'm', { inputTokens: 1, outputTokens: 1 });
     await resetUsage();

@@ -32,6 +32,7 @@ describe('aiPanel', () => {
       expect(document.getElementById(`btn_${p.id}Models`)).not.toBeNull();
       expect(document.getElementById(`btn_${p.id}Test`)).not.toBeNull();
       expect(document.getElementById(`ai_test_${p.id}`)).not.toBeNull();
+      expect(document.getElementById(`ai_usage_${p.id}`)).not.toBeNull();
       expect(document.getElementById(`models_${p.id}`) !== null).toBe(
         !!p.freeModel,
       );

@@ -1,8 +1,9 @@
-// Shows the AI usage of the AI tab: requests, input/output tokens and the
-// estimated cost per provider and model, with a total and a reset button.
-// Re-renders by itself whenever the statistics change (e.g. after a request
-// from the popup).
-import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
+// Shows the AI usage in the panel of each provider (AI tab): requests,
+// input/output tokens and the estimated cost per model, with a total if the
+// provider was used with several models and a reset button. Every panel shows
+// only its own provider's usage. Re-renders by itself whenever the statistics
+// change (e.g. after a request from the popup).
+import { AI_PROVIDERS } from '../lib/aiProviders.js';
 import { estimateCost } from '../lib/aiPricing.js';
 import { getUsage, resetUsage, USAGE_STORAGE_KEY } from '../lib/aiUsage.js';
 
@@ -83,13 +84,6 @@ function usageRow(name, values, costText, className = '') {
 }
 
 /**
- * @param {ReturnType<typeof sumRows>} total
- * @returns {string}
- */
-const totalCostText = (total) =>
-  `≈ ${formatCost(total.cost)}${total.unknownCost ? '+' : ''}`;
-
-/**
  * The table of one provider: a row per model, and a total row if it has more
  * than one model.
  * @param {Array<import('../lib/aiUsage.js').ModelUsage>} rows
@@ -128,7 +122,12 @@ function providerTable(rows) {
     const total = sumRows(rows);
     const tfoot = document.createElement('tfoot');
     tfoot.append(
-      usageRow(t('aiUsageTotal'), total, totalCostText(total), 'font-medium'),
+      usageRow(
+        t('aiUsageTotal'),
+        total,
+        `≈ ${formatCost(total.cost)}${total.unknownCost ? '+' : ''}`,
+        'font-medium',
+      ),
     );
     table.append(tfoot);
   }
@@ -136,19 +135,19 @@ function providerTable(rows) {
 }
 
 /**
- * Fills `container` with the current statistics: one section per provider
- * with its models, and a grand total if several providers were used.
- * @param {HTMLElement} container
+ * Fills `container` with the usage of one provider.
+ * @param {HTMLElement} container - The usage box in the provider's panel.
+ * @param {string} providerId
  * @returns {Promise<void>}
  */
-export async function renderAiUsage(container) {
+export async function renderProviderUsage(container, providerId) {
   const t = (key) => chrome.i18n.getMessage(key);
   const stats = await getUsage();
-  const rows = Object.values(stats.models).sort(
-    (a, b) => b.requests - a.requests,
-  );
+  const rows = Object.values(stats.models)
+    .filter((row) => row.provider === providerId)
+    .sort((a, b) => b.requests - a.requests);
 
-  const heading = cell('h3', t('aiUsage'), 'font-medium');
+  const heading = cell('h4', t('aiUsage'), 'font-medium');
   if (rows.length === 0) {
     container.replaceChildren(
       heading,
@@ -157,51 +156,15 @@ export async function renderAiUsage(container) {
     return;
   }
 
-  // Providers in the order of the cards; unknown ids (removed providers) last
-  const known = AI_PROVIDERS.map((provider) => provider.id);
-  const ids = [
-    ...known.filter((id) => rows.some((row) => row.provider === id)),
-    ...new Set(
-      rows.map((row) => row.provider).filter((id) => !known.includes(id)),
-    ),
-  ];
-  const sections = ids.map((id) => {
-    const section = document.createElement('section');
-    section.className = 'mt-3';
-    section.dataset.provider = id;
-    section.append(
-      cell('h4', getProvider(id)?.label ?? id, 'font-medium text-sm'),
-      providerTable(rows.filter((row) => row.provider === id)),
-    );
-    return section;
-  });
-
-  if (ids.length > 1) {
-    const total = sumRows(rows);
-    const all = document.createElement('table');
-    all.className = 'table table-xs mt-3';
-    const tbody = document.createElement('tbody');
-    tbody.append(
-      usageRow(
-        t('aiUsageTotalAll'),
-        total,
-        totalCostText(total),
-        'font-medium',
-      ),
-    );
-    all.append(tbody);
-    sections.push(all);
-  }
-
   const since = new Date(stats.since).toLocaleDateString(navigator.language);
   const reset = cell('button', t('aiUsageReset'), 'btn btn-xs btn-ghost');
   reset.type = 'button';
-  reset.id = 'btn_resetAiUsage';
-  reset.addEventListener('click', () => void resetUsage());
+  reset.id = `btn_resetAiUsage_${providerId}`;
+  reset.addEventListener('click', () => void resetUsage(providerId));
 
   container.replaceChildren(
     heading,
-    ...sections,
+    providerTable(rows),
     cell(
       'p',
       `${t('aiUsageSince')} ${since} · ${t('aiUsageNote')}`,
@@ -212,14 +175,18 @@ export async function renderAiUsage(container) {
 }
 
 /**
- * Renders the statistics now and whenever they change.
- * @param {HTMLElement} container
+ * Renders the usage into the box of every provider panel (`ai_usage_<id>`),
+ * now and whenever the statistics change.
  */
-export function initAiUsage(container) {
-  void renderAiUsage(container);
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && USAGE_STORAGE_KEY in changes) {
-      void renderAiUsage(container);
+export function initAiUsage() {
+  const renderAll = () => {
+    for (const { id } of AI_PROVIDERS) {
+      const container = document.getElementById(`ai_usage_${id}`);
+      if (container) void renderProviderUsage(container, id);
     }
+  };
+  renderAll();
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && USAGE_STORAGE_KEY in changes) renderAll();
   });
 }
