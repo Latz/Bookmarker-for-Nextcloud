@@ -123,7 +123,8 @@ describe('aiSuggest', () => {
       expect(await getAiSuggestions({ tags: true })).toEqual({});
     });
 
-    describe('cache', () => {
+    // TODO: re-enable together with USE_CACHE in aiSuggest.js
+    describe.skip('cache', () => {
       const request = { tags: true, description: true, url: 'https://x.test/' };
 
       it('stores new suggestions for the page', async () => {

@@ -87,9 +87,12 @@ export async function fillFromAi(data) {
 
   const status = document.createElement('div');
   status.id = 'ai_status';
-  status.className = 'ai-rainbow text-center text-sm';
+  status.className = 'ai-rainbow text-center text-sm leading-10';
   status.textContent = chrome.i18n.getMessage('aiSuggesting');
-  document.getElementById('formData')?.after(status);
+  // Next to the Save button (in the message area), so nothing below moves
+  const host = document.getElementById('sub_message');
+  if (host) host.append(status);
+  else document.getElementById('formData')?.after(status);
   try {
     const reply = await chrome.runtime.sendMessage({
       msg: 'aiSuggest',

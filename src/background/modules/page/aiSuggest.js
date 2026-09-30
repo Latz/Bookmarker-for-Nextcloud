@@ -13,6 +13,10 @@ import { extractPageText } from './extractPageText.js';
 
 const DEBUG = false;
 
+// TEMPORARILY OFF: suggestions are neither read from nor written to the cache
+// (src/lib/aiCache.js), so every call asks the AI. Set to true to switch it on.
+const USE_CACHE = false;
+
 const MAX_PAGE_CHARS = 3000;
 const MAX_TAGS = 5;
 const MAX_DESCRIPTION_CHARS = 300;
@@ -120,7 +124,7 @@ export async function getAiSuggestions(request) {
 
     // Suggestions given for this page before are reused; only what is still
     // missing is asked for.
-    const cached = await getAiCached(request.url);
+    const cached = USE_CACHE ? await getAiCached(request.url) : null;
     if (request.tags && cached?.keywords) result.keywords = cached.keywords;
     if (request.description && cached?.description) {
       result.description = cached.description;
@@ -170,7 +174,7 @@ export async function getAiSuggestions(request) {
       );
       if (description) fresh.description = description;
     }
-    await setAiCached(request.url, fresh);
+    if (USE_CACHE) await setAiCached(request.url, fresh);
     Object.assign(result, fresh);
     return result;
   } catch (error) {

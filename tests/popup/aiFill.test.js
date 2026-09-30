@@ -29,7 +29,7 @@ describe('fillFromAi', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     document.body.innerHTML =
-      '<form id="formData"></form><textarea id="description"></textarea>';
+      '<form id="formData"></form><textarea id="description"></textarea><output id="sub_message"></output>';
     globalThis.chrome = {
       i18n: { getMessage: vi.fn((key) => key) },
       runtime: { sendMessage: vi.fn() },
@@ -104,6 +104,10 @@ describe('fillFromAi', () => {
       expect(document.getElementById('ai_status')?.textContent).toBe(
         'aiSuggesting',
       ),
+    );
+    // next to the Save button, not below the form
+    expect(document.getElementById('ai_status').parentElement.id).toBe(
+      'sub_message',
     );
     answer({});
     await running;
