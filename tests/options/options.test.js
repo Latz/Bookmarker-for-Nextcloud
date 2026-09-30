@@ -14,6 +14,10 @@ globalThis.chrome = {
 };
 
 // Mock Tagify - needs to be a constructor function
+vi.mock('../../src/options/aiUsagePanel.js', () => ({
+  initAiUsage: vi.fn(),
+}));
+
 vi.mock('../../src/options/aiPanel.js', () => ({
   renderAiPanel: vi.fn(),
   setModelOptions: vi.fn(),
@@ -187,6 +191,7 @@ describe('options.js', () => {
       },
       ai_providers: { id: 'ai_providers', addEventListener: vi.fn() },
       ai_panels: { id: 'ai_panels' },
+      ai_usage: { id: 'ai_usage' },
       ...Object.fromEntries(
         AI_PROVIDERS.flatMap((provider) => [
           ...['ApiKey', 'Model', 'BaseUrl'].map((field) => {

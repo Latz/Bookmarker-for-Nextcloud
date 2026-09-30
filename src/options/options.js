@@ -22,6 +22,7 @@ import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 import { listModels, testProvider } from '../lib/aiClient.js';
 import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
 import { renderAiPanel, setModelOptions, showAiProvider } from './aiPanel.js';
+import { initAiUsage } from './aiUsagePanel.js';
 import {
   clampTimeoutSetting,
   DEFAULT_TIMEOUT_SECONDS,
@@ -344,6 +345,7 @@ async function setOptions() {
  * @param {string} [selected] - Stored provider id ('off' or unset: none).
  */
 function setupAiOptions(selected = 'off') {
+  initAiUsage(document.getElementById('ai_usage'));
   const cards = document.getElementById('ai_providers');
   const panels = document.getElementById('ai_panels');
   const errorBox = document.getElementById('ai_error');

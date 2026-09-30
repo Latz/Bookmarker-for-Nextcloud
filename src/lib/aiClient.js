@@ -4,6 +4,7 @@
 // by OpenAI, Gemini, Mistral, Groq, OpenRouter, DeepSeek, Ollama, custom).
 import { getOptions } from './storage.js';
 import { getProvider } from './aiProviders.js';
+import { extractUsage, recordUsage } from './aiUsage.js';
 import { timeoutMilliseconds } from './networkTimeout.js';
 
 const MAX_TOKENS = 1024;
@@ -145,6 +146,8 @@ async function sendPrompt(provider, settings, prompt) {
     );
   }
   const data = await response.json();
+  // The request is paid for whether or not the answer is usable
+  void recordUsage(provider.id, model, extractUsage(data));
   const text = anthropic
     ? data.content?.find((part) => part.type === 'text')?.text
     : data.choices?.[0]?.message?.content;

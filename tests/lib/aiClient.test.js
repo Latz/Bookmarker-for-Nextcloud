@@ -2,8 +2,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('../../src/lib/storage.js', () => ({ getOptions: vi.fn() }));
+vi.mock('../../src/lib/aiUsage.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  recordUsage: vi.fn(),
+}));
 
 import { getOptions } from '../../src/lib/storage.js';
+import { recordUsage } from '../../src/lib/aiUsage.js';
 import { askAI, listModels, testProvider } from '../../src/lib/aiClient.js';
 
 const base = {
@@ -105,6 +110,43 @@ describe('aiClient', () => {
       input_ollamaModel: '',
     });
     await expect(askAI('hi')).rejects.toThrow('No model');
+  });
+
+  it('records the tokens of a request, for both API styles', async () => {
+    getOptions.mockResolvedValue({ ...base, select_aiProvider: 'claude' });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        content: [{ type: 'text', text: 'a' }],
+        usage: { input_tokens: 11, output_tokens: 4 },
+      }),
+    });
+    await askAI('hi');
+    expect(recordUsage).toHaveBeenLastCalledWith('claude', 'claude-m', {
+      inputTokens: 11,
+      outputTokens: 4,
+    });
+
+    getOptions.mockResolvedValue({ ...base, select_aiProvider: 'openai' });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: 'a' } }],
+        usage: { prompt_tokens: 20, completion_tokens: 6 },
+      }),
+    });
+    await askAI('hi');
+    expect(recordUsage).toHaveBeenLastCalledWith('openai', 'gpt-m', {
+      inputTokens: 20,
+      outputTokens: 6,
+    });
+  });
+
+  it('does not record a request that failed', async () => {
+    getOptions.mockResolvedValue({ ...base, select_aiProvider: 'openai' });
+    fetchMock.mockResolvedValue({ ok: false, status: 500 });
+    await expect(askAI('hi')).rejects.toThrow('500');
+    expect(recordUsage).not.toHaveBeenCalled();
   });
 
   it('throws on an HTTP error', async () => {
