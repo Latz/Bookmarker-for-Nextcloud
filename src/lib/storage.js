@@ -13,6 +13,7 @@ const database = 'Bookmarker';
 const dbVersion = 2; // since v0.3 -- bump when a store is added; upgrade steps go in initDatabase
 
 import { openDB, deleteDB } from 'idb';
+import { clearAiCache } from './aiCache.js';
 import { aiProviderDefaults } from './aiProviders.js';
 import { cacheDbVersion, initCacheStores } from './cacheSchema.js';
 
@@ -394,6 +395,7 @@ export async function clearData(subject) {
     } finally {
       cache_db.close();
     }
+    await clearAiCache();
     return;
   }
 

@@ -5,6 +5,7 @@
 // must never keep a bookmark from being saved.
 import { askAI } from '../../../lib/aiClient.js';
 import { cacheGet } from '../../../lib/cache.js';
+import { getAiCached, setAiCached } from '../../../lib/aiCache.js';
 import { getOptions } from '../../../lib/storage.js';
 import log from '../../../lib/log.js';
 import { mergeKeywords } from './getKeywords.js';
@@ -104,9 +105,12 @@ function shorten(text, max) {
  * Asks the AI for the requested fields of the active tab's page.
  * @param {AiRequest} request
  * @returns {Promise<{keywords?: string[], description?: string}>} Only the
- *   fields that were requested and came back usable; {} on any failure.
+ *   fields that were requested and are usable (cached or new); {} if there
+ *   are none or on failure.
  */
 export async function getAiSuggestions(request) {
+  /** @type {{keywords?: string[], description?: string}} */
+  const result = {};
   try {
     if (!request?.tags && !request?.description) return {};
     const { select_aiProvider: provider } = await getOptions([
@@ -114,11 +118,25 @@ export async function getAiSuggestions(request) {
     ]);
     if (!provider || provider === 'off') return {};
 
+    // Suggestions given for this page before are reused; only what is still
+    // missing is asked for.
+    const cached = await getAiCached(request.url);
+    if (request.tags && cached?.keywords) result.keywords = cached.keywords;
+    if (request.description && cached?.description) {
+      result.description = cached.description;
+    }
+    const missing = {
+      ...request,
+      tags: request.tags && !result.keywords,
+      description: request.description && !result.description,
+    };
+    if (!missing.tags && !missing.description) return result;
+
     const [activeTab] = await chrome.tabs.query({
       active: true,
       currentWindow: true,
     });
-    if (!activeTab?.id) return {};
+    if (!activeTab?.id) return result;
 
     const [injection, known] = await Promise.all([
       chrome.scripting.executeScript({
@@ -126,36 +144,38 @@ export async function getAiSuggestions(request) {
         func: extractPageText,
         args: [MAX_PAGE_CHARS],
       }),
-      request.tags ? cacheGet('keywords').catch(() => []) : Promise.resolve([]),
+      missing.tags ? cacheGet('keywords').catch(() => []) : Promise.resolve([]),
     ]);
     const page = injection?.[0]?.result;
-    if (!page || 'error' in page) return {};
+    if (!page || 'error' in page) return result;
 
     const knownTags = Array.isArray(known)
       ? known.filter((tag) => typeof tag === 'string').slice(0, MAX_KNOWN_TAGS)
       : [];
     const answer = parseAnswer(
-      await askAI(buildPrompt(request, page, knownTags)),
+      await askAI(buildPrompt(missing, page, knownTags)),
     );
-    if (!answer) return {};
+    if (!answer) return result;
 
     /** @type {{keywords?: string[], description?: string}} */
-    const result = {};
-    if (request.tags && Array.isArray(answer.tags)) {
+    const fresh = {};
+    if (missing.tags && Array.isArray(answer.tags)) {
       const keywords = mergeKeywords(answer.tags).slice(0, MAX_TAGS);
-      if (keywords.length > 0) result.keywords = keywords;
+      if (keywords.length > 0) fresh.keywords = keywords;
     }
-    if (request.description && typeof answer.description === 'string') {
+    if (missing.description && typeof answer.description === 'string') {
       const description = shorten(
         answer.description.replace(/\s+/g, ' ').trim(),
         MAX_DESCRIPTION_CHARS,
       );
-      if (description) result.description = description;
+      if (description) fresh.description = description;
     }
+    await setAiCached(request.url, fresh);
+    Object.assign(result, fresh);
     return result;
   } catch (error) {
     log(DEBUG, '[ai] suggestions failed:', error);
     console.warn('[ai] suggestions failed:', error?.message ?? error);
-    return {};
+    return result; // whatever the cache had
   }
 }

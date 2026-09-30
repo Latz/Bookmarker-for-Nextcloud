@@ -4,10 +4,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.mock('../../src/lib/storage.js', () => ({ getOptions: vi.fn() }));
 vi.mock('../../src/lib/aiClient.js', () => ({ askAI: vi.fn() }));
 vi.mock('../../src/lib/cache.js', () => ({ cacheGet: vi.fn() }));
+vi.mock('../../src/lib/aiCache.js', () => ({
+  getAiCached: vi.fn(),
+  setAiCached: vi.fn(),
+}));
 
 import { getOptions } from '../../src/lib/storage.js';
 import { askAI } from '../../src/lib/aiClient.js';
 import { cacheGet } from '../../src/lib/cache.js';
+import { getAiCached, setAiCached } from '../../src/lib/aiCache.js';
 import {
   buildPrompt,
   getAiSuggestions,
@@ -22,6 +27,7 @@ describe('aiSuggest', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     getOptions.mockResolvedValue({ select_aiProvider: 'openai' });
     cacheGet.mockResolvedValue(['known']);
+    getAiCached.mockResolvedValue(null);
     globalThis.chrome = {
       tabs: { query: vi.fn().mockResolvedValue([{ id: 7 }]) },
       scripting: {
@@ -115,6 +121,57 @@ describe('aiSuggest', () => {
       askAI.mockResolvedValue('{}');
       arrange();
       expect(await getAiSuggestions({ tags: true })).toEqual({});
+    });
+
+    describe('cache', () => {
+      const request = { tags: true, description: true, url: 'https://x.test/' };
+
+      it('stores new suggestions for the page', async () => {
+        askAI.mockResolvedValue('{"tags":["a"],"description":"d"}');
+
+        await getAiSuggestions(request);
+
+        expect(setAiCached).toHaveBeenCalledWith('https://x.test/', {
+          keywords: ['a'],
+          description: 'd',
+        });
+      });
+
+      it('answers from the cache without asking the AI', async () => {
+        getAiCached.mockResolvedValue({
+          time: Date.now(),
+          keywords: ['c'],
+          description: 'cached',
+        });
+
+        expect(await getAiSuggestions(request)).toEqual({
+          keywords: ['c'],
+          description: 'cached',
+        });
+        expect(askAI).not.toHaveBeenCalled();
+        expect(chrome.scripting.executeScript).not.toHaveBeenCalled();
+      });
+
+      it('asks only for what the cache lacks and merges both', async () => {
+        getAiCached.mockResolvedValue({ time: Date.now(), keywords: ['c'] });
+        askAI.mockResolvedValue('{"description":"new"}');
+
+        const result = await getAiSuggestions(request);
+
+        expect(result).toEqual({ keywords: ['c'], description: 'new' });
+        expect(askAI.mock.calls[0][0]).toContain('"description"');
+        expect(askAI.mock.calls[0][0]).not.toContain('"tags"');
+        expect(setAiCached).toHaveBeenCalledWith('https://x.test/', {
+          description: 'new',
+        });
+      });
+
+      it('keeps the cached part when the AI fails', async () => {
+        getAiCached.mockResolvedValue({ time: Date.now(), keywords: ['c'] });
+        askAI.mockRejectedValue(new Error('boom'));
+
+        expect(await getAiSuggestions(request)).toEqual({ keywords: ['c'] });
+      });
     });
   });
 });
