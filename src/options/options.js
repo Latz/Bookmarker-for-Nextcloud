@@ -415,6 +415,8 @@ function setupAiOptions(selected = 'off') {
         origins: [`${origin}/*`],
       });
       if (!granted) return report(t('aiPermissionDenied'), false);
+      // The permission is granted now, so the model list can load alongside
+      void loadModels(provider, { silent: true });
       await testProvider(provider.id, {
         apiKey: value('ApiKey'),
         model: value('Model'),
