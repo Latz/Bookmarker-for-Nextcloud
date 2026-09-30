@@ -71,7 +71,7 @@ export const AI_PROVIDERS = [
     label: 'DeepSeek',
     protocol: 'openai',
     baseUrl: 'https://api.deepseek.com',
-    defaultModel: 'deepseek-chat',
+    defaultModel: 'deepseek-flash',
     needsKey: true,
   },
   {
