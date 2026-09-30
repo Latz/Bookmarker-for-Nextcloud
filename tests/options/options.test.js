@@ -196,6 +196,10 @@ describe('options.js', () => {
             `btn_${provider.id}Models`,
             { id: `btn_${provider.id}Models`, addEventListener: vi.fn() },
           ],
+          [
+            `btn_${provider.id}Test`,
+            { id: `btn_${provider.id}Test`, addEventListener: vi.fn() },
+          ],
         ]),
       ),
       // Buttons

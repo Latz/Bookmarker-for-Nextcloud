@@ -1,7 +1,8 @@
 // Builds the AI tab from the provider registry: one card per provider (radio
 // group) and one configuration panel per provider, of which only the panel of
 // the selected card is visible. Field ids: input_<id>ApiKey / Model / BaseUrl,
-// btn_<id>Models, datalist models_<id>.
+// btn_<id>Models, btn_<id>Test, ai_test_<id> (test result), datalist
+// models_<id>.
 import { AI_PROVIDERS } from '../lib/aiProviders.js';
 
 /**
@@ -146,6 +147,19 @@ function providerPanel(provider) {
       ]),
     ),
     ...row(t('aiBaseUrl'), `input_${id}BaseUrl`, text('BaseUrl')),
+    el('span'),
+    el('div', { class: 'flex items-center gap-3' }, [
+      el(
+        'button',
+        {
+          type: 'button',
+          id: `btn_${id}Test`,
+          class: 'btn btn-sm btn-info btn-outline',
+        },
+        [t('aiTest')],
+      ),
+      el('span', { id: `ai_test_${id}`, class: 'text-sm', role: 'status' }),
+    ]),
   );
   const panel = el(
     'div',

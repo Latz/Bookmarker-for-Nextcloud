@@ -26,6 +26,8 @@ describe('aiPanel', () => {
         expect(document.getElementById(`input_${p.id}${field}`)).not.toBeNull();
       }
       expect(document.getElementById(`btn_${p.id}Models`)).not.toBeNull();
+      expect(document.getElementById(`btn_${p.id}Test`)).not.toBeNull();
+      expect(document.getElementById(`ai_test_${p.id}`)).not.toBeNull();
       expect(document.getElementById(`models_${p.id}`)).not.toBeNull();
     }
   });

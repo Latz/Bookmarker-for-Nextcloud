@@ -19,7 +19,7 @@ import '@yaireo/tagify/dist/tagify.css';
 import { getFolders } from '../background/modules/bookmarks/getFolders.js';
 import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
-import { listModels } from '../lib/aiClient.js';
+import { listModels, testProvider } from '../lib/aiClient.js';
 import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
 import { renderAiPanel, showAiProvider } from './aiPanel.js';
 import {
@@ -394,6 +394,51 @@ function setupAiOptions(selected = 'off') {
     }
   };
 
+  // Sends a tiny request with the values typed into the fields and shows
+  // whether key, model and server work.
+  const runTest = async (provider) => {
+    const value = (field) =>
+      document.getElementById(`input_${provider.id}${field}`).value.trim();
+    const result = document.getElementById(`ai_test_${provider.id}`);
+    const report = (message, ok) => {
+      result.textContent = message;
+      result.classList.toggle('text-success', ok);
+      result.classList.toggle('text-error', !ok);
+    };
+    const t = (key) => chrome.i18n.getMessage(key);
+    const origin = aiOrigin(value('BaseUrl'));
+    if (!origin) return report(t('aiTestFailed'), false);
+    result.classList.remove('text-success', 'text-error');
+    result.textContent = t('aiTesting');
+    try {
+      const granted = await chrome.permissions.request({
+        origins: [`${origin}/*`],
+      });
+      if (!granted) return report(t('aiPermissionDenied'), false);
+      await testProvider(provider.id, {
+        apiKey: value('ApiKey'),
+        model: value('Model'),
+        baseUrl: value('BaseUrl'),
+        timeoutSeconds: await load_data(OPTION_STORE, 'input_networkTimeout'),
+      });
+      report(t('aiTestOk'), true);
+    } catch (error) {
+      const reasons = {
+        401: 'aiTestAuth',
+        403: 'aiTestAuth',
+        404: 'aiTestModel',
+        429: 'aiTestLimit',
+      };
+      const reason = reasons[error?.status];
+      report(
+        reason
+          ? `${t('aiTestFailed')}: ${t(reason)}`
+          : `${t('aiTestFailed')}: ${error?.message ?? error}`,
+        false,
+      );
+    }
+  };
+
   for (const provider of AI_PROVIDERS) {
     let timer;
     for (const field of ['ApiKey', 'Model', 'BaseUrl']) {
@@ -413,6 +458,9 @@ function setupAiOptions(selected = 'off') {
     document
       .getElementById(`btn_${provider.id}Models`)
       .addEventListener('click', () => void loadModels(provider));
+    document
+      .getElementById(`btn_${provider.id}Test`)
+      .addEventListener('click', () => void runTest(provider));
   }
 
   showAiProvider(cards, panels, selected);

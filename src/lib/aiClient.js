@@ -98,6 +98,61 @@ export async function listModels(providerId, apiKey, baseUrl, timeoutSeconds) {
 }
 
 /**
+ * @typedef {object} ProviderSettings
+ * @property {string} apiKey
+ * @property {string} model
+ * @property {string} baseUrl
+ * @property {unknown} [timeoutSeconds] - Network timeout setting.
+ */
+
+/**
+ * Sends one prompt to a provider with the given settings.
+ * @param {import('./aiProviders.js').AiProvider} provider
+ * @param {ProviderSettings} settings
+ * @param {string} prompt
+ * @returns {Promise<string>} The text of the answer.
+ * @throws {Error} With the HTTP status in `status` if the API rejects it.
+ */
+async function sendPrompt(provider, settings, prompt) {
+  const { apiKey, model, baseUrl, timeoutSeconds } = settings;
+  if (provider.needsKey && !apiKey) {
+    throw new Error(`No API key set for ${provider.id}`);
+  }
+  if (!model) throw new Error(`No model set for ${provider.id}`);
+  const anthropic = provider.protocol === 'anthropic';
+
+  const { url, headers } = providerRequest(
+    provider.protocol,
+    apiKey,
+    baseUrl,
+    anthropic ? '/v1/messages' : '/chat/completions',
+  );
+  const messages = [{ role: 'user', content: prompt }];
+  const body = anthropic
+    ? { model, max_tokens: MAX_TOKENS, messages }
+    : { model, messages };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMilliseconds(timeoutSeconds)),
+  });
+  if (!response.ok) {
+    throw Object.assign(
+      new Error(`${provider.id} request failed: ${response.status}`),
+      { status: response.status },
+    );
+  }
+  const data = await response.json();
+  const text = anthropic
+    ? data.content?.find((part) => part.type === 'text')?.text
+    : data.choices?.[0]?.message?.content;
+  if (typeof text !== 'string') throw new Error(`${provider.id}: empty answer`);
+  return text;
+}
+
+/**
  * Sends a prompt to the configured AI provider.
  * @param {string} prompt
  * @returns {Promise<string>} The text of the answer.
@@ -113,40 +168,26 @@ export async function askAI(prompt) {
     key('BaseUrl'),
     'input_networkTimeout',
   ]);
-  const apiKey = options[key('ApiKey')];
-  if (provider.needsKey && !apiKey) {
-    throw new Error(`No API key set for ${provider.id}`);
-  }
-  const model = options[key('Model')];
-  if (!model) throw new Error(`No model set for ${provider.id}`);
-  const anthropic = provider.protocol === 'anthropic';
-
-  const { url, headers } = providerRequest(
-    provider.protocol,
-    apiKey,
-    options[key('BaseUrl')],
-    anthropic ? '/v1/messages' : '/chat/completions',
+  return sendPrompt(
+    provider,
+    {
+      apiKey: options[key('ApiKey')],
+      model: options[key('Model')],
+      baseUrl: options[key('BaseUrl')],
+      timeoutSeconds: options.input_networkTimeout,
+    },
+    prompt,
   );
-  const messages = [{ role: 'user', content: prompt }];
-  const body = anthropic
-    ? { model, max_tokens: MAX_TOKENS, messages }
-    : { model, messages };
+}
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...headers },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(
-      timeoutMilliseconds(options.input_networkTimeout),
-    ),
-  });
-  if (!response.ok) {
-    throw new Error(`${provider.id} request failed: ${response.status}`);
-  }
-  const data = await response.json();
-  const text = anthropic
-    ? data.content?.find((part) => part.type === 'text')?.text
-    : data.choices?.[0]?.message?.content;
-  if (typeof text !== 'string') throw new Error(`${provider.id}: empty answer`);
-  return text;
+/**
+ * Checks key, model and server of a provider with a tiny request, using the
+ * values typed into the options page (not necessarily saved or selected).
+ * @param {string} providerId
+ * @param {ProviderSettings} settings
+ * @returns {Promise<void>}
+ * @throws {Error} With the HTTP status in `status` if the API rejects it.
+ */
+export async function testProvider(providerId, settings) {
+  await sendPrompt(requireProvider(providerId), settings, 'Reply with: OK');
 }

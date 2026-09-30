@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.mock('../../src/lib/storage.js', () => ({ getOptions: vi.fn() }));
 
 import { getOptions } from '../../src/lib/storage.js';
-import { askAI, listModels } from '../../src/lib/aiClient.js';
+import { askAI, listModels, testProvider } from '../../src/lib/aiClient.js';
 
 const base = {
   input_claudeApiKey: 'ck',
@@ -216,6 +216,44 @@ describe('aiClient', () => {
       fetchMock.mockResolvedValue({ ok: false, status: 401 });
       await expect(listModels('claude', 'k', 'https://x')).rejects.toThrow(
         '401',
+      );
+    });
+  });
+
+  describe('testProvider', () => {
+    const settings = {
+      apiKey: 'k',
+      model: 'm',
+      baseUrl: 'https://api.openai.com/v1',
+    };
+
+    it('resolves when the provider answers', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'OK' } }] }),
+      });
+      await expect(testProvider('openai', settings)).resolves.toBeUndefined();
+      const [url, init] = fetchMock.mock.calls[0];
+      expect(url).toBe('https://api.openai.com/v1/chat/completions');
+      expect(init.headers.Authorization).toBe('Bearer k');
+    });
+
+    it('rejects with the HTTP status', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 401 });
+      await expect(testProvider('openai', settings)).rejects.toMatchObject({
+        status: 401,
+      });
+    });
+
+    it('rejects without a key, without a model and for unknown providers', async () => {
+      await expect(
+        testProvider('openai', { ...settings, apiKey: '' }),
+      ).rejects.toThrow('No API key');
+      await expect(
+        testProvider('openai', { ...settings, model: '' }),
+      ).rejects.toThrow('No model');
+      await expect(testProvider('nope', settings)).rejects.toThrow(
+        'No AI provider',
       );
     });
   });
