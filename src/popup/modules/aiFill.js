@@ -28,8 +28,8 @@ function markAiFilled(field, editEvents) {
   if (!field) return;
   const icon = document.createElementNS(SVG_NS, 'svg');
   icon.setAttribute('viewBox', '0 0 22 22');
-  icon.setAttribute('width', '16');
-  icon.setAttribute('height', '16');
+  icon.setAttribute('width', '24');
+  icon.setAttribute('height', '24');
   icon.setAttribute('aria-hidden', 'true');
   const path = document.createElementNS(SVG_NS, 'path');
   path.setAttribute('d', SPARKLES_PATH);
