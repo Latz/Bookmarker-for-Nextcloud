@@ -172,6 +172,23 @@ describe('options.js', () => {
         value: '3000',
         addEventListener: vi.fn(),
       },
+      // AI tab
+      ai_error: { id: 'ai_error', textContent: '', classList: { toggle: vi.fn() } },
+      select_aiProvider: {
+        id: 'select_aiProvider',
+        value: 'off',
+        addEventListener: vi.fn(),
+      },
+      ...Object.fromEntries(
+        ['claude', 'openai'].flatMap((provider) =>
+          ['ApiKey', 'Model', 'BaseUrl'].map((field) => {
+            const id = `input_${provider}${field}`;
+            return [id, { id, value: '', addEventListener: vi.fn() }];
+          }),
+        ),
+      ),
+      btn_claudeModels: { id: 'btn_claudeModels', addEventListener: vi.fn() },
+      btn_openaiModels: { id: 'btn_openaiModels', addEventListener: vi.fn() },
       // Buttons
       btn_clear_all_data: {
         id: 'btn_clear_all_data',

@@ -509,6 +509,17 @@ const DEFAULT_OPTIONS = {
   cbx_titleSimilarityCheck: false, // Title similarity check (off by default)
   input_titleSimilarityThreshold: 75, // Title similarity threshold (0-100)
   input_titleCheckLimit: 20, // Limit bookmarks fetched for title check (performance)
+
+  // AI options (see aiClient.js)
+  select_aiProvider: 'off', // 'off' | 'claude' | 'openai'
+  input_claudeApiKey: '',
+  input_claudeModel: 'claude-haiku-4-5-20251001',
+  input_claudeBaseUrl: 'https://api.anthropic.com',
+  input_openaiApiKey: '',
+  input_openaiModel: 'gpt-4o-mini',
+  input_openaiBaseUrl: 'https://api.openai.com/v1',
+  cbx_aiTags: false,
+  cbx_aiDescription: false,
 };
 
 // -----------------------------------------------------------------------

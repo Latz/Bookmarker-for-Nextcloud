@@ -19,6 +19,7 @@ import '@yaireo/tagify/dist/tagify.css';
 import { getFolders } from '../background/modules/bookmarks/getFolders.js';
 import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
+import { listModels } from '../lib/aiClient.js';
 import {
   clampTimeoutSetting,
   DEFAULT_TIMEOUT_SECONDS,
@@ -215,8 +216,12 @@ async function setOptions() {
       let option_element = document.getElementById(option.item);
       if (option_element) option_element.checked = option.value;
     }
-    if (option.item.startsWith('input')) {
+    if (option.item.startsWith('input') || option.item.startsWith('select_')) {
       let option_element = document.getElementById(option.item);
+      // A model dropdown only knows the stored model until the list is loaded
+      if (option_element?.tagName === 'SELECT') {
+        fillModelSelect(option_element, [], option.value);
+      }
       if (option_element) option_element.value = option.value;
     }
     // set attribute to slider element, so that we can retrieve the previous
@@ -250,6 +255,8 @@ async function setOptions() {
         DEFAULT_TIMEOUT_SECONDS,
     );
   });
+
+  setupAiOptions();
 
   if (!IS_DEV_BUILD) {
     // "Create old database" deletes the real database and installs fake
@@ -317,6 +324,135 @@ async function setOptions() {
       window.open('displayJson.html?type=cache', 'Options', 'popup');
     }
   });
+}
+
+/**
+ * AI tab: stores the provider, keys, models and base URLs as they are typed.
+ * Choosing a provider asks for the host permission of its base URL.
+ */
+function setupAiOptions() {
+  const errorBox = document.getElementById('ai_error');
+  const showError = (message) => {
+    errorBox.textContent = message ?? '';
+    errorBox.classList.toggle('hidden', !message);
+  };
+
+  // Fills the model dropdown of a provider from its API (needs a key and the
+  // host permission for the base URL; otherwise the stored model stays).
+  const loadModels = async (provider, { silent = false } = {}) => {
+    const value = (field) =>
+      document.getElementById(`input_${provider}${field}`).value.trim();
+    const modelSelect = document.getElementById(`input_${provider}Model`);
+    const origin = aiOrigin(value('BaseUrl'));
+    if (!value('ApiKey') || !origin) {
+      if (!silent) showError(chrome.i18n.getMessage('aiModelsFailed'));
+      return;
+    }
+    try {
+      // The button click is a user gesture, so it may ask for the permission
+      // (answered at once if already granted); the automatic load only checks.
+      const origins = { origins: [`${origin}/*`] };
+      const granted = silent
+        ? await chrome.permissions.contains(origins)
+        : await chrome.permissions.request(origins);
+      if (!granted) {
+        if (!silent) showError(chrome.i18n.getMessage('aiPermissionDenied'));
+        return;
+      }
+      const timeout = await load_data(OPTION_STORE, 'input_networkTimeout');
+      const models = await listModels(
+        provider,
+        value('ApiKey'),
+        value('BaseUrl'),
+        timeout,
+      );
+      fillModelSelect(modelSelect, models, modelSelect.value);
+      showError('');
+    } catch (error) {
+      if (!silent) {
+        showError(
+          `${chrome.i18n.getMessage('aiModelsFailed')}: ${error?.message ?? error}`,
+        );
+      }
+    }
+  };
+
+  for (const provider of ['claude', 'openai']) {
+    let timer;
+    for (const field of ['ApiKey', 'Model', 'BaseUrl']) {
+      const input = document.getElementById(`input_${provider}${field}`);
+      input.addEventListener('input', () => {
+        void store_data(OPTION_STORE, { [input.id]: input.value.trim() });
+        // Reload the model list once typing in the key/URL has paused
+        if (field !== 'Model') {
+          clearTimeout(timer);
+          timer = setTimeout(
+            () => void loadModels(provider, { silent: true }),
+            600,
+          );
+        }
+      });
+    }
+    document
+      .getElementById(`btn_${provider}Models`)
+      .addEventListener('click', () => void loadModels(provider));
+    void loadModels(provider, { silent: true });
+  }
+
+  const select = document.getElementById('select_aiProvider');
+  select.addEventListener('change', async () => {
+    showError('');
+    const provider = select.value;
+    void store_data(OPTION_STORE, { select_aiProvider: provider });
+    if (provider === 'off') return;
+    const origin = aiOrigin(
+      document.getElementById(`input_${provider}BaseUrl`).value,
+    );
+    try {
+      const granted = origin
+        ? await chrome.permissions.request({ origins: [`${origin}/*`] })
+        : false;
+      if (!granted) showError(chrome.i18n.getMessage('aiPermissionDenied'));
+    } catch (error) {
+      showError(error?.message ?? String(error));
+    }
+  });
+}
+
+/**
+ * Replaces the options of a model dropdown. The current value is always kept
+ * as an option, so a stored model stays selectable without a loaded list.
+ * @param {HTMLSelectElement} select
+ * @param {Array<{id: string, label: string}>} models
+ * @param {string} current - The model that must stay selected.
+ */
+function fillModelSelect(select, models, current) {
+  const entries = [...models];
+  if (current && !entries.some((model) => model.id === current)) {
+    entries.unshift({ id: current, label: current });
+  }
+  select.replaceChildren(
+    ...entries.map((model) => {
+      const option = document.createElement('option');
+      option.value = model.id;
+      option.textContent = model.label;
+      return option;
+    }),
+  );
+  select.value = current;
+}
+
+/**
+ * @param {string} baseUrl
+ * @returns {string | null} The https origin of the URL, or null if invalid.
+ */
+function aiOrigin(baseUrl) {
+  try {
+    const url = new URL(baseUrl);
+    return url.protocol === 'https:' ? url.origin : null;
+  } catch {
+    return null;
+  }
 }
 
 /**

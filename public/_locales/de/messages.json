@@ -24,6 +24,16 @@
   "basic": { "message": "Basic" },
   "zen": { "message": "Zen" },
   "advanced": { "message": "Erweitert" },
+  "aiProvider": { "message": "KI-Anbieter" },
+  "aiProviderOff": { "message": "Aus" },
+  "aiApiKey": { "message": "API-Schlüssel" },
+  "aiModel": { "message": "Modell" },
+  "aiBaseUrl": { "message": "Basis-URL" },
+  "aiTags": { "message": "Tags mit KI vorschlagen" },
+  "aiDescription": { "message": "Beschreibung mit KI vorschlagen" },
+  "aiPermissionDenied": { "message": "Die Berechtigung für diesen Server wurde nicht erteilt." },
+  "aiRefreshModels": { "message": "↻" },
+  "aiModelsFailed": { "message": "Die Modellliste konnte nicht geladen werden" },
   "development": { "message": "Entwicklung" },
   "displayFolders": {
     "message": "Ordner anzeigen"

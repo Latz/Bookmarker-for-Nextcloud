@@ -91,3 +91,33 @@
 - **Bookmark check result cached when server unreachable** — A failed server check (network error) was cached as "not bookmarked", causing the extension to stop checking on subsequent opens. Failed checks are no longer cached.
 - **`cbx_zenDisplayNotification` write unreliable** — `store_data` calls in the context menu click handler were fire-and-forget without `.catch`. Added `.catch(() => {})` for robustness.
 - **`setZenModeMenu` try/catch** — Added error handling so `contextMenus.update` calls in `setZenModeMenu` don't throw when the menu item doesn't exist yet during a cold SW start.
+
+## [0.30.1] - 2024-06-18
+## Added
+- Notification requires interaction if bookmark could not be stored
+## Fixed
+- Changed notification icon if bookmark could not be saved
+- i18n strings
+
+## [0.30] - 2024-04-15
+...
+
+## [0.2.1] - 2024-03-01
+## Added
+- Timeout for Login Flow
+## Fixed
+- Styling for keyword input field
+- Made error message more decent
+
+## [0.2] - 2024-02-22
+## Added
+- Second public release
+
+## [0.16.8] - 2023-10-18
+### Added
+- First public release
+
+## [0.0] - 2021-09-18
+### Added
+* Started project 
+

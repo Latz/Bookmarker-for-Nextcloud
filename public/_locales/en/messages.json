@@ -24,6 +24,16 @@
   "basic": { "message": "Basic" },
   "zen": { "message": "Zen" },
   "advanced": { "message": "Advanced" },
+  "aiProvider": { "message": "AI provider" },
+  "aiProviderOff": { "message": "Off" },
+  "aiApiKey": { "message": "API key" },
+  "aiModel": { "message": "Model" },
+  "aiBaseUrl": { "message": "Base URL" },
+  "aiTags": { "message": "Suggest tags with AI" },
+  "aiDescription": { "message": "Suggest description with AI" },
+  "aiPermissionDenied": { "message": "Permission for this server was not granted." },
+  "aiRefreshModels": { "message": "↻" },
+  "aiModelsFailed": { "message": "Could not load the model list" },
   "development": { "message": "Development" },
   "displayFolders": {
     "message": "Display Folders"

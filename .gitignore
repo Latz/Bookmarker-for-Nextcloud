@@ -35,3 +35,4 @@ package-lock.json
 /sonar-scanner.sh
 .env
 /.env
+/_scratch/
