@@ -155,7 +155,31 @@
 
 /* Sparkle icon on fields the AI filled: a gentle pulse */
 .ai-badge {
-  animation: ai-pulse 1.6s ease-in-out infinite;
+  animation:
+    ai-pulse 1.6s ease-in-out infinite,
+    ai-hue 4s linear infinite;
+}
+/* the icon's colour runs once through the rainbow, then starts over */
+@keyframes ai-hue {
+  0%,
+  100% {
+    color: #f87171;
+  }
+  16% {
+    color: #fb923c;
+  }
+  33% {
+    color: #facc15;
+  }
+  50% {
+    color: #4ade80;
+  }
+  66% {
+    color: #38bdf8;
+  }
+  83% {
+    color: #a78bfa;
+  }
 }
 @keyframes ai-pulse {
   0%,
