@@ -5,35 +5,70 @@
 // estimate. Models that are not listed show their tokens but no cost.
 // A model matches the longest prefix of its id (so dated ids like
 // "claude-haiku-4-5-20251001" find "claude-haiku-4-5").
+//
+// The list between the markers is kept up to date by
+// tools/ai-pricing-check (`npm run check:prices -- --write`), which reads the
+// providers' price pages; edit it by hand only for models that tool cannot see.
 
 /** @type {Array<[prefix: string, input: number, output: number]>} */
-const PRICES = [
+export const PRICES = [
+  // <prices:begin>
   // Anthropic
-  ['claude-opus-4-5', 5, 25],
-  ['claude-opus-4-1', 15, 75],
-  ['claude-opus-4', 15, 75],
-  ['claude-sonnet-4', 3, 15],
-  ['claude-haiku-4-5', 1, 5],
   ['claude-3-5-haiku', 0.8, 4],
+  ['claude-fable-5', 10, 50],
+  ['claude-fable-5-1', 10, 50],
+  ['claude-haiku-4-5', 1, 5],
+  ['claude-mythos-5', 10, 50],
+  ['claude-mythos-5-1', 10, 50],
+  ['claude-opus-4', 15, 75],
+  ['claude-opus-4-1', 15, 75],
+  ['claude-opus-4-5', 5, 25],
+  ['claude-opus-4-6', 5, 25],
+  ['claude-opus-4-7', 5, 25],
+  ['claude-opus-4-8', 5, 25],
+  ['claude-opus-5', 5, 25],
+  ['claude-opus-5-5', 4, 20],
+  ['claude-sonnet-4', 3, 15],
+  ['claude-sonnet-4-5', 3, 15],
+  ['claude-sonnet-4-6', 3, 15],
+  ['claude-sonnet-5', 2, 10],
+  ['claude-sonnet-5-5', 2, 10],
   // OpenAI
-  ['gpt-5-nano', 0.05, 0.4],
-  ['gpt-5-mini', 0.25, 2],
-  ['gpt-5', 1.25, 10],
-  ['gpt-4.1-nano', 0.1, 0.4],
-  ['gpt-4.1-mini', 0.4, 1.6],
   ['gpt-4.1', 2, 8],
-  ['gpt-4o-mini', 0.15, 0.6],
+  ['gpt-4.1-mini', 0.4, 1.6],
+  ['gpt-4.1-nano', 0.1, 0.4],
   ['gpt-4o', 2.5, 10],
+  ['gpt-4o-mini', 0.15, 0.6],
+  ['gpt-5', 1.25, 10],
+  ['gpt-5-mini', 0.25, 2],
+  ['gpt-5-nano', 0.05, 0.4],
+  ['gpt-6-astra', 10, 50],
+  ['gpt-6-luna', 0.1, 0.5],
+  ['gpt-6.1-sol', 2, 10],
   ['o3-mini', 1.1, 4.4],
   // Google
-  ['gemini-2.5-flash-lite', 0.1, 0.4],
   ['gemini-2.5-flash', 0.3, 2.5],
+  ['gemini-2.5-flash-lite', 0.1, 0.4],
   ['gemini-2.5-pro', 1.25, 10],
-  // Others
-  ['mistral-small', 0.1, 0.3],
+  ['gemini-3-flash-preview', 0.5, 3],
+  ['gemini-3.1-flash-lite', 0.25, 1.5],
+  ['gemini-3.5-flash', 1.5, 9],
+  ['gemini-3.5-flash-lite', 0.3, 2.5],
+  ['gemini-3.6-flash', 0.75, 3.75],
+  ['gemini-3.7-flash', 0.75, 3.75],
+  ['gemini-3.8-flash', 0.75, 3.75],
+  ['gemini-omni-1.1-flash', 1.5, 9],
+  ['gemini-omni-flash-preview', 1.5, 9],
+  // Mistral
   ['mistral-large', 2, 6],
+  ['mistral-small', 0.1, 0.3],
+  // DeepSeek
   ['deepseek-chat', 0.28, 0.42],
+  ['deepseek-flash', 0.3, 1.2],
+  ['deepseek-v4-pro', 1.32, 3.96],
+  // Others
   ['llama-3.3-70b', 0.59, 0.79],
+  // <prices:end>
 ];
 
 // Longest prefix first, so "gpt-5-mini" wins over "gpt-5".
