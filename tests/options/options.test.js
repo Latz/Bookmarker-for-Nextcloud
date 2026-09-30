@@ -14,6 +14,11 @@ globalThis.chrome = {
 };
 
 // Mock Tagify - needs to be a constructor function
+vi.mock('../../src/options/aiPanel.js', () => ({
+  renderAiPanel: vi.fn(),
+  showAiProvider: vi.fn(),
+}));
+
 vi.mock('@yaireo/tagify', () => {
   const mockTagifyInstance = {
     on: vi.fn(),
@@ -55,6 +60,7 @@ vi.mock('../../src/popup/modules/fillFolders.js', () => ({
 
 // Import after mocking
 import Tagify from '@yaireo/tagify';
+import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
 import {
   load_data_all,
   load_data,
@@ -172,23 +178,26 @@ describe('options.js', () => {
         value: '3000',
         addEventListener: vi.fn(),
       },
-      // AI tab
-      ai_error: { id: 'ai_error', textContent: '', classList: { toggle: vi.fn() } },
-      select_aiProvider: {
-        id: 'select_aiProvider',
-        value: 'off',
-        addEventListener: vi.fn(),
+      // AI tab (cards and panels are rendered by aiPanel.js, mocked below)
+      ai_error: {
+        id: 'ai_error',
+        textContent: '',
+        classList: { toggle: vi.fn() },
       },
+      ai_providers: { id: 'ai_providers', addEventListener: vi.fn() },
+      ai_panels: { id: 'ai_panels' },
       ...Object.fromEntries(
-        ['claude', 'openai'].flatMap((provider) =>
-          ['ApiKey', 'Model', 'BaseUrl'].map((field) => {
-            const id = `input_${provider}${field}`;
+        AI_PROVIDERS.flatMap((provider) => [
+          ...['ApiKey', 'Model', 'BaseUrl'].map((field) => {
+            const id = `input_${provider.id}${field}`;
             return [id, { id, value: '', addEventListener: vi.fn() }];
           }),
-        ),
+          [
+            `btn_${provider.id}Models`,
+            { id: `btn_${provider.id}Models`, addEventListener: vi.fn() },
+          ],
+        ]),
       ),
-      btn_claudeModels: { id: 'btn_claudeModels', addEventListener: vi.fn() },
-      btn_openaiModels: { id: 'btn_openaiModels', addEventListener: vi.fn() },
       // Buttons
       btn_clear_all_data: {
         id: 'btn_clear_all_data',
@@ -698,9 +707,10 @@ describe('options.js', () => {
     });
 
     it('should show the effective value when the field is left', () => {
-      const changeHandler = mockElements.input_networkTimeout.addEventListener.mock.calls.find(
-        ([event]) => event === 'change',
-      )[1];
+      const changeHandler =
+        mockElements.input_networkTimeout.addEventListener.mock.calls.find(
+          ([event]) => event === 'change',
+        )[1];
 
       mockElements.input_networkTimeout.value = '';
       changeHandler();
@@ -718,7 +728,9 @@ describe('options.js', () => {
       load_data_all.mockResolvedValue([]);
       getOption.mockResolvedValue(false);
       getFolders.mockRejectedValue(new Error('offline'));
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       await import('../../src/options/options.js');
       await mockDocument.onreadystatechange();
@@ -825,7 +837,9 @@ describe('options.js', () => {
 
     it('should report a failing action instead of dropping the rejection', async () => {
       clearData.mockRejectedValueOnce(new Error('db locked'));
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
       const clickHandler =
         mockElements.content.addEventListener.mock.calls[0][1];
 

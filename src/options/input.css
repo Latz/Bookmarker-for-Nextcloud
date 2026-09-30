@@ -44,3 +44,24 @@
 .unselected_headings {
   color: inherit;
 }
+
+/* AI tab: provider cards (radio inputs are visually hidden) */
+.ai-card {
+  cursor: pointer;
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  padding: 0.375rem 0.875rem;
+  font-size: 0.875rem;
+}
+.ai-card:hover {
+  border-color: var(--color-info);
+}
+.ai-card:has(input:checked) {
+  border-color: var(--color-info);
+  background: var(--color-info);
+  color: var(--color-info-content);
+}
+.ai-card:has(input:focus-visible) {
+  outline: 2px solid var(--color-info);
+  outline-offset: 2px;
+}

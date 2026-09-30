@@ -13,6 +13,13 @@ const base = {
   input_openaiApiKey: 'ok',
   input_openaiModel: 'gpt-m',
   input_openaiBaseUrl: 'https://api.openai.com/v1',
+  input_geminiApiKey: 'gk',
+  input_geminiModel: 'gemini-m',
+  input_geminiBaseUrl:
+    'https://generativelanguage.googleapis.com/v1beta/openai',
+  input_ollamaApiKey: '',
+  input_ollamaModel: 'llama3',
+  input_ollamaBaseUrl: 'http://localhost:11434/v1/',
   input_networkTimeout: 10,
 };
 
@@ -60,6 +67,44 @@ describe('aiClient', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('https://api.openai.com/v1/chat/completions');
     expect(init.headers.Authorization).toBe('Bearer ok');
+  });
+
+  it('calls OpenAI-compatible providers at their own base URL', async () => {
+    getOptions.mockResolvedValue({ ...base, select_aiProvider: 'gemini' });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'answer' } }] }),
+    });
+    await expect(askAI('hi')).resolves.toBe('answer');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    );
+    expect(init.headers.Authorization).toBe('Bearer gk');
+    expect(JSON.parse(init.body).model).toBe('gemini-m');
+  });
+
+  it('works without a key for Ollama and sends no Authorization header', async () => {
+    getOptions.mockResolvedValue({ ...base, select_aiProvider: 'ollama' });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'hi' } }] }),
+    });
+    await expect(askAI('hi')).resolves.toBe('hi');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('http://localhost:11434/v1/chat/completions');
+    expect(init.headers.Authorization).toBeUndefined();
+  });
+
+  it('rejects an unknown provider id and a missing model', async () => {
+    getOptions.mockResolvedValue({ ...base, select_aiProvider: 'nope' });
+    await expect(askAI('hi')).rejects.toThrow('No AI provider');
+    getOptions.mockResolvedValue({
+      ...base,
+      select_aiProvider: 'ollama',
+      input_ollamaModel: '',
+    });
+    await expect(askAI('hi')).rejects.toThrow('No model');
   });
 
   it('throws on an HTTP error', async () => {
@@ -142,6 +187,26 @@ describe('aiClient', () => {
         'https://ollama.example/v1',
       );
       expect(models.map((m) => m.id)).toEqual(['llama3', 'mistral']);
+    });
+
+    it('strips the "models/" prefix of Gemini model ids', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [{ id: 'models/gemini-2.5-flash' }] }),
+      });
+      const models = await listModels('gemini', 'gk', 'https://g.example/v1');
+      expect(models).toEqual([
+        { id: 'gemini-2.5-flash', label: 'gemini-2.5-flash' },
+      ]);
+    });
+
+    it('lists local models without a key', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: [{ id: 'llama3' }] }),
+      });
+      await listModels('ollama', '', 'http://localhost:11434/v1');
+      expect(fetchMock.mock.calls[0][1].headers).toEqual({});
     });
 
     it('rejects without a key and on HTTP errors', async () => {

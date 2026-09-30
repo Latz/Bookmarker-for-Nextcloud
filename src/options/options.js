@@ -20,6 +20,8 @@ import { getFolders } from '../background/modules/bookmarks/getFolders.js';
 import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
 import { listModels } from '../lib/aiClient.js';
+import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
+import { renderAiPanel, showAiProvider } from './aiPanel.js';
 import {
   clampTimeoutSetting,
   DEFAULT_TIMEOUT_SECONDS,
@@ -210,18 +212,20 @@ async function setOptions() {
   const options = document.getElementById('content');
   const optionsData = await load_data_all(OPTION_STORE);
 
+  // The AI fields must exist before the stored values are filled in
+  renderAiPanel(
+    document.getElementById('ai_providers'),
+    document.getElementById('ai_panels'),
+  );
+
   // set all defaults
   optionsData.forEach((option) => {
     if (option.item.startsWith('cbx')) {
       let option_element = document.getElementById(option.item);
       if (option_element) option_element.checked = option.value;
     }
-    if (option.item.startsWith('input') || option.item.startsWith('select_')) {
+    if (option.item.startsWith('input')) {
       let option_element = document.getElementById(option.item);
-      // A model dropdown only knows the stored model until the list is loaded
-      if (option_element?.tagName === 'SELECT') {
-        fillModelSelect(option_element, [], option.value);
-      }
       if (option_element) option_element.value = option.value;
     }
     // set attribute to slider element, so that we can retrieve the previous
@@ -256,14 +260,16 @@ async function setOptions() {
     );
   });
 
-  setupAiOptions();
+  setupAiOptions(
+    optionsData.find((option) => option.item === 'select_aiProvider')?.value,
+  );
 
   if (!IS_DEV_BUILD) {
     // "Create old database" deletes the real database and installs fake
     // credentials; it exists for development only.
-    document.getElementById('input_dbVersion')?.parentElement?.classList.add(
-      'hidden',
-    );
+    document
+      .getElementById('input_dbVersion')
+      ?.parentElement?.classList.add('hidden');
   }
 
   // One delegated click listener for the whole options area: checkboxes are
@@ -311,7 +317,9 @@ async function setOptions() {
         }
       } catch (error) {
         console.error(`[options] ${button.id} failed:`, error);
-        window.alert(`${button.textContent.trim()}: ${error?.message ?? error}`);
+        window.alert(
+          `${button.textContent.trim()}: ${error?.message ?? error}`,
+        );
       }
     }
 
@@ -329,22 +337,24 @@ async function setOptions() {
 /**
  * AI tab: stores the provider, keys, models and base URLs as they are typed.
  * Choosing a provider asks for the host permission of its base URL.
+ * @param {string} [selected] - Stored provider id ('off' or unset: none).
  */
-function setupAiOptions() {
+function setupAiOptions(selected = 'off') {
+  const cards = document.getElementById('ai_providers');
+  const panels = document.getElementById('ai_panels');
   const errorBox = document.getElementById('ai_error');
   const showError = (message) => {
     errorBox.textContent = message ?? '';
     errorBox.classList.toggle('hidden', !message);
   };
 
-  // Fills the model dropdown of a provider from its API (needs a key and the
-  // host permission for the base URL; otherwise the stored model stays).
+  // Fills the model suggestions of a provider from its API (needs the host
+  // permission for the base URL; otherwise the typed/stored model stays).
   const loadModels = async (provider, { silent = false } = {}) => {
     const value = (field) =>
-      document.getElementById(`input_${provider}${field}`).value.trim();
-    const modelSelect = document.getElementById(`input_${provider}Model`);
+      document.getElementById(`input_${provider.id}${field}`).value.trim();
     const origin = aiOrigin(value('BaseUrl'));
-    if (!value('ApiKey') || !origin) {
+    if ((provider.needsKey && !value('ApiKey')) || !origin) {
       if (!silent) showError(chrome.i18n.getMessage('aiModelsFailed'));
       return;
     }
@@ -361,12 +371,19 @@ function setupAiOptions() {
       }
       const timeout = await load_data(OPTION_STORE, 'input_networkTimeout');
       const models = await listModels(
-        provider,
+        provider.id,
         value('ApiKey'),
         value('BaseUrl'),
         timeout,
       );
-      fillModelSelect(modelSelect, models, modelSelect.value);
+      document.getElementById(`models_${provider.id}`).replaceChildren(
+        ...models.map((model) => {
+          const option = document.createElement('option');
+          option.value = model.id;
+          option.label = model.label;
+          return option;
+        }),
+      );
       showError('');
     } catch (error) {
       if (!silent) {
@@ -377,10 +394,10 @@ function setupAiOptions() {
     }
   };
 
-  for (const provider of ['claude', 'openai']) {
+  for (const provider of AI_PROVIDERS) {
     let timer;
     for (const field of ['ApiKey', 'Model', 'BaseUrl']) {
-      const input = document.getElementById(`input_${provider}${field}`);
+      const input = document.getElementById(`input_${provider.id}${field}`);
       input.addEventListener('input', () => {
         void store_data(OPTION_STORE, { [input.id]: input.value.trim() });
         // Reload the model list once typing in the key/URL has paused
@@ -394,25 +411,30 @@ function setupAiOptions() {
       });
     }
     document
-      .getElementById(`btn_${provider}Models`)
+      .getElementById(`btn_${provider.id}Models`)
       .addEventListener('click', () => void loadModels(provider));
-    void loadModels(provider, { silent: true });
   }
 
-  const select = document.getElementById('select_aiProvider');
-  select.addEventListener('change', async () => {
+  showAiProvider(cards, panels, selected);
+  const current = getProvider(selected);
+  if (current) void loadModels(current, { silent: true });
+
+  cards.addEventListener('change', async (event) => {
     showError('');
-    const provider = select.value;
-    void store_data(OPTION_STORE, { select_aiProvider: provider });
-    if (provider === 'off') return;
+    const id = event.target.value;
+    void store_data(OPTION_STORE, { select_aiProvider: id });
+    showAiProvider(cards, panels, id);
+    const provider = getProvider(id);
+    if (!provider) return;
     const origin = aiOrigin(
-      document.getElementById(`input_${provider}BaseUrl`).value,
+      document.getElementById(`input_${id}BaseUrl`).value.trim(),
     );
     try {
       const granted = origin
         ? await chrome.permissions.request({ origins: [`${origin}/*`] })
         : false;
-      if (!granted) showError(chrome.i18n.getMessage('aiPermissionDenied'));
+      if (granted) void loadModels(provider, { silent: true });
+      else showError(chrome.i18n.getMessage('aiPermissionDenied'));
     } catch (error) {
       showError(error?.message ?? String(error));
     }
@@ -420,36 +442,18 @@ function setupAiOptions() {
 }
 
 /**
- * Replaces the options of a model dropdown. The current value is always kept
- * as an option, so a stored model stays selectable without a loaded list.
- * @param {HTMLSelectElement} select
- * @param {Array<{id: string, label: string}>} models
- * @param {string} current - The model that must stay selected.
- */
-function fillModelSelect(select, models, current) {
-  const entries = [...models];
-  if (current && !entries.some((model) => model.id === current)) {
-    entries.unshift({ id: current, label: current });
-  }
-  select.replaceChildren(
-    ...entries.map((model) => {
-      const option = document.createElement('option');
-      option.value = model.id;
-      option.textContent = model.label;
-      return option;
-    }),
-  );
-  select.value = current;
-}
-
-/**
+ * Origin of an AI server URL: https, or http for a local server (Ollama).
  * @param {string} baseUrl
- * @returns {string | null} The https origin of the URL, or null if invalid.
+ * @returns {string | null}
  */
 function aiOrigin(baseUrl) {
   try {
     const url = new URL(baseUrl);
-    return url.protocol === 'https:' ? url.origin : null;
+    const local = ['localhost', '127.0.0.1'].includes(url.hostname);
+    const allowed =
+      url.protocol === 'https:' || (local && url.protocol === 'http:');
+    // Host permissions ignore the port, so the origin is built without it
+    return allowed ? `${url.protocol}//${url.hostname}` : null;
   } catch {
     return null;
   }

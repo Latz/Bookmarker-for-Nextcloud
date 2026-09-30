@@ -13,6 +13,7 @@ const database = 'Bookmarker';
 const dbVersion = 2; // since v0.3 -- bump when a store is added; upgrade steps go in initDatabase
 
 import { openDB, deleteDB } from 'idb';
+import { aiProviderDefaults } from './aiProviders.js';
 import { cacheDbVersion, initCacheStores } from './cacheSchema.js';
 
 // -----------------------------------------------------------------------
@@ -511,13 +512,8 @@ const DEFAULT_OPTIONS = {
   input_titleCheckLimit: 20, // Limit bookmarks fetched for title check (performance)
 
   // AI options (see aiClient.js)
-  select_aiProvider: 'off', // 'off' | 'claude' | 'openai'
-  input_claudeApiKey: '',
-  input_claudeModel: 'claude-haiku-4-5-20251001',
-  input_claudeBaseUrl: 'https://api.anthropic.com',
-  input_openaiApiKey: '',
-  input_openaiModel: 'gpt-4o-mini',
-  input_openaiBaseUrl: 'https://api.openai.com/v1',
+  select_aiProvider: 'off', // 'off' or an id from aiProviders.js
+  ...aiProviderDefaults(), // input_<id>ApiKey / Model / BaseUrl per provider
   cbx_aiTags: false,
   cbx_aiDescription: false,
 };
@@ -546,7 +542,10 @@ export async function createOldDatabase(version) {
       value: 'ThisistheApppassword',
     });
     void db.put('credentials', { item: 'loginname', value: 'admin' });
-    void db.put('credentials', { item: 'server', value: 'https://pascal:9025' });
+    void db.put('credentials', {
+      item: 'server',
+      value: 'https://pascal:9025',
+    });
     void db.put('options', { item: 'cbx_autoDesc', value: true });
     void db.put('options', { item: 'cbx_autoTags', value: true });
     void db.put('options', { item: 'cbx_displayFolders', value: true });

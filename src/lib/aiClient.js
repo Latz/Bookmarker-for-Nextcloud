@@ -1,31 +1,37 @@
 // @ts-check
 // Minimal client for the AI providers configured on the options page (AI tab).
-// Supports Claude (Anthropic Messages API) and OpenAI (chat completions).
+// Supports the Anthropic Messages API and OpenAI-style chat completions (used
+// by OpenAI, Gemini, Mistral, Groq, OpenRouter, DeepSeek, Ollama, custom).
 import { getOptions } from './storage.js';
+import { getProvider } from './aiProviders.js';
 import { timeoutMilliseconds } from './networkTimeout.js';
 
 const MAX_TOKENS = 1024;
 
 /**
  * URL and authentication headers of a provider endpoint.
- * @param {'claude' | 'openai'} provider
+ * @param {'anthropic' | 'openai'} protocol
  * @param {string} apiKey
  * @param {string} baseUrl
  * @param {string} path - Endpoint path, e.g. '/models'.
  * @returns {{url: string, headers: Record<string, string>}}
  */
-function providerRequest(provider, apiKey, baseUrl, path) {
+function providerRequest(protocol, apiKey, baseUrl, path) {
   const url = `${String(baseUrl).replace(/\/+$/, '')}${path}`;
-  return provider === 'claude'
-    ? {
-        url,
-        headers: {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-      }
-    : { url, headers: { Authorization: `Bearer ${apiKey}` } };
+  if (protocol === 'openai') {
+    return {
+      url,
+      headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+    };
+  }
+  return {
+    url,
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+  };
 }
 
 // OpenAI's /models also lists embedding, audio, image and moderation models;
@@ -36,38 +42,53 @@ const OPENAI_NON_CHAT =
   /(audio|realtime|transcribe|tts|image|search|instruct|embedding|moderation)/;
 
 /**
+ * @param {string} providerId
+ * @returns {import('./aiProviders.js').AiProvider}
+ */
+function requireProvider(providerId) {
+  const provider = getProvider(providerId);
+  if (!provider) throw new Error('No AI provider selected');
+  return provider;
+}
+
+/**
  * Lists the models an AI provider offers.
- * @param {'claude' | 'openai'} provider
+ * @param {string} providerId - Id from aiProviders.js.
  * @param {string} apiKey
  * @param {string} baseUrl
  * @param {unknown} [timeoutSeconds] - Network timeout setting.
  * @returns {Promise<Array<{id: string, label: string}>>}
- * @throws {Error} If the key is missing or the request fails.
+ * @throws {Error} If a required key is missing or the request fails.
  */
-export async function listModels(provider, apiKey, baseUrl, timeoutSeconds) {
-  if (!apiKey) throw new Error(`No API key set for ${provider}`);
+export async function listModels(providerId, apiKey, baseUrl, timeoutSeconds) {
+  const provider = requireProvider(providerId);
+  if (provider.needsKey && !apiKey) {
+    throw new Error(`No API key set for ${provider.id}`);
+  }
+  const anthropic = provider.protocol === 'anthropic';
   const { url, headers } = providerRequest(
-    provider,
+    provider.protocol,
     apiKey,
     baseUrl,
-    provider === 'claude' ? '/v1/models?limit=1000' : '/models',
+    anthropic ? '/v1/models?limit=1000' : '/models',
   );
   const response = await fetch(url, {
     headers,
     signal: AbortSignal.timeout(timeoutMilliseconds(timeoutSeconds)),
   });
   if (!response.ok) {
-    throw new Error(`${provider} request failed: ${response.status}`);
+    throw new Error(`${provider.id} request failed: ${response.status}`);
   }
   const data = await response.json();
   const list = Array.isArray(data?.data) ? data.data : [];
-  if (provider === 'claude') {
+  if (anthropic) {
     // The API already returns the newest model first.
     return list.map((m) => ({ id: m.id, label: m.display_name ?? m.id }));
   }
-  const official = String(baseUrl).startsWith('https://api.openai.com');
+  const official =
+    provider.filterChatModels && String(baseUrl) === provider.baseUrl;
   return list
-    .map((m) => m.id)
+    .map((m) => String(m.id).replace(/^models\//, ''))
     .filter(
       (id) =>
         !official || (OPENAI_CHAT_MODEL.test(id) && !OPENAI_NON_CHAT.test(id)),
@@ -83,42 +104,33 @@ export async function listModels(provider, apiKey, baseUrl, timeoutSeconds) {
  * @throws {Error} If no provider/key is configured or the request fails.
  */
 export async function askAI(prompt) {
+  const { select_aiProvider: id } = await getOptions(['select_aiProvider']);
+  const provider = requireProvider(id);
+  const key = (field) => `input_${provider.id}${field}`;
   const options = await getOptions([
-    'select_aiProvider',
-    'input_claudeApiKey',
-    'input_claudeModel',
-    'input_claudeBaseUrl',
-    'input_openaiApiKey',
-    'input_openaiModel',
-    'input_openaiBaseUrl',
+    key('ApiKey'),
+    key('Model'),
+    key('BaseUrl'),
     'input_networkTimeout',
   ]);
-  const provider = options.select_aiProvider;
-  if (provider !== 'claude' && provider !== 'openai') {
-    throw new Error('No AI provider selected');
+  const apiKey = options[key('ApiKey')];
+  if (provider.needsKey && !apiKey) {
+    throw new Error(`No API key set for ${provider.id}`);
   }
-  const apiKey = options[`input_${provider}ApiKey`];
-  if (!apiKey) throw new Error(`No API key set for ${provider}`);
-  const baseUrl = String(options[`input_${provider}BaseUrl`]).replace(
-    /\/+$/,
-    '',
-  );
-  const model = options[`input_${provider}Model`];
+  const model = options[key('Model')];
+  if (!model) throw new Error(`No model set for ${provider.id}`);
+  const anthropic = provider.protocol === 'anthropic';
 
   const { url, headers } = providerRequest(
-    provider,
+    provider.protocol,
     apiKey,
-    baseUrl,
-    provider === 'claude' ? '/v1/messages' : '/chat/completions',
+    options[key('BaseUrl')],
+    anthropic ? '/v1/messages' : '/chat/completions',
   );
-  const body =
-    provider === 'claude'
-      ? {
-          model,
-          max_tokens: MAX_TOKENS,
-          messages: [{ role: 'user', content: prompt }],
-        }
-      : { model, messages: [{ role: 'user', content: prompt }] };
+  const messages = [{ role: 'user', content: prompt }];
+  const body = anthropic
+    ? { model, max_tokens: MAX_TOKENS, messages }
+    : { model, messages };
 
   const response = await fetch(url, {
     method: 'POST',
@@ -129,13 +141,12 @@ export async function askAI(prompt) {
     ),
   });
   if (!response.ok) {
-    throw new Error(`${provider} request failed: ${response.status}`);
+    throw new Error(`${provider.id} request failed: ${response.status}`);
   }
   const data = await response.json();
-  const text =
-    provider === 'claude'
-      ? data.content?.find((part) => part.type === 'text')?.text
-      : data.choices?.[0]?.message?.content;
-  if (typeof text !== 'string') throw new Error(`${provider}: empty answer`);
+  const text = anthropic
+    ? data.content?.find((part) => part.type === 'text')?.text
+    : data.choices?.[0]?.message?.content;
+  if (typeof text !== 'string') throw new Error(`${provider.id}: empty answer`);
   return text;
 }
