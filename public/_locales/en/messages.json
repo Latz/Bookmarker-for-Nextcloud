@@ -53,6 +53,7 @@
   "aiUsageOutput": { "message": "Output tokens" },
   "aiUsageCost": { "message": "Est. cost" },
   "aiUsageTotal": { "message": "Total" },
+  "aiUsageTotalAll": { "message": "Total (all providers)" },
   "aiUsageReset": { "message": "Reset statistics" },
   "aiUsageSince": { "message": "Counting since" },
   "aiUsageNote": { "message": "Costs are estimates from list prices (US dollars); \"–\" = price unknown, \"+\" = more than shown." },
