@@ -147,9 +147,22 @@
           <!--- ---------------------------------------------------------------- -->
           <div id="content_tab_ai" class="hidden delay-100">
             <div
+              class="mt-3 grid grid-cols-[max-content_1fr] items-center gap-x-6 gap-y-2"
+            >
+              <label for="select_aiProvider" i18n-data="aiActiveProvider"
+                >Active AI</label
+              >
+              <select
+                id="select_aiProvider"
+                class="select select-sm select-info w-[350px]"
+              ></select>
+            </div>
+            <h3 class="mt-5 text-base font-medium" i18n-data="aiConfigure">
+              Configure providers
+            </h3>
+            <div
               id="ai_providers"
-              class="mt-3 flex flex-wrap gap-2"
-              role="radiogroup"
+              class="mt-2 flex flex-wrap gap-2"
               aria-label="AI provider"
             ></div>
             <div id="ai_panels"></div>

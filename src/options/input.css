@@ -45,7 +45,8 @@
   color: inherit;
 }
 
-/* AI tab: provider cards (radio inputs are visually hidden) */
+/* AI tab: provider tabs. aria-selected = the one being viewed,
+   data-active = the AI in use (marked with a dot). */
 .ai-card {
   cursor: pointer;
   border: 1px solid var(--color-base-300);
@@ -57,12 +58,17 @@
 .ai-card:hover {
   border-color: var(--color-info);
 }
-.ai-card:has(input:checked) {
+.ai-card[aria-selected='true'] {
   border-color: var(--color-info);
   background: color-mix(in oklab, var(--color-info) 25%, var(--color-base-100));
   font-weight: 600;
 }
-.ai-card:has(input:focus-visible) {
+.ai-card[data-active='true']::after {
+  content: '●';
+  margin-inline-start: 0.4rem;
+  color: var(--color-success);
+}
+.ai-card:focus-visible {
   outline: 2px solid var(--color-info);
   outline-offset: 2px;
 }

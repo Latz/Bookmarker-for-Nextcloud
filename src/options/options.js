@@ -21,7 +21,12 @@ import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
 import { listModels, testProvider } from '../lib/aiClient.js';
 import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
-import { renderAiPanel, setModelOptions, showAiProvider } from './aiPanel.js';
+import {
+  markActiveProvider,
+  renderAiPanel,
+  setModelOptions,
+  showAiProvider,
+} from './aiPanel.js';
 import { initAiUsage } from './aiUsagePanel.js';
 import {
   clampTimeoutSetting,
@@ -215,6 +220,7 @@ async function setOptions() {
 
   // The AI fields must exist before the stored values are filled in
   renderAiPanel(
+    document.getElementById('select_aiProvider'),
     document.getElementById('ai_providers'),
     document.getElementById('ai_panels'),
   );
@@ -265,9 +271,9 @@ async function setOptions() {
     );
   });
 
-  setupAiOptions(
-    optionsData.find((option) => option.item === 'select_aiProvider')?.value,
-  );
+  const stored = (item) =>
+    optionsData.find((option) => option.item === item)?.value;
+  setupAiOptions(stored('select_aiProvider'), stored('aiViewProvider'));
 
   if (!IS_DEV_BUILD) {
     // "Create old database" deletes the real database and installs fake
@@ -342,10 +348,13 @@ async function setOptions() {
 /**
  * AI tab: stores the provider, keys, models and base URLs as they are typed.
  * Choosing a provider asks for the host permission of its base URL.
- * @param {string} [selected] - Stored provider id ('off' or unset: none).
+ * @param {string} [selected] - Stored id of the active provider ('off' or
+ *   unset: none).
+ * @param {string} [viewed] - Stored id of the provider tab last looked at.
  */
-function setupAiOptions(selected = 'off') {
+function setupAiOptions(selected = 'off', viewed) {
   initAiUsage();
+  const select = document.getElementById('select_aiProvider');
   const cards = document.getElementById('ai_providers');
   const panels = document.getElementById('ai_panels');
   const errorBox = document.getElementById('ai_error');
@@ -467,17 +476,33 @@ function setupAiOptions(selected = 'off') {
       .addEventListener('click', () => void runTest(provider));
   }
 
-  showAiProvider(cards, panels, selected);
-  const current = getProvider(selected);
-  if (current) void loadModels(current, { silent: true });
+  // The tab being looked at: the active AI, else the one seen last, else the
+  // first. Looking at a tab does not change which AI is active.
+  const first = getProvider(selected) ?? getProvider(viewed) ?? AI_PROVIDERS[0];
+  select.value = getProvider(selected) ? selected : 'off';
+  markActiveProvider(cards, select.value);
+  showAiProvider(cards, panels, first.id);
+  void loadModels(first, { silent: true });
 
-  cards.addEventListener('change', async (event) => {
-    showError('');
-    const id = event.target.value;
-    void store_data(OPTION_STORE, { select_aiProvider: id });
-    showAiProvider(cards, panels, id);
+  cards.addEventListener('click', (event) => {
+    const id = event.target.closest?.('[data-provider]')?.dataset.provider;
     const provider = getProvider(id);
     if (!provider) return;
+    showError('');
+    showAiProvider(cards, panels, id);
+    void store_data(OPTION_STORE, { aiViewProvider: id });
+    void loadModels(provider, { silent: true });
+  });
+
+  select.addEventListener('change', async () => {
+    showError('');
+    const id = select.value;
+    void store_data(OPTION_STORE, { select_aiProvider: id });
+    markActiveProvider(cards, id);
+    const provider = getProvider(id);
+    if (!provider) return;
+    showAiProvider(cards, panels, id);
+    void store_data(OPTION_STORE, { aiViewProvider: id });
     const origin = aiOrigin(
       document.getElementById(`input_${id}BaseUrl`).value.trim(),
     );
