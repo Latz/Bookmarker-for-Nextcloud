@@ -39,7 +39,7 @@ function markAiFilled(field, editEvents) {
   const label = chrome.i18n.getMessage('aiFilled');
   const badge = document.createElement('span');
   badge.className =
-    'ai-badge absolute right-1.5 top-1.5 z-10 text-info pointer-events-none';
+    'ai-badge absolute right-1.5 top-1.5 z-10 text-red-400 pointer-events-none';
   badge.title = label;
   badge.setAttribute('role', 'img');
   badge.setAttribute('aria-label', label);
