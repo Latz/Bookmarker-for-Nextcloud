@@ -30,7 +30,7 @@ export const AI_PROVIDERS = [
     label: 'OpenAI',
     protocol: 'openai',
     baseUrl: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-4o-mini',
+    defaultModel: 'gpt-5-mini',
     needsKey: true,
     filterChatModels: true,
   },
@@ -63,7 +63,7 @@ export const AI_PROVIDERS = [
     label: 'OpenRouter',
     protocol: 'openai',
     baseUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'openai/gpt-4o-mini',
+    defaultModel: 'openai/gpt-5-mini',
     needsKey: true,
   },
   {

@@ -87,7 +87,7 @@ describe('aiPanel', () => {
   it('uses a dropdown with the default model for regular providers', () => {
     const field = document.getElementById('input_openaiModel');
     expect(field.tagName).toBe('SELECT');
-    expect(field.value).toBe('gpt-4o-mini');
+    expect(field.value).toBe('gpt-5-mini');
   });
 
   it('keeps the current model selectable when a list is loaded', () => {
@@ -97,7 +97,7 @@ describe('aiPanel', () => {
       { id: 'o3-mini', label: 'o3-mini' },
     ]);
     expect([...field.options].map((o) => o.value)).toEqual([
-      'gpt-4o-mini',
+      'gpt-5-mini',
       'gpt-4.1',
       'o3-mini',
     ]);
