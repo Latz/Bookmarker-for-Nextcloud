@@ -41,7 +41,7 @@ export function createErrorBox(data) {
   const iconDiv = document.createElement('div');
   iconDiv.className = 'div1';
   const img = document.createElement('img');
-  img.src = '../images/icon-64x64-light.png';
+  img.src = '/images/icon-64x64-light.png';
   img.height = 64;
   img.width = 64;
   img.alt = '';

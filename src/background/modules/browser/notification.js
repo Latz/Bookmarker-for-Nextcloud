@@ -62,7 +62,10 @@ export async function initializeErrorIconCache() {
         );
         return response.ok;
       } catch (e) {
-        console.warn('[notification] error icon probe failed:', e);
+        // Fetching a file the extension does not ship rejects ("Failed to
+        // fetch") instead of returning a 404. The error variants are optional,
+        // so this is the expected "not available" answer, not a fault.
+        console.debug('[notification] no error icon for theme', theme, e);
         return false;
       }
     }),
