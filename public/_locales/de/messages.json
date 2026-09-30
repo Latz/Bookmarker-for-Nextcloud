@@ -43,6 +43,7 @@
   "aiTestModel": { "message": "Modell oder URL nicht gefunden" },
   "aiTestLimit": { "message": "Limit erreicht oder kein Guthaben" },
   "zenUseAi": { "message": "KI für fehlende Tags und Beschreibung nutzen" },
+  "aiFilled": { "message": "Von der KI vorgeschlagen" },
   "aiSuggesting": { "message": "KI macht Vorschläge …" },
   "aiPrivacyNote": { "message": "Bietet die Seite keine Tags oder Beschreibung, werden Titel, URL und ein Textauszug an den gewählten Anbieter gesendet." },
   "aiKeyOptional": { "message": "optional" },

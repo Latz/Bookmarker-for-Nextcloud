@@ -43,6 +43,7 @@
   "aiTestModel": { "message": "Model or URL not found" },
   "aiTestLimit": { "message": "Rate limit or no credit" },
   "zenUseAi": { "message": "Use AI for missing tags and description" },
+  "aiFilled": { "message": "Suggested by AI" },
   "aiSuggesting": { "message": "AI is suggesting…" },
   "aiPrivacyNote": { "message": "If the page offers no tags or description, its title, URL and an excerpt of its text are sent to the selected provider." },
   "aiKeyOptional": { "message": "optional" },

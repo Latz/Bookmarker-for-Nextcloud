@@ -58,6 +58,39 @@ describe('fillFromAi', () => {
     expect(document.getElementById('description').value).toBe('Short.');
   });
 
+  it('marks the description the AI filled with an icon until it is edited', async () => {
+    chrome.runtime.sendMessage.mockResolvedValue({ description: 'Short.' });
+
+    await fillFromAi({ ...page, keywords: ['found'] });
+
+    expect(document.querySelectorAll('.ai-badge')).toHaveLength(1);
+    expect(
+      document.getElementById('description').previousElementSibling.className,
+    ).toContain('ai-badge-anchor');
+    document.getElementById('description').dispatchEvent(new Event('input'));
+    expect(document.querySelector('.ai-badge')).toBeNull();
+  });
+
+  it('marks the tags the AI added', async () => {
+    document.getElementById('formData').innerHTML =
+      '<tags class="tagify"></tags>';
+    addKeywordsIfEmpty.mockReturnValue(true);
+    chrome.runtime.sendMessage.mockResolvedValue({ keywords: ['ai'] });
+
+    await fillFromAi({ ...page, description: 'found' });
+
+    expect(document.querySelectorAll('.ai-badge')).toHaveLength(1);
+  });
+
+  it('adds no icon when nothing was filled in', async () => {
+    addKeywordsIfEmpty.mockReturnValue(false);
+    chrome.runtime.sendMessage.mockResolvedValue({ keywords: ['ai'] });
+
+    await fillFromAi({ ...page, description: 'found' });
+
+    expect(document.querySelector('.ai-badge')).toBeNull();
+  });
+
   it('shows a status line while waiting and removes it afterwards', async () => {
     let answer;
     chrome.runtime.sendMessage.mockReturnValue(
