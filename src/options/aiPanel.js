@@ -20,6 +20,75 @@ function el(tag, attributes = {}, children = []) {
   return element;
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+// Eye drawn like the Dashicons "visibility" icon of the WordPress login; the
+// slash is shown while the key is visible ("hidden" icon = click to hide).
+const EYE_PATH =
+  'M10 4.4C3.6 4.4 0 10 0 10s3.6 5.6 10 5.6 10-5.6 10-5.6-3.6-5.6-10-5.6zm0 9.4c-2.1 0-3.8-1.7-3.8-3.8S7.9 6.2 10 6.2s3.8 1.7 3.8 3.8-1.7 3.8-3.8 3.8zM10 8c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z';
+const SLASH_PATH = 'M3 2.5l14 15';
+
+/** @returns {SVGElement} */
+function eyeIcon() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 20 20');
+  svg.setAttribute('width', '20');
+  svg.setAttribute('height', '20');
+  svg.setAttribute('aria-hidden', 'true');
+  const eye = document.createElementNS(SVG_NS, 'path');
+  eye.setAttribute('d', EYE_PATH);
+  eye.setAttribute('fill', 'currentColor');
+  eye.setAttribute('fill-rule', 'evenodd');
+  const slash = document.createElementNS(SVG_NS, 'path');
+  slash.setAttribute('d', SLASH_PATH);
+  slash.setAttribute('class', 'ai-eye-slash hidden');
+  slash.setAttribute('stroke', 'currentColor');
+  slash.setAttribute('stroke-width', '1.8');
+  slash.setAttribute('stroke-linecap', 'round');
+  svg.append(eye, slash);
+  return svg;
+}
+
+/**
+ * Wraps a password input with a WordPress-style show/hide button.
+ * @param {HTMLElement} input
+ * @returns {HTMLElement}
+ */
+function secretField(input) {
+  const t = (key) => chrome.i18n.getMessage(key);
+  input.classList.remove('w-[350px]');
+  input.classList.add('w-full', 'pr-10');
+  const button = el(
+    'button',
+    {
+      type: 'button',
+      class: 'ai-eye',
+      'aria-label': t('aiShowKey'),
+      'aria-pressed': 'false',
+    },
+    [eyeIcon()],
+  );
+  button.addEventListener('click', () => {
+    const show = input.type === 'password';
+    setSecretVisible(input, button, show);
+  });
+  return el('div', { class: 'relative w-[350px]' }, [input, button]);
+}
+
+/**
+ * @param {HTMLElement} input
+ * @param {HTMLElement} button
+ * @param {boolean} show
+ */
+function setSecretVisible(input, button, show) {
+  input.type = show ? 'text' : 'password';
+  button.setAttribute('aria-pressed', String(show));
+  button.setAttribute(
+    'aria-label',
+    chrome.i18n.getMessage(show ? 'aiHideKey' : 'aiShowKey'),
+  );
+  button.querySelector('.ai-eye-slash')?.classList.toggle('hidden', !show);
+}
+
 /**
  * @param {string} label - Label text, already localized.
  * @param {string} id - Id of the field the label belongs to.
@@ -62,7 +131,7 @@ function providerPanel(provider) {
       ...row(
         `${t('aiApiKey')}${provider.needsKey ? '' : ` (${t('aiKeyOptional')})`}`,
         `input_${id}ApiKey`,
-        text('ApiKey', 'password'),
+        secretField(text('ApiKey', 'password')),
       ),
     );
   }
@@ -94,7 +163,7 @@ function providerPanel(provider) {
   }
   // The key field is optional for Ollama/custom servers; keep the id present
   // so that stored keys and the model loader work for every provider.
-  if (!fields.some((f) => f.id === `input_${id}ApiKey`)) {
+  if (!panel.querySelector(`#input_${id}ApiKey`)) {
     panel.append(
       el('input', { type: 'hidden', id: `input_${id}ApiKey`, value: '' }),
     );
@@ -137,6 +206,10 @@ export function renderAiPanel(cards, panels) {
 export function showAiProvider(cards, panels, providerId) {
   for (const radio of cards.querySelectorAll('input[type=radio]')) {
     radio.checked = radio.value === providerId;
+  }
+  for (const input of panels.querySelectorAll('input[id$=ApiKey]')) {
+    const button = input.parentElement?.querySelector('.ai-eye');
+    if (button) setSecretVisible(input, button, false);
   }
   for (const panel of panels.children) {
     panel.classList.toggle('hidden', panel.id !== `ai_panel_${providerId}`);

@@ -33,6 +33,8 @@
   "aiDescription": { "message": "Beschreibung mit KI vorschlagen" },
   "aiPermissionDenied": { "message": "Die Berechtigung für diesen Server wurde nicht erteilt." },
   "aiRefreshModels": { "message": "↻" },
+  "aiShowKey": { "message": "API-Schlüssel anzeigen" },
+  "aiHideKey": { "message": "API-Schlüssel verbergen" },
   "aiKeyOptional": { "message": "optional" },
   "aiOllamaHint": { "message": "Ollama muss diese Erweiterung zulassen: OLLAMA_ORIGINS=chrome-extension://* setzen und Ollama neu starten." },
   "aiModelsFailed": { "message": "Die Modellliste konnte nicht geladen werden" },

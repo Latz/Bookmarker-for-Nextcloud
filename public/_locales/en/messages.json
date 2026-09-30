@@ -33,6 +33,8 @@
   "aiDescription": { "message": "Suggest description with AI" },
   "aiPermissionDenied": { "message": "Permission for this server was not granted." },
   "aiRefreshModels": { "message": "↻" },
+  "aiShowKey": { "message": "Show API key" },
+  "aiHideKey": { "message": "Hide API key" },
   "aiKeyOptional": { "message": "optional" },
   "aiOllamaHint": { "message": "Ollama must allow this extension: set OLLAMA_ORIGINS=chrome-extension://* and restart Ollama." },
   "aiModelsFailed": { "message": "Could not load the model list" },
