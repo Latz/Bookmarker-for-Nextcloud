@@ -12,6 +12,7 @@
 // caches in the modules for how that cost is reduced).
 // -----------------------------------------------------------------------------
 import getData, { getBookmarkStatus } from './modules/bookmarks/getData.js';
+import { getAiSuggestions } from './modules/page/aiSuggest.js';
 import { zenMode } from './modules/bookmarks/zenMode.js';
 import { saveBookmark } from './modules/bookmarks/saveBookmark.js';
 import { handleContextMenuClick } from './modules/browser/contextMenu.js';
@@ -91,6 +92,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           });
         }
       })();
+      return true;
+    case 'aiSuggest':
+      // Tags/description from the configured AI for the active tab, asked for
+      // by the popup when the normal extraction found none. getAiSuggestions
+      // never throws; it answers {} on any failure.
+      void getAiSuggestions(request.data).then(sendResponse);
       return true;
     case 'authorize':
       // Opens the login page in a new tab (the Nextcloud login flow v2 runs there).

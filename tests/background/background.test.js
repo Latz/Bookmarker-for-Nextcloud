@@ -101,6 +101,10 @@ vi.mock('../../src/lib/cache.js', () => ({
   cacheTempAdd: vi.fn(() => Promise.resolve()),
 }));
 
+vi.mock('../../src/background/modules/page/aiSuggest.js', () => ({
+  getAiSuggestions: vi.fn(() => Promise.resolve({})),
+}));
+
 vi.mock('../../src/background/modules/bookmarks/zenMode.js', () => ({
   // async in production; background.js chains .catch() onto the result
   zenMode: vi.fn().mockResolvedValue(undefined),
@@ -121,6 +125,7 @@ import { notifyUser } from '../../src/background/modules/browser/notification.js
 import getBrowserTheme from '../../src/background/modules/browser/getBrowserTheme.js';
 import { cacheGet, cacheTempAdd } from '../../src/lib/cache.js';
 import { zenMode } from '../../src/background/modules/bookmarks/zenMode.js';
+import { getAiSuggestions } from '../../src/background/modules/page/aiSuggest.js';
 
 describe('background.js', () => {
   let messageListener;
@@ -282,6 +287,24 @@ describe('background.js', () => {
       // Without this the popup would wait until the service worker dies.
       expect(sendResponse).toHaveBeenCalledWith({ ok: false, error: 'boom' });
       consoleError.mockRestore();
+    });
+
+    it('answers an aiSuggest request with the AI suggestions', async () => {
+      const sendResponse = vi.fn();
+      getAiSuggestions.mockResolvedValueOnce({ keywords: ['a'] });
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      const request = { msg: 'aiSuggest', data: { tags: true } };
+      expect(messageListener(request, {}, sendResponse)).toBe(true);
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(getAiSuggestions).toHaveBeenCalledWith({ tags: true });
+      expect(sendResponse).toHaveBeenCalledWith({ keywords: ['a'] });
     });
 
     it('answers a getBookmarkStatus request with the lookup result', async () => {

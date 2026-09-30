@@ -1,6 +1,7 @@
 // @ts-check
-import { load_data } from '../../../lib/storage.js';
+import { getOptions, load_data } from '../../../lib/storage.js';
 import getData from './getData.js';
+import { getAiSuggestions } from '../page/aiSuggest.js';
 import apiCall from '../../../lib/apiCall.js';
 import { notifyUser } from '../browser/notification.js';
 
@@ -33,6 +34,28 @@ export async function zenMode() {
   if (data.ok === false) {
     void notifyUser({ status: 'error', statusText: data.error });
     return;
+  }
+
+  // Tags/description the page did not offer: ask the AI if the user allowed it
+  // for zen mode. It never throws; without an answer the page is saved as is.
+  const ai = await getOptions([
+    'cbx_zenUseAi',
+    'cbx_aiTags',
+    'cbx_aiDescription',
+  ]);
+  if (ai.cbx_zenUseAi) {
+    const tags = ai.cbx_aiTags && !(data.keywords?.length > 0);
+    const description = ai.cbx_aiDescription && !data.description?.trim();
+    if (tags || description) {
+      const suggestions = await getAiSuggestions({
+        tags,
+        description,
+        title: data.title,
+        url: data.url,
+      });
+      if (suggestions.keywords) data.keywords = suggestions.keywords;
+      if (suggestions.description) data.description = suggestions.description;
+    }
   }
 
   // Folder IDs and extra keywords the user configured for zen mode.

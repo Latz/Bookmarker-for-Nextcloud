@@ -17,6 +17,7 @@ import {
   createForm,
   hydrateForm,
 } from './modules/hydrateForm.js';
+import { fillFromAi } from './modules/aiFill.js';
 import addSaveBookmarkButtonListener from './modules/saveBookmarks.js';
 import {
   BOOKMARK_STATUS_REQUEST,
@@ -90,12 +91,29 @@ async function runFormFlow(dataPromise, statusPromise = null) {
     // Not awaited: the form is already usable. The Save button stays locked
     // until this settles (applyBookmarkStatus releases it in every case).
     (statusPromise ?? Promise.resolve({ ok: false }))
-      .then(applyBookmarkStatus)
+      .then(async (status) => {
+        await applyBookmarkStatus(status);
+        // A stored bookmark brings its own tags and description
+        if (!(status?.ok && status.found)) suggestWithAi(data);
+      })
       .catch((error) => {
         console.error('[popup] applying the bookmark status failed:', error);
         return applyBookmarkStatus({ ok: false });
       });
+  } else if (!data.found) {
+    suggestWithAi(data);
   }
+}
+
+/**
+ * Fills missing tags/description with the AI's suggestions. Not awaited: the
+ * form is usable meanwhile, and a failure only costs the suggestions.
+ * @param {Object} data - The page data the form was filled with.
+ */
+function suggestWithAi(data) {
+  fillFromAi(data).catch((error) => {
+    console.error('[popup] AI suggestions failed:', error);
+  });
 }
 
 /**

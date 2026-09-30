@@ -9,6 +9,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // Mock dependencies
 vi.mock('../../src/lib/storage.js', () => ({
   load_data: vi.fn(),
+  getOptions: vi.fn(),
+}));
+
+vi.mock('../../src/background/modules/page/aiSuggest.js', () => ({
+  getAiSuggestions: vi.fn(),
 }));
 
 vi.mock('../../src/background/modules/bookmarks/getData.js', () => ({
@@ -35,13 +40,16 @@ import { zenMode } from '../../src/background/modules/bookmarks/zenMode.js';
 import getData from '../../src/background/modules/bookmarks/getData.js';
 import apiCall from '../../src/lib/apiCall.js';
 import { notifyUser } from '../../src/background/modules/browser/notification.js';
-import { load_data } from '../../src/lib/storage.js';
+import { getOptions, load_data } from '../../src/lib/storage.js';
+import { getAiSuggestions } from '../../src/background/modules/page/aiSuggest.js';
 
 describe('zenMode', () => {
   let mockData;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    getOptions.mockResolvedValue({});
+    getAiSuggestions.mockResolvedValue({});
     mockData = {
       title: 'Test Page',
       url: 'https://example.com',
@@ -567,6 +575,73 @@ describe('zenMode', () => {
       apiCall.mockRejectedValue(new Error('Network error'));
 
       await expect(zenMode()).rejects.toThrow('Network error');
+    });
+  });
+
+  describe('AI suggestions', () => {
+    const aiOptions = {
+      cbx_zenUseAi: true,
+      cbx_aiTags: true,
+      cbx_aiDescription: true,
+    };
+
+    beforeEach(() => {
+      load_data.mockResolvedValue(undefined);
+      apiCall.mockResolvedValue({ status: 'success' });
+    });
+
+    it('adds the AI tags and description when the page offered none', async () => {
+      getOptions.mockResolvedValue(aiOptions);
+      getData.mockResolvedValue({ ...mockData, keywords: [], description: '' });
+      getAiSuggestions.mockResolvedValue({
+        keywords: ['ai-tag'],
+        description: 'From the AI.',
+      });
+
+      await zenMode();
+
+      expect(getAiSuggestions).toHaveBeenCalledWith({
+        tags: true,
+        description: true,
+        title: 'Test Page',
+        url: 'https://example.com',
+      });
+      const body = new URLSearchParams(apiCall.mock.calls[0][2]);
+      expect(body.getAll('tags[]')).toEqual(['ai-tag']);
+      expect(body.get('description')).toBe('From the AI.');
+    });
+
+    it('only asks for what is missing', async () => {
+      getOptions.mockResolvedValue(aiOptions);
+      getData.mockResolvedValue({ ...mockData, keywords: [] });
+
+      await zenMode();
+
+      expect(getAiSuggestions).toHaveBeenCalledWith(
+        expect.objectContaining({ tags: true, description: false }),
+      );
+    });
+
+    it('does not ask when the zen option is off or nothing is missing', async () => {
+      getData.mockResolvedValue({ ...mockData, keywords: [], description: '' });
+      getOptions.mockResolvedValue({ ...aiOptions, cbx_zenUseAi: false });
+      await zenMode();
+      getData.mockResolvedValue(mockData);
+      getOptions.mockResolvedValue(aiOptions);
+      await zenMode();
+
+      expect(getAiSuggestions).not.toHaveBeenCalled();
+    });
+
+    it('saves the page as found when the AI gives nothing', async () => {
+      getOptions.mockResolvedValue(aiOptions);
+      getData.mockResolvedValue({ ...mockData, keywords: [], description: '' });
+
+      await zenMode();
+
+      const body = new URLSearchParams(apiCall.mock.calls[0][2]);
+      expect(body.getAll('tags[]')).toEqual([]);
+      expect(body.get('description')).toBe('');
     });
   });
 });

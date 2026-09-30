@@ -109,6 +109,16 @@
                 >Display notification in Zen Mode</label
               >
             </div>
+            <div>
+              <input
+                type="checkbox"
+                id="cbx_zenUseAi"
+                class="toggle toggle-info toggle-xs"
+              />
+              <label for="cbx_zenUseAi" i18n-data="zenUseAi"
+                >Use AI for missing tags and description</label
+              >
+            </div>
             <div
               class="mt-3 grid grid-cols-[max-content_1fr] items-center gap-x-6 gap-y-2"
             >
@@ -163,6 +173,10 @@
                 >Suggest description with AI</label
               >
             </div>
+            <p class="mt-2 text-sm opacity-70" i18n-data="aiPrivacyNote">
+              If the page offers no tags or description, its title, URL and an
+              excerpt of its text are sent to the selected provider.
+            </p>
             <div class="text-error hidden" id="ai_error"></div>
           </div>
           <!--- ---------------------------------------------------------------- -->

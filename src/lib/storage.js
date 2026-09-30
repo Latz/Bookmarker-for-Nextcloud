@@ -516,6 +516,7 @@ const DEFAULT_OPTIONS = {
   ...aiProviderDefaults(), // input_<id>ApiKey / Model / BaseUrl per provider
   cbx_aiTags: false,
   cbx_aiDescription: false,
+  cbx_zenUseAi: false, // Zen mode: ask the AI for missing tags/description
 };
 
 // -----------------------------------------------------------------------

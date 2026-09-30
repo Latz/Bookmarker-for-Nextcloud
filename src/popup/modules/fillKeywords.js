@@ -64,6 +64,21 @@ export function replaceKeywords(keywords) {
 }
 
 /**
+ * Adds suggested tags (e.g. from the AI) to a keywords field that is still
+ * empty. Does nothing if there is no field, it already has tags, or the user
+ * has typed in it.
+ * @param {Array<string>} keywords
+ * @returns {boolean} Whether the tags were added.
+ */
+export function addKeywordsIfEmpty(keywords) {
+  if (!activeTagify || editedByUser) return false;
+  if (activeTagify.value?.length > 0) return false;
+  if (!keywords || keywords.length === 0) return false;
+  activeTagify.addTags(keywords);
+  return true;
+}
+
+/**
  * Turns the keywords input into a Tagify tag field, with the cached keywords
  * of the server as autocomplete suggestions, and adds the keywords extracted
  * from the page as initial tags.
