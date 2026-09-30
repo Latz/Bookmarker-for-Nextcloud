@@ -87,7 +87,7 @@ export async function fillFromAi(data) {
 
   const status = document.createElement('div');
   status.id = 'ai_status';
-  status.className = 'text-center text-sm opacity-70';
+  status.className = 'ai-rainbow text-center text-sm';
   status.textContent = chrome.i18n.getMessage('aiSuggesting');
   document.getElementById('formData')?.after(status);
   try {

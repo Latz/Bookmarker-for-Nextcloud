@@ -121,3 +121,34 @@
 .div3 {
   grid-area: 2/2/3/3;
 }
+
+/* "AI is suggesting ...": rainbow text that flows while the AI is working */
+.ai-rainbow {
+  background: linear-gradient(
+    90deg,
+    #f87171,
+    #fb923c,
+    #facc15,
+    #4ade80,
+    #38bdf8,
+    #a78bfa,
+    #f472b6,
+    #f87171
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 600;
+  animation: ai-rainbow-flow 2s linear infinite;
+}
+@keyframes ai-rainbow-flow {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-rainbow {
+    animation: none;
+  }
+}
