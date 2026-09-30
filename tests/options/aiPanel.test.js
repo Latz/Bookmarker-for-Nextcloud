@@ -1,7 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
-import { renderAiPanel, showAiProvider } from '../../src/options/aiPanel.js';
+import {
+  renderAiPanel,
+  setModelOptions,
+  showAiProvider,
+} from '../../src/options/aiPanel.js';
 
 describe('aiPanel', () => {
   let cards;
@@ -28,7 +32,9 @@ describe('aiPanel', () => {
       expect(document.getElementById(`btn_${p.id}Models`)).not.toBeNull();
       expect(document.getElementById(`btn_${p.id}Test`)).not.toBeNull();
       expect(document.getElementById(`ai_test_${p.id}`)).not.toBeNull();
-      expect(document.getElementById(`models_${p.id}`)).not.toBeNull();
+      expect(document.getElementById(`models_${p.id}`) !== null).toBe(
+        !!p.freeModel,
+      );
     }
   });
 
@@ -76,5 +82,34 @@ describe('aiPanel', () => {
     const input = document.getElementById('input_ollamaApiKey');
     expect(input.type).toBe('hidden');
     expect(input.parentElement.querySelector('.ai-eye')).toBeNull();
+  });
+
+  it('uses a dropdown with the default model for regular providers', () => {
+    const field = document.getElementById('input_openaiModel');
+    expect(field.tagName).toBe('SELECT');
+    expect(field.value).toBe('gpt-4o-mini');
+  });
+
+  it('keeps the current model selectable when a list is loaded', () => {
+    const field = document.getElementById('input_openaiModel');
+    setModelOptions(field, [
+      { id: 'gpt-4.1', label: 'gpt-4.1' },
+      { id: 'o3-mini', label: 'o3-mini' },
+    ]);
+    expect([...field.options].map((o) => o.value)).toEqual([
+      'gpt-4o-mini',
+      'gpt-4.1',
+      'o3-mini',
+    ]);
+    setModelOptions(field, [{ id: 'gpt-4.1', label: 'gpt-4.1' }], 'gpt-4.1');
+    expect(field.value).toBe('gpt-4.1');
+    expect(field.options).toHaveLength(1);
+  });
+
+  it('uses a text input with suggestions for Ollama and custom servers', () => {
+    const field = document.getElementById('input_ollamaModel');
+    expect(field.tagName).toBe('INPUT');
+    setModelOptions(field, [{ id: 'llama3', label: 'llama3' }]);
+    expect(document.getElementById('models_ollama').children).toHaveLength(1);
   });
 });

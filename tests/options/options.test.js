@@ -16,6 +16,7 @@ globalThis.chrome = {
 // Mock Tagify - needs to be a constructor function
 vi.mock('../../src/options/aiPanel.js', () => ({
   renderAiPanel: vi.fn(),
+  setModelOptions: vi.fn(),
   showAiProvider: vi.fn(),
 }));
 

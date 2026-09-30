@@ -11,6 +11,7 @@
  * @property {string} baseUrl - Default base URL.
  * @property {string} defaultModel
  * @property {boolean} needsKey
+ * @property {boolean} [freeModel] - Model is typed in (list may be empty).
  * @property {boolean} [filterChatModels] - /models also lists non-chat models.
  */
 
@@ -80,6 +81,7 @@ export const AI_PROVIDERS = [
     baseUrl: 'http://localhost:11434/v1',
     defaultModel: '',
     needsKey: false,
+    freeModel: true,
   },
   {
     id: 'custom',
@@ -88,6 +90,7 @@ export const AI_PROVIDERS = [
     baseUrl: '',
     defaultModel: '',
     needsKey: false,
+    freeModel: true,
   },
 ];
 

@@ -1,8 +1,8 @@
 // Builds the AI tab from the provider registry: one card per provider (radio
 // group) and one configuration panel per provider, of which only the panel of
 // the selected card is visible. Field ids: input_<id>ApiKey / Model / BaseUrl,
-// btn_<id>Models, btn_<id>Test, ai_test_<id> (test result), datalist
-// models_<id>.
+// btn_<id>Models, btn_<id>Test, ai_test_<id> (test result); the model field
+// is a dropdown, or an input with datalist models_<id> (freeModel providers).
 import { AI_PROVIDERS } from '../lib/aiProviders.js';
 
 /**
@@ -101,6 +101,38 @@ function row(label, id, field) {
 }
 
 /**
+ * Sets the models offered by a model field: the options of a dropdown (the
+ * current value always stays selectable) or the suggestions of a text input.
+ * @param {HTMLElement} field - The `input_<id>Model` element.
+ * @param {Array<{id: string, label: string}>} models
+ * @param {string} [current] - Model that stays selected; default: the field's.
+ */
+export function setModelOptions(field, models, current = field.value) {
+  const entries = [...models];
+  if (
+    field.tagName === 'SELECT' &&
+    current &&
+    !entries.some((model) => model.id === current)
+  ) {
+    entries.unshift({ id: current, label: current });
+  }
+  const options = entries.map((model) => {
+    const option = document.createElement('option');
+    option.value = model.id;
+    option.textContent = model.label;
+    return option;
+  });
+  if (field.tagName === 'SELECT') {
+    field.replaceChildren(...options);
+    field.value = current;
+  } else {
+    document
+      .getElementById(field.getAttribute('list'))
+      ?.replaceChildren(...options);
+  }
+}
+
+/**
  * @param {import('../lib/aiProviders.js').AiProvider} provider
  * @returns {HTMLElement}
  */
@@ -114,8 +146,19 @@ function providerPanel(provider) {
       class: 'input input-sm input-info w-[350px]',
       autocomplete: 'off',
     });
-  const model = text('Model');
-  model.setAttribute('list', `models_${id}`);
+  // Ollama/custom servers may offer no model list, so their model is typed in
+  // (with list suggestions); the others pick from a dropdown.
+  let model;
+  if (provider.freeModel) {
+    model = text('Model');
+    model.setAttribute('list', `models_${id}`);
+  } else {
+    model = el('select', {
+      id: `input_${id}Model`,
+      class: 'select select-sm select-info w-[350px]',
+    });
+    setModelOptions(model, [], provider.defaultModel);
+  }
   const refresh = el(
     'button',
     {
@@ -142,7 +185,7 @@ function providerPanel(provider) {
       `input_${id}Model`,
       el('div', { class: 'flex items-center gap-2' }, [
         model,
-        el('datalist', { id: `models_${id}` }),
+        ...(provider.freeModel ? [el('datalist', { id: `models_${id}` })] : []),
         refresh,
       ]),
     ),

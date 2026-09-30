@@ -21,7 +21,7 @@ import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
 import { listModels, testProvider } from '../lib/aiClient.js';
 import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
-import { renderAiPanel, showAiProvider } from './aiPanel.js';
+import { renderAiPanel, setModelOptions, showAiProvider } from './aiPanel.js';
 import {
   clampTimeoutSetting,
   DEFAULT_TIMEOUT_SECONDS,
@@ -226,6 +226,10 @@ async function setOptions() {
     }
     if (option.item.startsWith('input')) {
       let option_element = document.getElementById(option.item);
+      // A model dropdown only knows the stored model until the list is loaded
+      if (option_element?.tagName === 'SELECT') {
+        setModelOptions(option_element, [], option.value);
+      }
       if (option_element) option_element.value = option.value;
     }
     // set attribute to slider element, so that we can retrieve the previous
@@ -376,13 +380,9 @@ function setupAiOptions(selected = 'off') {
         value('BaseUrl'),
         timeout,
       );
-      document.getElementById(`models_${provider.id}`).replaceChildren(
-        ...models.map((model) => {
-          const option = document.createElement('option');
-          option.value = model.id;
-          option.label = model.label;
-          return option;
-        }),
+      setModelOptions(
+        document.getElementById(`input_${provider.id}Model`),
+        models,
       );
       showError('');
     } catch (error) {
