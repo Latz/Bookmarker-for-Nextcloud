@@ -20,7 +20,6 @@ vi.mock('../../src/options/aiUsagePanel.js', () => ({
 
 vi.mock('../../src/options/aiPanel.js', () => ({
   renderAiPanel: vi.fn(),
-  markActiveProvider: vi.fn(),
   setModelOptions: vi.fn(),
   showAiProvider: vi.fn(),
 }));
@@ -67,10 +66,7 @@ vi.mock('../../src/popup/modules/fillFolders.js', () => ({
 // Import after mocking
 import Tagify from '@yaireo/tagify';
 import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
-import {
-  markActiveProvider,
-  showAiProvider,
-} from '../../src/options/aiPanel.js';
+import { showAiProvider } from '../../src/options/aiPanel.js';
 import {
   load_data_all,
   load_data,
@@ -199,7 +195,6 @@ describe('options.js', () => {
         value: 'off',
         addEventListener: vi.fn(),
       },
-      ai_providers: { id: 'ai_providers', addEventListener: vi.fn() },
       ai_panels: { id: 'ai_panels' },
       ...Object.fromEntries(
         AI_PROVIDERS.flatMap((provider) => [
@@ -666,7 +661,7 @@ describe('options.js', () => {
     });
   });
 
-  describe('AI tab: active AI and provider tabs', () => {
+  describe('AI tab: provider dropdown', () => {
     const handler = (element, event) =>
       element.addEventListener.mock.calls.find((call) => call[0] === event)[1];
 
@@ -674,7 +669,6 @@ describe('options.js', () => {
       load_data.mockResolvedValue(undefined);
       load_data_all.mockResolvedValue([
         { item: 'select_aiProvider', value: 'openai' },
-        { item: 'aiViewProvider', value: 'claude' },
       ]);
       getOption.mockResolvedValue(false);
       getFolders.mockResolvedValue('<option value="1">Folder 1</option>');
@@ -688,41 +682,15 @@ describe('options.js', () => {
       store_data.mockClear();
     });
 
-    it('starts with the stored active AI and looks at its panel', () => {
+    it('starts with the stored provider and shows its panel', () => {
       expect(mockElements.select_aiProvider.value).toBe('openai');
-      expect(markActiveProvider).toHaveBeenCalledWith(
-        mockElements.ai_providers,
-        'openai',
-      );
       expect(showAiProvider).toHaveBeenCalledWith(
-        mockElements.ai_providers,
         mockElements.ai_panels,
         'openai',
       );
     });
 
-    it('clicking a tab only shows that provider, it does not activate it', async () => {
-      const click = handler(mockElements.ai_providers, 'click');
-
-      click({
-        target: { closest: () => ({ dataset: { provider: 'gemini' } }) },
-      });
-
-      expect(showAiProvider).toHaveBeenLastCalledWith(
-        mockElements.ai_providers,
-        mockElements.ai_panels,
-        'gemini',
-      );
-      expect(store_data).toHaveBeenCalledWith('options', {
-        aiViewProvider: 'gemini',
-      });
-      expect(store_data).not.toHaveBeenCalledWith('options', {
-        select_aiProvider: expect.anything(),
-      });
-      expect(chrome.permissions.request).not.toHaveBeenCalled();
-    });
-
-    it('choosing the active AI stores it and asks for the host permission', async () => {
+    it('choosing a provider stores it, shows its panel and asks for the host permission', async () => {
       mockElements.input_geminiBaseUrl.value =
         'https://generativelanguage.googleapis.com/v1beta/openai';
       mockElements.select_aiProvider.value = 'gemini';
@@ -732,8 +700,8 @@ describe('options.js', () => {
       expect(store_data).toHaveBeenCalledWith('options', {
         select_aiProvider: 'gemini',
       });
-      expect(markActiveProvider).toHaveBeenLastCalledWith(
-        mockElements.ai_providers,
+      expect(showAiProvider).toHaveBeenLastCalledWith(
+        mockElements.ai_panels,
         'gemini',
       );
       expect(chrome.permissions.request).toHaveBeenCalledWith({
@@ -741,7 +709,7 @@ describe('options.js', () => {
       });
     });
 
-    it('switching the AI off stores "off" and asks for nothing', async () => {
+    it('choosing "off" stores it, hides the panels and asks for nothing', async () => {
       mockElements.select_aiProvider.value = 'off';
 
       await handler(mockElements.select_aiProvider, 'change')();
@@ -749,6 +717,10 @@ describe('options.js', () => {
       expect(store_data).toHaveBeenCalledWith('options', {
         select_aiProvider: 'off',
       });
+      expect(showAiProvider).toHaveBeenLastCalledWith(
+        mockElements.ai_panels,
+        'off',
+      );
       expect(chrome.permissions.request).not.toHaveBeenCalled();
     });
   });

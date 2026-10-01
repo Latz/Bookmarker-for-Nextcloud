@@ -1,6 +1,6 @@
-// Builds the AI tab from the provider registry: a dropdown for the active AI,
-// one tab per provider and one configuration panel per provider, of which
-// only the panel of the viewed tab is visible. Field ids: input_<id>ApiKey / Model / BaseUrl,
+// Builds the AI tab from the provider registry: a dropdown to choose the AI
+// (off + providers) and one configuration panel per provider, of which only
+// the panel of the chosen provider is visible. Field ids: input_<id>ApiKey / Model / BaseUrl,
 // btn_<id>Models, btn_<id>Test, ai_test_<id> (test result); the model field
 // is a dropdown, or an input with datalist models_<id> (freeModel providers).
 import { AI_PROVIDERS } from '../lib/aiProviders.js';
@@ -237,71 +237,30 @@ function providerPanel(provider) {
 }
 
 /**
- * Renders the "active AI" dropdown, the provider tabs and the panels.
- * @param {HTMLSelectElement} select - Dropdown of the active AI (off + providers).
- * @param {HTMLElement} cards - Container for the provider tabs.
+ * Renders the provider dropdown (off + providers) and the panels.
+ * @param {HTMLSelectElement} select - Dropdown of the AI to use.
  * @param {HTMLElement} panels - Container for the provider panels.
  */
-export function renderAiPanel(select, cards, panels) {
-  const t = (key) => chrome.i18n.getMessage(key);
+export function renderAiPanel(select, panels) {
   const option = (value, label) => el('option', { value }, [label]);
   select.replaceChildren(
-    option('off', t('aiProviderOff')),
+    option('off', chrome.i18n.getMessage('aiProviderOff')),
     ...AI_PROVIDERS.map(({ id, label }) => option(id, label)),
-  );
-  cards.setAttribute('role', 'tablist');
-  cards.replaceChildren(
-    ...AI_PROVIDERS.map(({ id, label }) =>
-      el(
-        'button',
-        {
-          type: 'button',
-          role: 'tab',
-          class: 'ai-card',
-          'data-provider': id,
-          'aria-selected': 'false',
-        },
-        [label],
-      ),
-    ),
   );
   panels.replaceChildren(...AI_PROVIDERS.map(providerPanel));
 }
 
 /**
- * Shows the panel of `providerId` and marks its tab as the one being viewed.
- * This is only the view: which AI is active is chosen in the dropdown.
- * @param {HTMLElement} cards
+ * Shows the panel of `providerId` and hides all others ("off": none shown).
  * @param {HTMLElement} panels
  * @param {string} providerId
  */
-export function showAiProvider(cards, panels, providerId) {
-  for (const tab of cards.querySelectorAll('[data-provider]')) {
-    tab.setAttribute(
-      'aria-selected',
-      String(tab.getAttribute('data-provider') === providerId),
-    );
-  }
+export function showAiProvider(panels, providerId) {
   for (const input of panels.querySelectorAll('input[id$=ApiKey]')) {
     const button = input.parentElement?.querySelector('.ai-eye');
     if (button) setSecretVisible(input, button, false);
   }
   for (const panel of panels.children) {
     panel.classList.toggle('hidden', panel.id !== `ai_panel_${providerId}`);
-  }
-}
-
-/**
- * Marks the tab of the active AI with a dot ("off": no tab is marked).
- * @param {HTMLElement} cards
- * @param {string} activeId - Provider id or 'off'.
- */
-export function markActiveProvider(cards, activeId) {
-  const label = chrome.i18n.getMessage('aiActiveMark');
-  for (const tab of cards.querySelectorAll('[data-provider]')) {
-    const active = tab.getAttribute('data-provider') === activeId;
-    tab.setAttribute('data-active', String(active));
-    if (active) tab.setAttribute('title', label);
-    else tab.removeAttribute('title');
   }
 }

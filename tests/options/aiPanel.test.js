@@ -2,7 +2,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
 import {
-  markActiveProvider,
   renderAiPanel,
   setModelOptions,
   showAiProvider,
@@ -10,33 +9,25 @@ import {
 
 describe('aiPanel', () => {
   let select;
-  let cards;
   let panels;
   beforeEach(() => {
     globalThis.chrome = { i18n: { getMessage: vi.fn((key) => key) } };
-    document.body.innerHTML =
-      '<select id="s"></select><div id="c"></div><div id="p"></div>';
+    document.body.innerHTML = '<select id="s"></select><div id="p"></div>';
     select = document.getElementById('s');
-    cards = document.getElementById('c');
     panels = document.getElementById('p');
-    renderAiPanel(select, cards, panels);
+    renderAiPanel(select, panels);
   });
 
-  it('offers "off" plus every provider as the active AI', () => {
+  it('offers "off" plus every provider to choose from', () => {
     expect([...select.options].map((o) => o.value)).toEqual([
       'off',
       ...AI_PROVIDERS.map((p) => p.id),
     ]);
   });
 
-  it('renders one tab and one panel per provider', () => {
-    const tabs = [...cards.querySelectorAll('[data-provider]')];
-    expect(tabs.map((t) => t.dataset.provider)).toEqual(
-      AI_PROVIDERS.map((p) => p.id),
-    );
-    expect(tabs.every((t) => t.getAttribute('role') === 'tab')).toBe(true);
-    expect(cards.getAttribute('role')).toBe('tablist');
+  it('renders one panel per provider and no provider buttons', () => {
     expect(panels.children).toHaveLength(AI_PROVIDERS.length);
+    expect(document.querySelectorAll('button[data-provider]')).toHaveLength(0);
   });
 
   it('creates the key, model and base URL fields of every provider', () => {
@@ -54,36 +45,25 @@ describe('aiPanel', () => {
     }
   });
 
-  it('shows only the panel of the viewed provider and marks its tab', () => {
-    showAiProvider(cards, panels, 'gemini');
+  it('shows only the panel of the chosen provider', () => {
+    showAiProvider(panels, 'gemini');
     const visible = [...panels.children].filter(
       (p) => !p.classList.contains('hidden'),
     );
     expect(visible.map((p) => p.id)).toEqual(['ai_panel_gemini']);
-    const selected = cards.querySelectorAll('[aria-selected="true"]');
-    expect([...selected].map((t) => t.dataset.provider)).toEqual(['gemini']);
+
+    showAiProvider(panels, 'claude');
+    expect(
+      [...panels.children].filter((p) => !p.classList.contains('hidden')),
+    ).toHaveLength(1);
   });
 
-  it('viewing a tab does not change the active AI', () => {
-    select.value = 'openai';
-    markActiveProvider(cards, 'openai');
-
-    showAiProvider(cards, panels, 'claude');
-
-    expect(select.value).toBe('openai');
-    expect(cards.querySelector('[data-active="true"]').dataset.provider).toBe(
-      'openai',
-    );
-  });
-
-  it('marks exactly the active AI, and none for "off"', () => {
-    markActiveProvider(cards, 'mistral');
-    const active = cards.querySelectorAll('[data-active="true"]');
-    expect([...active].map((t) => t.dataset.provider)).toEqual(['mistral']);
-    expect(active[0].title).toBe('aiActiveMark');
-
-    markActiveProvider(cards, 'off');
-    expect(cards.querySelectorAll('[data-active="true"]')).toHaveLength(0);
+  it('shows no panel for "off"', () => {
+    showAiProvider(panels, 'gemini');
+    showAiProvider(panels, 'off');
+    expect(
+      [...panels.children].every((p) => p.classList.contains('hidden')),
+    ).toBe(true);
   });
 
   it('toggles the API key between hidden and visible with the eye button', () => {
@@ -105,7 +85,7 @@ describe('aiPanel', () => {
   it('hides visible keys again when a provider card is selected', () => {
     const input = document.getElementById('input_claudeApiKey');
     input.parentElement.querySelector('.ai-eye').click();
-    showAiProvider(cards, panels, 'openai');
+    showAiProvider(panels, 'openai');
     expect(input.type).toBe('password');
   });
 
