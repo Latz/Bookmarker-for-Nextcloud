@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { estimateCost, getPrice } from '../../src/lib/aiPricing.js';
+import {
+  estimateCost,
+  formatPrice,
+  getPrice,
+} from '../../src/lib/aiPricing.js';
 
 describe('aiPricing', () => {
   it('matches the longest model prefix', () => {
@@ -35,5 +39,11 @@ describe('aiPricing', () => {
   it('computes the cost from input and output tokens', () => {
     // 2M input tokens at $1 + 1M output tokens at $5
     expect(estimateCost('claude', 'claude-haiku-4-5', 2e6, 1e6)).toBeCloseTo(7);
+  });
+
+  it('formats a price pair for the dropdowns', () => {
+    expect(formatPrice({ input: 0.25, output: 2 })).toBe('$0.25 / $2');
+    expect(formatPrice({ input: 1.6, output: 10 })).toBe('$1.60 / $10');
+    expect(formatPrice({ input: 0.0625, output: 0.5 })).toBe('$0.0625 / $0.50');
   });
 });

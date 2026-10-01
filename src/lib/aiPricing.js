@@ -103,3 +103,18 @@ export function estimateCost(provider, model, inputTokens, outputTokens) {
   if (!price) return null;
   return (inputTokens * price.input + outputTokens * price.output) / 1_000_000;
 }
+
+/**
+ * "$0.25 / $2" -- input / output price per million tokens, for the model
+ * dropdowns. Whole dollars have no decimals, others at least two.
+ * @param {{input: number, output: number}} price
+ * @returns {string}
+ */
+export function formatPrice(price) {
+  const dollars = (value) =>
+    `$${value.toLocaleString('en-US', {
+      minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+      maximumFractionDigits: 4,
+    })}`;
+  return `${dollars(price.input)} / ${dollars(price.output)}`;
+}
