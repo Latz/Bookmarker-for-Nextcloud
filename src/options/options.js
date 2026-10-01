@@ -22,6 +22,7 @@ import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 import { listModels, testProvider } from '../lib/aiClient.js';
 import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
 import { renderAiPanel, setModelOptions, showAiProvider } from './aiPanel.js';
+import { renderCheapestModels } from './aiCheapestPanel.js';
 import { initAiUsage } from './aiUsagePanel.js';
 import {
   clampTimeoutSetting,
@@ -347,6 +348,7 @@ async function setOptions() {
  */
 function setupAiOptions(selected = 'off') {
   initAiUsage();
+  renderCheapestModels(document.getElementById('ai_cheapest'));
   const select = document.getElementById('select_aiProvider');
   const panels = document.getElementById('ai_panels');
   const errorBox = document.getElementById('ai_error');

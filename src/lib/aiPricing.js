@@ -134,3 +134,34 @@ export const INPUT_TOKENS_PER_OUTPUT_TOKEN = 10;
 export function typicalCost(price) {
   return price.input * INPUT_TOKENS_PER_OUTPUT_TOKEN + price.output;
 }
+
+/**
+ * The provider (see aiProviders.js) a model of the price list belongs to, by
+ * the start of its id; null for models of no provider the extension offers.
+ * @param {string} prefix
+ * @returns {string | null}
+ */
+export function providerOfModel(prefix) {
+  if (prefix.startsWith('claude')) return 'claude';
+  if (/^(gpt-|chatgpt-|o\d)/.test(prefix)) return 'openai';
+  if (prefix.startsWith('gemini')) return 'gemini';
+  if (prefix.startsWith('mistral')) return 'mistral';
+  if (prefix.startsWith('deepseek')) return 'deepseek';
+  if (prefix.startsWith('llama')) return 'groq';
+  return null;
+}
+
+/**
+ * The cheapest models of the price list over all providers, cheapest first
+ * (cost of a typical request, see typicalCost).
+ * @param {number} [limit]
+ * @returns {Array<{model: string, provider: string, price: {input: number, output: number}}>}
+ */
+export function cheapestModels(limit = 10) {
+  return PRICES.flatMap(([model, input, output]) => {
+    const provider = providerOfModel(model);
+    return provider ? [{ model, provider, price: { input, output } }] : [];
+  })
+    .sort((a, b) => typicalCost(a.price) - typicalCost(b.price))
+    .slice(0, limit);
+}

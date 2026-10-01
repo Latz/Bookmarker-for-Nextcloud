@@ -14,6 +14,10 @@ globalThis.chrome = {
 };
 
 // Mock Tagify - needs to be a constructor function
+vi.mock('../../src/options/aiCheapestPanel.js', () => ({
+  renderCheapestModels: vi.fn(),
+}));
+
 vi.mock('../../src/options/aiUsagePanel.js', () => ({
   initAiUsage: vi.fn(),
 }));
@@ -196,6 +200,7 @@ describe('options.js', () => {
         addEventListener: vi.fn(),
       },
       ai_panels: { id: 'ai_panels' },
+      ai_cheapest: { id: 'ai_cheapest' },
       ai_features: { id: 'ai_features', classList: { toggle: vi.fn() } },
       ...Object.fromEntries(
         AI_PROVIDERS.flatMap((provider) => [

@@ -70,12 +70,14 @@
   --price-second: light-dark(#a16207, #fde047);
 }
 option[data-price-rank='1'],
-select[data-price-rank='1'] {
+select[data-price-rank='1'],
+li[data-price-rank='1'] {
   color: var(--price-cheapest);
   font-weight: 600;
 }
 option[data-price-rank='2'],
-select[data-price-rank='2'] {
+select[data-price-rank='2'],
+li[data-price-rank='2'] {
   color: var(--price-second);
   font-weight: 600;
 }
