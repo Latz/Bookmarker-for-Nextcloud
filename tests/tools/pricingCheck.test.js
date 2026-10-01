@@ -15,7 +15,7 @@ import {
   extractOpenRouter,
   firstSentence,
   parseTokenCount,
-} from '../../tools/ai-pricing-check/extractors.js';
+} from '../../src/lib/aiPriceExtractors.js';
 import {
   collectInfo,
   compare,

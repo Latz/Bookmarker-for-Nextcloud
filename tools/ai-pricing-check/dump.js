@@ -5,7 +5,8 @@
 // Usage: node dump.js <outDir> <url> [url ...]
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { documentTables, documentText, fetchPage, parseHtml } from './pages.js';
+import { documentTables, documentText } from '../../src/lib/aiPriceSources.js';
+import { fetchPage, parseHtml } from './pages.js';
 
 const [outDir, ...urls] = process.argv.slice(2);
 if (!outDir) {

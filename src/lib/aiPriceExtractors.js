@@ -1,3 +1,6 @@
+// Used by the pricing checker (tools/ai-pricing-check) and by the extension
+// itself, which reads the same pages when the prices are updated.
+//
 // Turn the content of one provider's price page into rows
 // { prefix, input, output, source } -- dollars per million tokens, `prefix`
 // being the model id (or the start of it) the way src/lib/aiPricing.js

@@ -29,66 +29,11 @@ import {
   renderInfoFile,
   replaceBlock,
 } from './compare.js';
-import {
-  extractAnthropic,
-  extractDeepSeek,
-  extractGoogle,
-  extractGroq,
-  extractMistral,
-  extractOpenAI,
-  extractOpenRouter,
-} from './extractors.js';
-import { documentTables, documentText, fetchPage, parseHtml } from './pages.js';
+import { SOURCES, readSource } from '../../src/lib/aiPriceSources.js';
+import { fetchPage, parseHtml } from './pages.js';
 
 const PRICES_FILE = new URL('../../src/lib/aiPricing.js', import.meta.url);
 const INFO_FILE = new URL('../../src/lib/aiModelInfo.js', import.meta.url);
-
-const SOURCES = [
-  {
-    name: 'anthropic',
-    url: 'https://platform.claude.com/docs/en/about-claude/pricing',
-    official: true,
-    extract: ({ tables }) => extractAnthropic(tables),
-  },
-  {
-    name: 'openai',
-    url: 'https://developers.openai.com/api/docs/pricing',
-    official: true,
-    extract: ({ tables }) => extractOpenAI(tables),
-  },
-  {
-    name: 'google',
-    url: 'https://ai.google.dev/gemini-api/docs/pricing?hl=en',
-    official: true,
-    extract: ({ document }) => extractGoogle(document),
-  },
-  {
-    name: 'deepseek',
-    url: 'https://api-docs.deepseek.com/quick_start/pricing',
-    official: true,
-    extract: ({ document, tables }) =>
-      extractDeepSeek(tables, documentText(document)),
-  },
-  {
-    name: 'groq',
-    url: 'https://console.groq.com/docs/models',
-    official: true,
-    extract: ({ document }) => extractGroq(document),
-  },
-  {
-    name: 'mistral',
-    url: 'https://docs.mistral.ai/inference/pricing',
-    official: true,
-    extract: ({ tables }) => extractMistral(tables),
-  },
-  {
-    name: 'openrouter',
-    url: 'https://openrouter.ai/api/v1/models',
-    official: false,
-    json: true,
-    extract: ({ json }) => extractOpenRouter(json),
-  },
-];
 
 const { values: args } = parseArgs({
   options: {
@@ -100,41 +45,6 @@ const { values: args } = parseArgs({
   },
 });
 
-/**
- * Downloads one source and extracts its rows.
- * @param {(typeof SOURCES)[number]} source
- * @returns {Promise<{name: string, url: string, official: boolean, rows: Array<any>, error?: string}>}
- */
-async function readSource(source) {
-  const result = {
-    name: source.name,
-    url: source.url,
-    official: source.official,
-    rows: [],
-  };
-  try {
-    const page = await fetchPage(source.url);
-    if (page.status !== 200) {
-      result.error = `HTTP ${page.status}`;
-      return result;
-    }
-    const parsed = {};
-    if (source.json) {
-      parsed.json = JSON.parse(page.body);
-    } else {
-      parsed.document = parseHtml(page.body);
-      parsed.tables = documentTables(parsed.document);
-    }
-    result.rows = source.extract(parsed);
-    if (result.rows.length === 0) {
-      result.error = 'no prices found (did the page layout change?)';
-    }
-  } catch (error) {
-    result.error = error.message;
-  }
-  return result;
-}
-
 const fmt = (n) => `$${n}`;
 const rowText = (row) =>
   `${row.prefix}  ${fmt(row.input)} / ${fmt(row.output)}`;
@@ -142,7 +52,16 @@ const rowText = (row) =>
 async function main() {
   const wanted = args.source?.length ? new Set(args.source) : null;
   const chosen = SOURCES.filter((source) => !wanted || wanted.has(source.name));
-  const sources = await Promise.all(chosen.map(readSource));
+  const how = {
+    fetchText: async (url) => {
+      const page = await fetchPage(url);
+      return { status: page.status, body: page.body };
+    },
+    parseHtml,
+  };
+  const sources = await Promise.all(
+    chosen.map((source) => readSource(source, how)),
+  );
 
   console.log('Sources');
   for (const source of sources) {
