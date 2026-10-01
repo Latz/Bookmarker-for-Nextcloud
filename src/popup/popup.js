@@ -93,16 +93,28 @@ async function runFormFlow(dataPromise, statusPromise = null) {
     (statusPromise ?? Promise.resolve({ ok: false }))
       .then(async (status) => {
         await applyBookmarkStatus(status);
-        // A stored bookmark brings its own tags and description
-        if (!(status?.ok && status.found)) suggestWithAi(data);
+        if (isClearlyNew(status)) suggestWithAi(data);
       })
       .catch((error) => {
         console.error('[popup] applying the bookmark status failed:', error);
         return applyBookmarkStatus({ ok: false });
       });
-  } else if (!data.found) {
+  } else if (isClearlyNew(data)) {
     suggestWithAi(data);
   }
+}
+
+/**
+ * Whether the server lookup answered and the page is NOT bookmarked yet. Only
+ * then is it worth asking the AI: a stored bookmark brings its own tags and
+ * description, and without an answer (server unreachable, lookup failed) it is
+ * not known whether it would be overwritten. With the "already bookmarked?"
+ * check switched off the backend reports "not found" right away.
+ * @param {Object} [status] - A getBookmarkStatus reply, or a complete getData reply.
+ * @returns {boolean}
+ */
+function isClearlyNew(status) {
+  return Boolean(status?.ok && status.checkBookmark?.ok && !status.found);
 }
 
 /**

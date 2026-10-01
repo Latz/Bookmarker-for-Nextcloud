@@ -29,6 +29,10 @@ globalThis.chrome = {
 };
 
 // Mock modules
+vi.mock('../../src/popup/modules/aiFill.js', () => ({
+  fillFromAi: vi.fn(() => Promise.resolve()),
+}));
+
 vi.mock('../../src/popup/modules/hydrateForm.js', () => ({
   createForm: vi.fn(),
   hydrateForm: vi.fn(),
@@ -57,6 +61,7 @@ import {
   createForm,
   hydrateForm,
 } from '../../src/popup/modules/hydrateForm.js';
+import { fillFromAi } from '../../src/popup/modules/aiFill.js';
 import { load_data, getOption } from '../../src/lib/storage.js';
 import addSaveBookmarkButtonListener from '../../src/popup/modules/saveBookmarks.js';
 import textFit from 'textfit';
@@ -310,6 +315,83 @@ describe('popup.js', () => {
 
         expect(hydrateForm).toHaveBeenCalled();
         expect(applyBookmarkStatus).not.toHaveBeenCalled();
+      });
+
+      describe('AI suggestions wait until the page is known to be new', () => {
+        it('are asked for once the server says the page is not bookmarked', async () => {
+          answer({
+            page: pageData,
+            status: { ok: true, found: false, bookmarkID: -1, checkBookmark: { ok: true } },
+          });
+
+          await import('../../src/popup/popup.js');
+          await flush();
+
+          expect(fillFromAi).toHaveBeenCalledWith(pageData);
+        });
+
+        it('are not started while the lookup is still running', async () => {
+          globalThis.chrome.runtime.sendMessage.mockImplementation((request) =>
+            request.msg === 'getBookmarkStatus'
+              ? new Promise(() => {})
+              : Promise.resolve(pageData),
+          );
+
+          await import('../../src/popup/popup.js');
+          await flush();
+
+          expect(hydrateForm).toHaveBeenCalled();
+          expect(fillFromAi).not.toHaveBeenCalled();
+        });
+
+        it('are not asked for when the page is already bookmarked', async () => {
+          answer({
+            page: pageData,
+            status: { ok: true, found: true, bookmarkID: 7, keywords: ['x'], checkBookmark: { ok: true } },
+          });
+
+          await import('../../src/popup/popup.js');
+          await flush();
+
+          expect(fillFromAi).not.toHaveBeenCalled();
+        });
+
+        it.each([
+          ['the lookup request failed', { ok: false, retryable: false, error: 'boom' }],
+          [
+            'the server could not be reached',
+            { ok: true, found: false, bookmarkID: -1, checkBookmark: { ok: false } },
+          ],
+        ])('are not asked for when %s', async (_name, status) => {
+          answer({ page: pageData, status });
+
+          await import('../../src/popup/popup.js');
+          await flush();
+
+          expect(applyBookmarkStatus).toHaveBeenCalled();
+          expect(fillFromAi).not.toHaveBeenCalled();
+        });
+
+        it('follow the same rule when the page data already carries the answer', async () => {
+          const complete = { ...pageData, checkPending: undefined };
+          answer({
+            page: { ...complete, checkBookmark: { ok: true } },
+            status: { ok: true },
+          });
+          await import('../../src/popup/popup.js');
+          await flush();
+          expect(fillFromAi).toHaveBeenCalledTimes(1);
+
+          vi.resetModules();
+          fillFromAi.mockClear();
+          answer({
+            page: { ...complete, checkBookmark: { ok: false } },
+            status: { ok: true },
+          });
+          await import('../../src/popup/popup.js');
+          await flush();
+          expect(fillFromAi).not.toHaveBeenCalled();
+        });
       });
     });
 
