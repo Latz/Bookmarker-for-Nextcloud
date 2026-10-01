@@ -9,6 +9,8 @@ import {
   extractAnthropic,
   extractDeepSeek,
   extractGoogle,
+  extractGroq,
+  extractMistral,
   extractOpenAI,
   extractOpenRouter,
 } from '../../tools/ai-pricing-check/extractors.js';
@@ -114,6 +116,68 @@ describe('extractGoogle', () => {
     expect(extractGoogle(document).map((r) => r.prefix)).toEqual([
       'gemini-2.5-flash',
     ]);
+  });
+});
+
+describe('extractGroq', () => {
+  const row = (id, name, price) => `
+    <tr>
+      <td><div><div id="${id}"><a>${name}</a></div><span>${id}</span></div></td>
+      <td>500</td>
+      <td>${price}</td>
+    </tr>`;
+  const table = (rows, header = 'PRICE PER\n1M TOKENS') => `
+    <table><tr><th>MODEL ID</th><th>SPEED</th><th>${header}</th></tr>${rows}</table>`;
+
+  it('reads the model id from the id attribute and the input and output price', () => {
+    document.body.innerHTML = table(
+      row('openai/gpt-oss-120b', 'GPT OSS 120B', '$0.15 input$0.60 output') +
+        row('qwen3.8-27b', 'Qwen3.8 27B', '$0.80 input$4.00 output'),
+    );
+
+    expect(
+      extractGroq(document).map((r) => [r.prefix, r.input, r.output, r.source]),
+    ).toEqual([
+      ['gpt-oss-120b', 0.15, 0.6, 'groq'],
+      ['qwen3.8-27b', 0.8, 4, 'groq'],
+    ]);
+  });
+
+  it('skips models without a public price and those not priced per token', () => {
+    document.body.innerHTML = table(
+      row('llama-3.3-70b-versatile', 'Llama 3.3 70B', 'ContactSales') +
+        row('whisper-large-v3', 'Whisper', '$0.111 per hour') +
+        row(
+          'meta-llama/llama-prompt-guard-2-22m',
+          'Guard',
+          '$0.03 input$0.03 output',
+        ) +
+        row('openai/gpt-oss-20b', 'GPT OSS 20B', '$0.075 input$0.30 output'),
+    );
+
+    expect(extractGroq(document).map((r) => r.prefix)).toEqual(['gpt-oss-20b']);
+  });
+
+  it('ignores tables that are not a price list', () => {
+    document.body.innerHTML = table(
+      row('openai/gpt-oss-120b', 'GPT OSS 120B', '$0.15 input$0.60 output'),
+      'RATE LIMITS',
+    );
+    expect(extractGroq(document)).toEqual([]);
+  });
+});
+
+describe('extractMistral', () => {
+  it('reads the price the FAQ names as an example', () => {
+    const text =
+      'How is API pricing calculated? For example, Mistral Large costs $0.5 /M tokens in and $1.5 /M tokens out. Batch processing ...';
+    expect(extractMistral(text)).toEqual([
+      { prefix: 'mistral-large', input: 0.5, output: 1.5, source: 'mistral' },
+    ]);
+  });
+
+  it('finds nothing when the sentence is not there (page changed)', () => {
+    expect(extractMistral('Plans: Free, Pro, Team')).toEqual([]);
   });
 });
 
@@ -252,6 +316,7 @@ describe('renderBlock / replaceBlock', () => {
     ['claude-opus-5-5', 4, 20],
     ['claude-haiku-4-5', 1, 5],
     ['llama-3.3-70b', 0.59, 0.79],
+    ['gpt-oss-20b', 0.075, 0.3],
   ];
 
   it('groups by vendor and sorts inside a group', () => {
@@ -262,7 +327,8 @@ describe('renderBlock / replaceBlock', () => {
         "  ['claude-opus-5-5', 4, 20],",
         '  // OpenAI',
         "  ['gpt-5-mini', 0.25, 2],",
-        '  // Others',
+        '  // Groq',
+        "  ['gpt-oss-20b', 0.075, 0.3],",
         "  ['llama-3.3-70b', 0.59, 0.79],",
       ].join('\n'),
     );

@@ -16,6 +16,8 @@ describe('providerOfModel', () => {
     ['mistral-small', 'mistral'],
     ['deepseek-flash', 'deepseek'],
     ['llama-3.3-70b', 'groq'],
+    ['gpt-oss-120b', 'groq'],
+    ['qwen3.8-27b', 'groq'],
     ['something-else', null],
   ])('%s belongs to %s', (model, provider) => {
     expect(providerOfModel(model)).toBe(provider);

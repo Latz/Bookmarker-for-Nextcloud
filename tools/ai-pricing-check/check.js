@@ -3,18 +3,20 @@
 // list in src/lib/aiPricing.js, which the options page uses to estimate what
 // the AI calls cost.
 //
-// Sources: the price pages of Anthropic, OpenAI, Google and DeepSeek (official
-// prices), and OpenRouter's model list (used to cross-check OpenAI/Anthropic/
-// Google prices and to fill in models whose page cannot be read). Mistral's
-// and Groq's price pages are rendered by JavaScript and hold no prices in the
-// HTML, so those models keep their hand-entered prices.
+// Sources: the price pages of Anthropic, OpenAI, Google, DeepSeek, Groq (the
+// models table of its console docs) and Mistral (only the one price its FAQ
+// states as an example) as the official prices, and OpenRouter's model list
+// (used to cross-check OpenAI/Anthropic/Google prices and to fill in models
+// whose page cannot be read). Models a page does not price publicly (Groq's
+// Llama models say "Contact Sales") keep their hand-entered price and are
+// listed as "on no page".
 //
 // Usage: node check.js [--write] [--force] [--source <name>]... [--json <file>]
 //                      [--verbose]
 //   --write   write changed and new prices into src/lib/aiPricing.js
 //   --force   with --write: also write changes that look implausible (a price
 //             that became more than 10x higher or lower)
-//   --source  only these sources (anthropic, openai, google, deepseek, openrouter)
+//   --source  only these sources (anthropic, openai, google, deepseek, groq, mistral, openrouter)
 //   --json    also save the full result
 // Exit code 1 if a source could not be read.
 import { readFile, writeFile } from 'node:fs/promises';
@@ -25,10 +27,12 @@ import {
   extractAnthropic,
   extractDeepSeek,
   extractGoogle,
+  extractGroq,
+  extractMistral,
   extractOpenAI,
   extractOpenRouter,
 } from './extractors.js';
-import { documentTables, fetchPage, parseHtml } from './pages.js';
+import { documentTables, documentText, fetchPage, parseHtml } from './pages.js';
 
 const PRICES_FILE = new URL('../../src/lib/aiPricing.js', import.meta.url);
 
@@ -56,6 +60,18 @@ const SOURCES = [
     url: 'https://api-docs.deepseek.com/quick_start/pricing',
     official: true,
     extract: ({ tables }) => extractDeepSeek(tables),
+  },
+  {
+    name: 'groq',
+    url: 'https://console.groq.com/docs/models',
+    official: true,
+    extract: ({ document }) => extractGroq(document),
+  },
+  {
+    name: 'mistral',
+    url: 'https://mistral.ai/pricing',
+    official: true,
+    extract: ({ document }) => extractMistral(documentText(document)),
   },
   {
     name: 'openrouter',

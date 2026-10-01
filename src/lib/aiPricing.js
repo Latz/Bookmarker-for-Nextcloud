@@ -60,14 +60,17 @@ export const PRICES = [
   ['gemini-omni-1.1-flash', 1.5, 9],
   ['gemini-omni-flash-preview', 1.5, 9],
   // Mistral
-  ['mistral-large', 2, 6],
+  ['mistral-large', 0.5, 1.5],
   ['mistral-small', 0.1, 0.3],
   // DeepSeek
   ['deepseek-chat', 0.28, 0.42],
   ['deepseek-flash', 0.3, 1.2],
   ['deepseek-v4-pro', 1.32, 3.96],
-  // Others
+  // Groq
+  ['gpt-oss-120b', 0.15, 0.6],
+  ['gpt-oss-20b', 0.075, 0.3],
   ['llama-3.3-70b', 0.59, 0.79],
+  ['qwen3.8-27b', 0.8, 4],
   // <prices:end>
 ];
 
@@ -143,11 +146,12 @@ export function typicalCost(price) {
  */
 export function providerOfModel(prefix) {
   if (prefix.startsWith('claude')) return 'claude';
+  // open-weights models served by Groq (before the "gpt-" test below)
+  if (/^(llama|gpt-oss|qwen)/.test(prefix)) return 'groq';
   if (/^(gpt-|chatgpt-|o\d)/.test(prefix)) return 'openai';
   if (prefix.startsWith('gemini')) return 'gemini';
   if (prefix.startsWith('mistral')) return 'mistral';
   if (prefix.startsWith('deepseek')) return 'deepseek';
-  if (prefix.startsWith('llama')) return 'groq';
   return null;
 }
 

@@ -22,13 +22,20 @@ Exit code 1 if a source could not be read.
 | OpenAI | first ("Standard") table of the pricing docs | official prices |
 | Google | "Paid Tier" input/output rows per model on the Gemini pricing page (requested in English) | official prices |
 | DeepSeek | pricing table, **PEAK** cache-miss input and output price | official prices |
+| Groq | models table of `console.groq.com/docs/models` (model id from the `id` attribute, price "$x input$y output") | official prices |
+| Mistral | the one price the FAQ of `mistral.ai/pricing` gives as an example ("Mistral Large costs $0.5 /M tokens in ...") | official price of that model |
 | OpenRouter | `/api/v1/models` (OpenAI, Anthropic, Google models only) | cross-check, and a fallback for models already in the list |
 
-**Not readable:** Mistral's and Groq's price pages are rendered by JavaScript and
-contain no prices in the HTML. `mistral-*` and `llama-*` keep their hand-entered
-prices and show up as "In the list but on no page". OpenRouter is not used for
-them: for models from other hosts it shows the cheapest host's price, not the
-provider's own.
+**Limits:**
+
+- **Mistral:** the price table of `mistral.ai/pricing` and the models pages of the
+  docs are rendered by JavaScript and hold no prices in the HTML. Only the example
+  sentence in the FAQ is read, so usually just one model (today Mistral Large);
+  `mistral-small` and others keep their hand-entered prices. OpenRouter is not a
+  substitute: for models from other hosts it shows the cheapest host's price.
+- **Groq:** the Llama models say "Contact Sales" (no public price), so
+  `llama-3.3-70b` keeps its old hand-entered price and is listed as "on no page".
+  Models priced per hour or per character (Whisper, text-to-speech) are skipped.
 
 ## What the report means
 

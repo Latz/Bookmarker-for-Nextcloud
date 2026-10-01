@@ -155,15 +155,74 @@ export function extractDeepSeek(tables) {
   });
 }
 
+/**
+ * Groq: the models table of the console docs. The first cell of a row holds
+ * the model id as the `id` attribute of an element, the price cell reads
+ * "$0.15 input$0.60 output". Models without a public price ("Contact Sales",
+ * e.g. the Llama models) and models priced per hour or per character are
+ * skipped.
+ * @param {Document} document
+ * @returns {Array<{prefix: string, input: number, output: number, source: string}>}
+ */
+export function extractGroq(document) {
+  const rows = [];
+  for (const table of document.querySelectorAll('table')) {
+    const header = table.querySelector('tr')?.textContent ?? '';
+    if (!/PRICE PER\s+1M\s+TOKENS/i.test(header)) continue;
+    for (const tr of table.querySelectorAll('tr')) {
+      const cells = tr.children; // the model may be a th (row header)
+      const id = cells[0]?.querySelector('[id]')?.id;
+      const price = /\$([\d.]+)\s*input\s*\$([\d.]+)\s*output/i.exec(
+        cells[2]?.textContent ?? '',
+      );
+      if (!id || !price) continue;
+      // "openai/gpt-oss-120b" is matched as "gpt-oss-120b", like aiPricing does
+      const prefix = id.replace(/^.*\//, '').toLowerCase();
+      if (NOT_A_CHAT_MODEL.test(prefix)) continue;
+      rows.push({
+        prefix,
+        input: Number(price[1]),
+        output: Number(price[2]),
+        source: 'groq',
+      });
+    }
+  }
+  return rows;
+}
+
+/**
+ * Mistral: the price table of mistral.ai/pricing is built by JavaScript and
+ * not in the HTML, but the FAQ states one price as an example: "Mistral Large
+ * costs $0.5 /M tokens in and $1.5 /M tokens out". Only such sentences are
+ * read, so it is usually one model (the example may change).
+ * @param {string} text - The visible text of the page.
+ * @returns {Array<{prefix: string, input: number, output: number, source: string}>}
+ */
+export function extractMistral(text) {
+  const rows = [];
+  const sentence =
+    /Mistral (Large|Medium|Small) costs \$([\d.]+) ?\/ ?M tokens in and \$([\d.]+) ?\/ ?M tokens out/gi;
+  for (const [, size, input, output] of text.matchAll(sentence)) {
+    rows.push({
+      prefix: `mistral-${size.toLowerCase()}`,
+      input: Number(input),
+      output: Number(output),
+      source: 'mistral',
+    });
+  }
+  return rows;
+}
+
 // Models that are not priced per text token like a chat model (their "output"
 // price is per image, per second of audio, ...) or are not chat models.
 const NOT_A_CHAT_MODEL =
-  /(image|audio|realtime|tts|transcribe|translate|embed|moderation|search|live|robotics|computer-use|customtools)/;
+  /(image|audio|realtime|tts|transcribe|translate|embed|moderation|search|live|robotics|computer-use|customtools|guard|whisper|orpheus)/;
 
 // Vendors whose OpenRouter price is the vendor's own (OpenRouter passes the
 // list price through). Other models there cost what the cheapest host charges.
 const OPENROUTER_VENDORS = new Set(['openai', 'anthropic', 'google']);
-const OPENROUTER_SKIP = /(free|extended|online|:)/;
+// gpt-oss and the like are open weights, hosted (and priced) by many providers
+const OPENROUTER_SKIP = /(free|extended|online|:|^gpt-oss)/;
 
 /**
  * OpenRouter: /api/v1/models lists prices per token. Used to cross-check the

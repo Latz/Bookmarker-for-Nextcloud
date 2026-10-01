@@ -93,6 +93,7 @@ export function compare(sources, current) {
 export function renderBlock(entries) {
   const vendorOf = (prefix) => {
     if (prefix.startsWith('claude')) return 'Anthropic';
+    if (/^(llama|gpt-oss|qwen)/.test(prefix)) return 'Groq';
     if (/^(gpt-|chatgpt-|o\d)/.test(prefix)) return 'OpenAI';
     if (prefix.startsWith('gemini')) return 'Google';
     if (prefix.startsWith('mistral')) return 'Mistral';
@@ -105,6 +106,7 @@ export function renderBlock(entries) {
     'Google',
     'Mistral',
     'DeepSeek',
+    'Groq',
     'Others',
   ];
   const groups = Object.fromEntries(order.map((name) => [name, []]));
