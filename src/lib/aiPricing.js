@@ -118,3 +118,19 @@ export function formatPrice(price) {
     })}`;
   return `${dollars(price.input)} / ${dollars(price.output)}`;
 }
+
+// This extension sends a lot more text than it gets back: the page excerpt,
+// the instructions and the list of existing tags go in, a few tags and a
+// sentence come out. Prices are compared with this many input tokens per
+// output token.
+export const INPUT_TOKENS_PER_OUTPUT_TOKEN = 10;
+
+/**
+ * One number to compare models by: the cost of a typical request, i.e.
+ * INPUT_TOKENS_PER_OUTPUT_TOKEN input tokens and one output token.
+ * @param {{input: number, output: number}} price
+ * @returns {number}
+ */
+export function typicalCost(price) {
+  return price.input * INPUT_TOKENS_PER_OUTPUT_TOKEN + price.output;
+}

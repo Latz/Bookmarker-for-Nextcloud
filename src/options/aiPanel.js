@@ -4,7 +4,7 @@
 // btn_<id>Models, btn_<id>Test, ai_test_<id> (test result); the model field
 // is a dropdown, or an input with datalist models_<id> (freeModel providers).
 import { AI_PROVIDERS } from '../lib/aiProviders.js';
-import { formatPrice, getPrice } from '../lib/aiPricing.js';
+import { formatPrice, getPrice, typicalCost } from '../lib/aiPricing.js';
 
 /**
  * @param {string} tag
@@ -121,8 +121,9 @@ function withPrice(label, providerId, model) {
 
 /**
  * Ranks the models of a dropdown by price: 1 = the cheapest, 2 = the second
- * cheapest. Price = input + output price per million tokens; models with the
- * same price share a rank, models without a known price get none.
+ * cheapest. Compared by the cost of a typical request (typicalCost: mostly
+ * input tokens, few output tokens); models with the same cost share a rank,
+ * models without a known price get none.
  * @param {Array<{id: string}>} entries
  * @param {string} providerId
  * @returns {Map<string, number>} Model id -> rank (only ranks 1 and 2).
@@ -131,7 +132,7 @@ export function priceRanks(entries, providerId) {
   const costs = new Map();
   for (const { id } of entries) {
     const price = getPrice(providerId, id);
-    if (price) costs.set(id, price.input + price.output);
+    if (price) costs.set(id, typicalCost(price));
   }
   const levels = [...new Set(costs.values())].sort((a, b) => a - b);
   const ranks = new Map();

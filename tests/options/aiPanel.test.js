@@ -150,15 +150,17 @@ describe('aiPanel', () => {
   describe('price colours', () => {
     const ids = (...list) => list.map((id) => ({ id, label: id }));
 
-    it('ranks the cheapest model 1 and the second cheapest 2', () => {
-      // sums per million tokens: 2.25, 0.4+1.6=2, 0.05+0.4=0.45, 12.5
+    it('ranks by the cost of a typical request: cheapest 1, second cheapest 2', () => {
+      // typical request = 10 input tokens + 1 output token (per million):
+      // gpt-5-mini 2.5+2=4.5, gpt-4.1-mini 4+1.6=5.6, gpt-5-nano 0.5+0.4=0.9,
+      // gpt-5 12.5+10=22.5
       const ranks = priceRanks(
         ids('gpt-5-mini', 'gpt-4.1-mini', 'gpt-5-nano', 'gpt-5'),
         'openai',
       );
       expect(ranks.get('gpt-5-nano')).toBe(1);
-      expect(ranks.get('gpt-4.1-mini')).toBe(2);
-      expect(ranks.has('gpt-5-mini')).toBe(false);
+      expect(ranks.get('gpt-5-mini')).toBe(2);
+      expect(ranks.has('gpt-4.1-mini')).toBe(false);
       expect(ranks.has('gpt-5')).toBe(false);
     });
 
@@ -189,11 +191,12 @@ describe('aiPanel', () => {
       const rank = (id) =>
         [...field.options].find((o) => o.value === id).dataset.priceRank;
       expect(rank('gpt-5-nano')).toBe('1');
-      expect(rank('gpt-4.1-mini')).toBe('2');
+      expect(rank('gpt-5-mini')).toBe('2');
+      expect(rank('gpt-4.1-mini')).toBeUndefined();
       expect(rank('gpt-5')).toBeUndefined();
       expect(field.dataset.priceRank).toBe('1');
 
-      field.value = 'gpt-4.1-mini';
+      field.value = 'gpt-5-mini';
       field.dispatchEvent(new Event('change'));
       expect(field.dataset.priceRank).toBe('2');
 

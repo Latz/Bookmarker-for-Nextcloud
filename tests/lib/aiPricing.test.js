@@ -4,6 +4,7 @@ import {
   estimateCost,
   formatPrice,
   getPrice,
+  typicalCost,
 } from '../../src/lib/aiPricing.js';
 
 describe('aiPricing', () => {
@@ -45,5 +46,12 @@ describe('aiPricing', () => {
     expect(formatPrice({ input: 0.25, output: 2 })).toBe('$0.25 / $2');
     expect(formatPrice({ input: 1.6, output: 10 })).toBe('$1.60 / $10');
     expect(formatPrice({ input: 0.0625, output: 0.5 })).toBe('$0.0625 / $0.50');
+  });
+
+  it('weighs input far above output for the comparison of models', () => {
+    // a cheap-input / dear-output model vs. the reverse, same sum of 6
+    expect(typicalCost({ input: 1, output: 5 })).toBe(15);
+    expect(typicalCost({ input: 5, output: 1 })).toBe(51);
+    expect(typicalCost({ input: 0, output: 0 })).toBe(0);
   });
 });
