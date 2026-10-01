@@ -468,9 +468,15 @@ function setupAiOptions(selected = 'off') {
       .addEventListener('click', () => void runTest(provider));
   }
 
+  // The suggestion switches only make sense while an AI is chosen
+  const features = document.getElementById('ai_features');
+  const showFeatures = (id) =>
+    features.classList.toggle('hidden', !getProvider(id));
+
   const current = getProvider(selected);
   select.value = current ? selected : 'off';
   showAiProvider(panels, select.value);
+  showFeatures(select.value);
   if (current) void loadModels(current, { silent: true });
 
   select.addEventListener('change', async () => {
@@ -478,6 +484,7 @@ function setupAiOptions(selected = 'off') {
     const id = select.value;
     void store_data(OPTION_STORE, { select_aiProvider: id });
     showAiProvider(panels, id);
+    showFeatures(id);
     const provider = getProvider(id);
     if (!provider) return;
     const origin = aiOrigin(

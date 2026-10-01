@@ -158,30 +158,32 @@
               ></select>
             </div>
             <div id="ai_panels"></div>
-            <div class="mt-4">
-              <input
-                type="checkbox"
-                id="cbx_aiTags"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label for="cbx_aiTags" i18n-data="aiTags"
-                >Suggest tags with AI</label
-              >
+            <div id="ai_features" class="hidden">
+              <div class="mt-4">
+                <input
+                  type="checkbox"
+                  id="cbx_aiTags"
+                  class="toggle toggle-info toggle-xs"
+                />
+                <label for="cbx_aiTags" i18n-data="aiTags"
+                  >Suggest tags with AI</label
+                >
+              </div>
+              <div>
+                <input
+                  type="checkbox"
+                  id="cbx_aiDescription"
+                  class="toggle toggle-info toggle-xs"
+                />
+                <label for="cbx_aiDescription" i18n-data="aiDescription"
+                  >Suggest description with AI</label
+                >
+              </div>
+              <p class="mt-2 text-sm opacity-70" i18n-data="aiPrivacyNote">
+                If the page offers no tags or description, its title, URL and an
+                excerpt of its text are sent to the selected provider.
+              </p>
             </div>
-            <div>
-              <input
-                type="checkbox"
-                id="cbx_aiDescription"
-                class="toggle toggle-info toggle-xs"
-              />
-              <label for="cbx_aiDescription" i18n-data="aiDescription"
-                >Suggest description with AI</label
-              >
-            </div>
-            <p class="mt-2 text-sm opacity-70" i18n-data="aiPrivacyNote">
-              If the page offers no tags or description, its title, URL and an
-              excerpt of its text are sent to the selected provider.
-            </p>
             <div class="text-error hidden" id="ai_error"></div>
           </div>
           <!--- ---------------------------------------------------------------- -->

@@ -196,6 +196,7 @@ describe('options.js', () => {
         addEventListener: vi.fn(),
       },
       ai_panels: { id: 'ai_panels' },
+      ai_features: { id: 'ai_features', classList: { toggle: vi.fn() } },
       ...Object.fromEntries(
         AI_PROVIDERS.flatMap((provider) => [
           ...['ApiKey', 'Model', 'BaseUrl'].map((field) => {
@@ -688,6 +689,19 @@ describe('options.js', () => {
         mockElements.ai_panels,
         'openai',
       );
+    });
+
+    it('shows the suggestion switches only while a provider is chosen', async () => {
+      const toggle = mockElements.ai_features.classList.toggle;
+      expect(toggle).toHaveBeenLastCalledWith('hidden', false); // openai stored
+
+      mockElements.select_aiProvider.value = 'off';
+      await handler(mockElements.select_aiProvider, 'change')();
+      expect(toggle).toHaveBeenLastCalledWith('hidden', true);
+
+      mockElements.select_aiProvider.value = 'claude';
+      await handler(mockElements.select_aiProvider, 'change')();
+      expect(toggle).toHaveBeenLastCalledWith('hidden', false);
     });
 
     it('choosing a provider stores it, shows its panel and asks for the host permission', async () => {
