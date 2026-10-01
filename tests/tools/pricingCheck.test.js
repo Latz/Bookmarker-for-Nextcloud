@@ -13,10 +13,14 @@ import {
   extractMistral,
   extractOpenAI,
   extractOpenRouter,
+  firstSentence,
+  parseTokenCount,
 } from '../../tools/ai-pricing-check/extractors.js';
 import {
+  collectInfo,
   compare,
   renderBlock,
+  renderInfoFile,
   replaceBlock,
 } from '../../tools/ai-pricing-check/compare.js';
 
@@ -79,8 +83,20 @@ describe('extractOpenAI', () => {
       ],
     ];
     expect(extractOpenAI(tables)).toEqual([
-      { prefix: 'gpt-6.1-sol', input: 2, output: 10, source: 'openai' },
-      { prefix: 'gpt-6-luna', input: 0.1, output: 0.5, source: 'openai' },
+      {
+        prefix: 'gpt-6.1-sol',
+        input: 2,
+        output: 10,
+        source: 'openai',
+        info: { cachedInput: 0.1 },
+      },
+      {
+        prefix: 'gpt-6-luna',
+        input: 0.1,
+        output: 0.5,
+        source: 'openai',
+        info: { cachedInput: 0.01 },
+      },
     ]);
   });
 });
@@ -181,6 +197,140 @@ describe('extractMistral', () => {
   });
 });
 
+describe('model details', () => {
+  it('parseTokenCount reads plain, grouped and K/M numbers', () => {
+    expect(parseTokenCount('131,072')).toBe(131072);
+    expect(parseTokenCount('1M')).toBe(1000000);
+    expect(parseTokenCount('MAXIMUM: 384K')).toBe(384000);
+    expect(parseTokenCount('1.5M tokens')).toBe(1500000);
+    expect(parseTokenCount('-')).toBeNull();
+    expect(parseTokenCount(undefined)).toBeNull();
+  });
+
+  it('firstSentence strips links and emphasis and keeps one sentence', () => {
+    expect(
+      firstSentence(
+        'GPT-5 Mini is a **compact** [version](https://x.test) of GPT-5. It is fast. More text.',
+      ),
+    ).toBe('GPT-5 Mini is a compact version of GPT-5.');
+  });
+
+  it('firstSentence cuts a very long sentence', () => {
+    const long = `${'word '.repeat(80)}end.`;
+    const result = firstSentence(long);
+    expect(result.length).toBeLessThanOrEqual(200);
+    expect(result.endsWith('...')).toBe(true);
+  });
+
+  it('Anthropic rows carry the cache hit price', () => {
+    const rows = extractAnthropic([
+      [
+        ['Model', 'Base tokens', 'Prompt caching'],
+        [
+          'Name',
+          'Input',
+          'Output',
+          '5m writes',
+          '1h writes',
+          'Hits and refreshes',
+        ],
+        [
+          'Claude Haiku 4.5The fastest',
+          '$1 / MTok',
+          '$5 / MTok',
+          '$1.25 / MTok',
+          '$2 / MTok',
+          '$0.10 / MTok',
+        ],
+      ],
+    ]);
+    expect(rows[0].info).toEqual({ cachedInput: 0.1 });
+  });
+
+  it('Groq rows carry speed, context window and the largest answer', () => {
+    document.body.innerHTML = `<table>
+      <tr><th>MODEL ID</th><th>SPEED</th><th>PRICE PER\n1M TOKENS</th><th>LIMITS</th><th>CONTEXT</th><th>MAX</th></tr>
+      <tr><td><div id="openai/gpt-oss-120b">GPT OSS</div></td><td>500</td><td>$0.15 input$0.60 output</td><td>250K TPM</td><td>131,072</td><td>65,536</td></tr>
+    </table>`;
+    expect(extractGroq(document)[0].info).toEqual({
+      speed: 500,
+      context: 131072,
+      maxOutput: 65536,
+    });
+  });
+
+  it('OpenRouter rows carry context, release date, input types and description', () => {
+    const rows = extractOpenRouter({
+      data: [
+        {
+          id: 'openai/gpt-5-mini',
+          created: 1754524800,
+          context_length: 400000,
+          top_provider: { max_completion_tokens: 128000 },
+          architecture: { input_modalities: ['text', 'image'] },
+          description: 'A compact model for lighter tasks. Second sentence.',
+          pricing: { prompt: '0.00000025', completion: '0.000002' },
+        },
+      ],
+    });
+    expect(rows[0].info).toEqual({
+      context: 400000,
+      maxOutput: 128000,
+      released: '2025-08-07',
+      modalities: 'text, image',
+      description: 'A compact model for lighter tasks.',
+    });
+  });
+
+  describe('collectInfo', () => {
+    const source = (official, rows, error) => ({ official, error, rows });
+    const prefixes = new Set(['a', 'b']);
+
+    it('lets the official pages override OpenRouter, detail by detail', () => {
+      const info = collectInfo(
+        [
+          source(true, [
+            { prefix: 'a', info: { context: 1, cachedInput: 0.1 } },
+          ]),
+          source(false, [
+            { prefix: 'a', info: { context: 9, released: '2025-01-01' } },
+          ]),
+        ],
+        prefixes,
+      );
+      expect(info.a).toEqual({
+        context: 1,
+        cachedInput: 0.1,
+        released: '2025-01-01',
+      });
+    });
+
+    it('keeps only models of the price list and ignores failed sources', () => {
+      const info = collectInfo(
+        [
+          source(true, [{ prefix: 'zzz', info: { context: 1 } }]),
+          source(true, [{ prefix: 'b', info: { context: 2 } }], 'HTTP 500'),
+        ],
+        prefixes,
+      );
+      expect(info).toEqual({});
+    });
+  });
+
+  it('renderInfoFile writes a module with sorted keys that can be read back', async () => {
+    const text = renderInfoFile({
+      b: { context: 2 },
+      a: { context: 1, description: 'It\'s "fine".' },
+    });
+    expect(text.indexOf('"a"')).toBeLessThan(text.indexOf('"b"'));
+    const url = `data:text/javascript,${encodeURIComponent(text)}`;
+    const module = await import(/* @vite-ignore */ url);
+    expect(module.MODEL_INFO.a.description).toBe('It\'s "fine".');
+    expect(module.getModelInfo('b')).toEqual({ context: 2 });
+    expect(module.getModelInfo('nope')).toBeNull();
+  });
+});
+
 describe('extractDeepSeek', () => {
   it('takes the PEAK cache-miss input and the output price per model column', () => {
     const tables = [
@@ -192,15 +342,24 @@ describe('extractDeepSeek', () => {
         ['PEAK', '$0.3', '$1.32'],
         ['1M OUTPUT TOKENS', 'OFF-PEAK', '$0.6', '$1.98'],
         ['PEAK', '$1.2', '$3.96'],
+        ['CONTEXT LENGTH', '1M'],
+        ['MAX OUTPUT', 'MAXIMUM: 384K'],
       ],
     ];
     expect(extractDeepSeek(tables)).toEqual([
-      { prefix: 'deepseek-flash', input: 0.3, output: 1.2, source: 'deepseek' },
+      {
+        prefix: 'deepseek-flash',
+        input: 0.3,
+        output: 1.2,
+        source: 'deepseek',
+        info: { context: 1000000, maxOutput: 384000 },
+      },
       {
         prefix: 'deepseek-v4-pro',
         input: 1.32,
         output: 3.96,
         source: 'deepseek',
+        info: { context: 1000000, maxOutput: 384000 },
       },
     ]);
   });

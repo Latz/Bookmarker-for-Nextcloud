@@ -37,6 +37,19 @@ Exit code 1 if a source could not be read.
   `llama-3.3-70b` keeps its old hand-entered price and is listed as "on no page".
   Models priced per hour or per character (Whisper, text-to-speech) are skipped.
 
+## Model details
+
+Besides the prices the tool collects details for the tooltip of the (i) icon in
+the cheapest-models box on the options page, and writes them with `--write` to
+`src/lib/aiModelInfo.js` (generated, do not edit): context window, largest
+answer, release date, input types and a one-sentence description (OpenRouter's
+model list, for OpenAI, Anthropic and Google models), cached-input price
+(Anthropic and OpenAI price tables), context window and largest answer
+(DeepSeek), speed, context window and largest answer (Groq). An official page
+overrides OpenRouter where both know a detail. Only models of the price list get
+details; Mistral has none (its models list on OpenRouter does not match the
+current API models).
+
 ## What the report means
 
 - **Changed prices** / **New models** -- written by `--write`. A change of more

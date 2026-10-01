@@ -20,6 +20,51 @@ export function dollars(text) {
 }
 
 /**
+ * "131,072" -> 131072, "1M" -> 1000000, "MAXIMUM: 384K" -> 384000; null if
+ * the text holds no number.
+ * @param {string | undefined | null} text
+ * @returns {number | null}
+ */
+export function parseTokenCount(text) {
+  const match = /([\d,.]+)\s*([KkMm])?/.exec(text ?? '');
+  if (!match) return null;
+  const number = Number(match[1].replaceAll(',', ''));
+  if (!Number.isFinite(number) || number <= 0) return null;
+  const factor = { k: 1e3, m: 1e6 }[(match[2] ?? '').toLowerCase()] ?? 1;
+  return Math.round(number * factor);
+}
+
+/**
+ * Drops the entries of an object that hold no value.
+ * @param {Record<string, any>} object
+ * @returns {Record<string, any>}
+ */
+function compact(object) {
+  return Object.fromEntries(
+    Object.entries(object).filter(([, value]) => value != null && value !== ''),
+  );
+}
+
+/**
+ * The first sentence of a (Markdown) description, without links and
+ * emphasis, at most 200 characters.
+ * @param {unknown} text
+ * @returns {string}
+ */
+export function firstSentence(text) {
+  const plain = String(text ?? '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\*\*|`/g, '')
+    .replace(/\uFFFD/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+  const sentence = /^(.{20,}?[.!?])(\s|$)/.exec(plain)?.[1] ?? plain;
+  return sentence.length > 200
+    ? `${sentence.slice(0, 197).trimEnd()}...`
+    : sentence;
+}
+
+/**
  * Anthropic: the first price table ("Base tokens") has one row per model,
  * "Claude Sonnet 5.5" + a description glued to it, then input and output.
  * @param {string[][][]} tables
@@ -42,7 +87,13 @@ export function extractAnthropic(tables) {
       Number.parseInt(version, 10) < 4
         ? `claude-${dashed}-${family.toLowerCase()}`
         : `claude-${family.toLowerCase()}-${dashed}`;
-    rows.push({ prefix, input, output, source: 'anthropic' });
+    rows.push({
+      prefix,
+      input,
+      output,
+      source: 'anthropic',
+      info: compact({ cachedInput: dollars(cells[5]) }),
+    });
   }
   return rows;
 }
@@ -64,7 +115,13 @@ export function extractOpenAI(tables) {
     const output = dollars(cells[4]);
     if (!id || !/^[a-z][a-z0-9.\-]*$/.test(id)) continue;
     if (input === null || output === null) continue;
-    rows.push({ prefix: id, input, output, source: 'openai' });
+    rows.push({
+      prefix: id,
+      input,
+      output,
+      source: 'openai',
+      info: compact({ cachedInput: dollars(cells[2]) }),
+    });
   }
   return rows;
 }
@@ -146,11 +203,28 @@ export function extractDeepSeek(tables) {
       prices[section] = amounts.slice(-names.length);
     }
   }
+  // "CONTEXT LENGTH" / "MAX OUTPUT": one value for all models, or one each
+  const limit = (label, index) => {
+    const row = table.find((cells) => cells[0]?.trim() === label);
+    const values = row?.slice(1) ?? [];
+    return parseTokenCount(values[values.length === 1 ? 0 : index]);
+  };
   return names.flatMap((prefix, index) => {
     const input = prices.input[index];
     const output = prices.output[index];
     return input > 0 && output > 0
-      ? [{ prefix, input, output, source: 'deepseek' }]
+      ? [
+          {
+            prefix,
+            input,
+            output,
+            source: 'deepseek',
+            info: compact({
+              context: limit('CONTEXT LENGTH', index),
+              maxOutput: limit('MAX OUTPUT', index),
+            }),
+          },
+        ]
       : [];
   });
 }
@@ -184,6 +258,11 @@ export function extractGroq(document) {
         input: Number(price[1]),
         output: Number(price[2]),
         source: 'groq',
+        info: compact({
+          speed: parseTokenCount(cells[1]?.textContent),
+          context: parseTokenCount(cells[4]?.textContent),
+          maxOutput: parseTokenCount(cells[5]?.textContent),
+        }),
       });
     }
   }
@@ -247,7 +326,23 @@ export function extractOpenRouter(json) {
     if (input === null || output === null) continue;
     // Anthropic ids use dashes ("claude-haiku-4-5"), OpenRouter dots
     const prefix = vendor === 'anthropic' ? name.replaceAll('.', '-') : name;
-    rows.push({ prefix, input, output, source: 'openrouter' });
+    const created = Number(model.created);
+    rows.push({
+      prefix,
+      input,
+      output,
+      source: 'openrouter',
+      info: compact({
+        context: model.context_length,
+        maxOutput: model.top_provider?.max_completion_tokens,
+        released:
+          Number.isFinite(created) && created > 0
+            ? new Date(created * 1000).toISOString().slice(0, 10)
+            : null,
+        modalities: model.architecture?.input_modalities?.join(', '),
+        description: firstSentence(model.description),
+      }),
+    });
   }
   return rows;
 }

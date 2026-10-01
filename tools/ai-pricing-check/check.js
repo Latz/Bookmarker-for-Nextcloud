@@ -22,7 +22,14 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { PRICES } from '../../src/lib/aiPricing.js';
-import { compare, renderBlock, replaceBlock } from './compare.js';
+import { MODEL_INFO } from '../../src/lib/aiModelInfo.js';
+import {
+  collectInfo,
+  compare,
+  renderBlock,
+  renderInfoFile,
+  replaceBlock,
+} from './compare.js';
 import {
   extractAnthropic,
   extractDeepSeek,
@@ -35,6 +42,7 @@ import {
 import { documentTables, documentText, fetchPage, parseHtml } from './pages.js';
 
 const PRICES_FILE = new URL('../../src/lib/aiPricing.js', import.meta.url);
+const INFO_FILE = new URL('../../src/lib/aiModelInfo.js', import.meta.url);
 
 const SOURCES = [
   {
@@ -191,6 +199,27 @@ async function main() {
     await writeFile(args.json, JSON.stringify({ sources, report }, null, 2));
   }
 
+  // Details of the models (context window, release date, ...) for the
+  // tooltip of the cheapest-models box: what is known already, updated with
+  // what the pages and OpenRouter say now.
+  const prefixes = new Set([
+    ...PRICES.map(([prefix]) => prefix),
+    ...report.added.map((row) => row.prefix),
+  ]);
+  const collected = collectInfo(sources, prefixes);
+  const info = {};
+  for (const prefix of prefixes) {
+    const merged = { ...MODEL_INFO[prefix], ...collected[prefix] };
+    if (Object.keys(merged).length > 0) info[prefix] = merged;
+  }
+  const infoChanged = Object.keys(info).filter(
+    (prefix) =>
+      JSON.stringify(info[prefix]) !== JSON.stringify(MODEL_INFO[prefix]),
+  );
+  console.log(
+    `\nModel details: ${Object.keys(info).length} models, ${infoChanged.length} new or changed.`,
+  );
+
   if (args.write) {
     const next = new Map(PRICES.map(([p, i, o]) => [p, [p, i, o]]));
     let applied = 0;
@@ -208,6 +237,12 @@ async function main() {
       await writeFile(
         PRICES_FILE,
         replaceBlock(source, renderBlock([...next.values()])),
+      );
+    }
+    if (infoChanged.length > 0) {
+      await writeFile(INFO_FILE, renderInfoFile(info));
+      console.log(
+        `\nWrote the details of ${infoChanged.length} models to src/lib/aiModelInfo.js`,
       );
     }
     console.log(
