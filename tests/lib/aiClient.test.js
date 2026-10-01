@@ -149,6 +149,47 @@ describe('aiClient', () => {
     expect(recordUsage).not.toHaveBeenCalled();
   });
 
+  it('waits at least a minute for an answer, whatever the network timeout is', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: 'a' } }] }),
+    });
+
+    getOptions.mockResolvedValue({
+      ...base,
+      select_aiProvider: 'openai',
+      input_networkTimeout: 10,
+    });
+    await askAI('hi');
+    expect(timeout).toHaveBeenLastCalledWith(60000);
+
+    getOptions.mockResolvedValue({
+      ...base,
+      select_aiProvider: 'openai',
+      input_networkTimeout: 90,
+    });
+    await askAI('hi');
+    expect(timeout).toHaveBeenLastCalledWith(90000);
+
+    getOptions.mockResolvedValue({
+      ...base,
+      select_aiProvider: 'openai',
+      input_networkTimeout: undefined,
+    });
+    await askAI('hi');
+    expect(timeout).toHaveBeenLastCalledWith(60000);
+    timeout.mockRestore();
+  });
+
+  it('keeps the short network timeout for the model list', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: [] }) });
+    await listModels('openai', 'k', 'https://api.openai.com/v1', 10);
+    expect(timeout).toHaveBeenLastCalledWith(10000);
+    timeout.mockRestore();
+  });
+
   it('throws on an HTTP error', async () => {
     getOptions.mockResolvedValue({ ...base, select_aiProvider: 'openai' });
     fetchMock.mockResolvedValue({ ok: false, status: 401 });

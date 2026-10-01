@@ -9,6 +9,21 @@ import { timeoutMilliseconds } from './networkTimeout.js';
 
 const MAX_TOKENS = 1024;
 
+// Generating an answer takes far longer than the requests the "network
+// timeout" setting is meant for (10 s by default); models that think first
+// need a minute or more. That setting only raises this, never lowers it.
+const MIN_GENERATION_SECONDS = 60;
+
+/**
+ * @param {unknown} timeoutSeconds - The network timeout setting.
+ * @returns {number} Milliseconds to wait for a generated answer.
+ */
+function generationTimeout(timeoutSeconds) {
+  return timeoutMilliseconds(
+    Math.max(Number(timeoutSeconds) || 0, MIN_GENERATION_SECONDS),
+  );
+}
+
 /**
  * URL and authentication headers of a provider endpoint.
  * @param {'anthropic' | 'openai'} protocol
@@ -137,7 +152,7 @@ async function sendPrompt(provider, settings, prompt) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(timeoutMilliseconds(timeoutSeconds)),
+    signal: AbortSignal.timeout(generationTimeout(timeoutSeconds)),
   });
   if (!response.ok) {
     throw Object.assign(
