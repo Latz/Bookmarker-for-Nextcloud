@@ -27,6 +27,11 @@ import {
   setModelOptions,
   showAiProvider,
 } from './aiPanel.js';
+import {
+  applyAutoCheapest,
+  hostPattern,
+  providersWithKey,
+} from '../background/modules/ai/autoCheapest.js';
 import { renderCheapestModels } from './aiCheapestPanel.js';
 import { initAiUsage } from './aiUsagePanel.js';
 import {
@@ -509,6 +514,55 @@ function setupAiOptions(selected = 'off') {
   };
 
   select.addEventListener('change', () => void chooseProvider(select.value));
+
+  // "Switch automatically to the cheapest model of a provider with an API
+  // key": switching the option on does it right away (and asks, in this one
+  // click, for the servers of all providers with a key); after that the
+  // weekly check in the service worker keeps doing it.
+  const autoBox = document.getElementById('cbx_aiAutoCheapest');
+  const autoStatus = document.getElementById('ai_auto_status');
+  const showAutoStatus = (message, ok = true) => {
+    autoStatus.textContent = message;
+    autoStatus.classList.toggle('hidden', !message);
+    autoStatus.classList.toggle('text-success', ok);
+    autoStatus.classList.toggle('text-error', !ok);
+  };
+  autoBox.addEventListener('change', async () => {
+    if (!autoBox.checked) {
+      showAutoStatus('');
+      return;
+    }
+    showAutoStatus(chrome.i18n.getMessage('aiAutoWorking'));
+    try {
+      const origins = (await providersWithKey())
+        .map((provider) => hostPattern(provider.baseUrl))
+        .filter(Boolean);
+      if (origins.length > 0) await chrome.permissions.request({ origins });
+
+      const switched = await applyAutoCheapest();
+      if (!switched) {
+        showAutoStatus(chrome.i18n.getMessage('aiAutoNothing'));
+        return;
+      }
+      // applyAutoCheapest has saved the choice; show it
+      select.value = switched.provider;
+      showAiProvider(panels, switched.provider);
+      showFeatures(switched.provider);
+      setModelOptions(
+        document.getElementById(`input_${switched.provider}Model`),
+        [],
+        switched.model,
+      );
+      showAutoStatus(
+        chrome.i18n.getMessage('aiAutoDone', [
+          switched.model,
+          switched.providerLabel,
+        ]),
+      );
+    } catch (error) {
+      showAutoStatus(error?.message ?? String(error), false);
+    }
+  });
 
   // A click in the box of the cheapest models: that provider and that model
   renderCheapestModels(

@@ -191,7 +191,23 @@
                       >Weekly check for a cheaper model</label
                     >
                   </div>
-                  <p class="mt-2 text-sm opacity-70" i18n-data="aiPrivacyNote">
+                  <div>
+                <input
+                  type="checkbox"
+                  id="cbx_aiAutoCheapest"
+                  class="toggle toggle-info toggle-xs"
+                />
+                <label for="cbx_aiAutoCheapest" i18n-data="aiAutoCheapest"
+                  >Switch automatically to the cheapest model of a provider
+                  with an API key</label
+                >
+              </div>
+              <p
+                id="ai_auto_status"
+                class="ml-1 hidden text-sm"
+                role="status"
+              ></p>
+              <p class="mt-2 text-sm opacity-70" i18n-data="aiPrivacyNote">
                     If the page offers no tags or description, its title, URL
                     and an excerpt of its text are sent to the selected
                     provider.

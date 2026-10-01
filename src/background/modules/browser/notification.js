@@ -192,6 +192,7 @@ export async function cacheRefreshNotification() {
 }
 
 export const CHEAPER_MODEL_NOTIFICATION_ID = 'ai-cheaper-model';
+export const AUTO_SWITCH_NOTIFICATION_ID = 'ai-auto-switched';
 
 /**
  * Tells the user that the AI provider in use offers a cheaper model than the
@@ -224,12 +225,43 @@ export async function notifyCheaperModel(info) {
 }
 
 /**
- * A click on a notification: the "cheaper model" one opens the options page,
- * every notification is closed afterwards.
+ * Tells the user that the AI was switched to a cheaper model automatically
+ * ("switch automatically to the cheapest model" is on). A click opens the
+ * options.
+ * @param {{providerLabel: string, model: string, from: string,
+ *   price: {input: number, output: number} | null}} info
+ * @returns {Promise<void>}
+ */
+export async function notifyAutoSwitched(info) {
+  const iconUrl = await getIconUrl();
+  try {
+    await chrome.notifications.create(AUTO_SWITCH_NOTIFICATION_ID, {
+      title: NOTIFICATION_TITLE,
+      message: chrome.i18n.getMessage('aiAutoSwitched', [
+        info.providerLabel,
+        info.model,
+        info.price ? formatPrice(info.price) : '?',
+        info.from,
+      ]),
+      iconUrl,
+      type: 'basic',
+      requireInteraction: true,
+    });
+  } catch (error) {
+    console.error('Failed to create switch notification:', error);
+  }
+}
+
+/**
+ * A click on a notification: the "cheaper model" and "switched" ones open the
+ * options page, every notification is closed afterwards.
  * @param {string} notificationId
  */
 export function handleNotificationClick(notificationId) {
-  if (notificationId === CHEAPER_MODEL_NOTIFICATION_ID) {
+  if (
+    notificationId === CHEAPER_MODEL_NOTIFICATION_ID ||
+    notificationId === AUTO_SWITCH_NOTIFICATION_ID
+  ) {
     try {
       chrome.runtime.openOptionsPage()?.catch?.(() => {});
     } catch {

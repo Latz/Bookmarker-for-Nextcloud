@@ -8,7 +8,11 @@ import { findCheaperModel } from '../../../lib/aiModelCheck.js';
 import { getProvider } from '../../../lib/aiProviders.js';
 import { getOptions } from '../../../lib/storage.js';
 import log from '../../../lib/log.js';
-import { notifyCheaperModel } from '../browser/notification.js';
+import { applyAutoCheapest, hostPattern } from './autoCheapest.js';
+import {
+  notifyAutoSwitched,
+  notifyCheaperModel,
+} from '../browser/notification.js';
 
 const DEBUG = import.meta.env?.MODE === 'development';
 
@@ -19,24 +23,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // recent makes it unnecessary.
 const MIN_DAYS_BETWEEN_CHECKS = 6;
 const STATE_KEY = 'aiModelCheck';
-
-/**
- * Host permission pattern of an AI server (https, or http for a local one),
- * the same rule as on the options page.
- * @param {string} baseUrl
- * @returns {string | null}
- */
-function hostPattern(baseUrl) {
-  try {
-    const url = new URL(baseUrl);
-    const local = ['localhost', '127.0.0.1'].includes(url.hostname);
-    const allowed =
-      url.protocol === 'https:' || (local && url.protocol === 'http:');
-    return allowed ? `${url.protocol}//${url.hostname}/*` : null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * @returns {Promise<{time?: number, notified?: {provider: string, model: string, suggested: string}}>}
@@ -140,12 +126,23 @@ export async function checkCheaperModel() {
 }
 
 /**
- * The alarm's job: runs the check unless one ran only a few days ago.
+ * The alarm's job: switches to the cheapest model (option on) or looks for a
+ * cheaper one to tell about, unless a check ran only a few days ago.
  * @returns {Promise<void>}
  */
 export async function runScheduledModelCheck() {
   const { time } = await readState();
   if (time && Date.now() - time < MIN_DAYS_BETWEEN_CHECKS * DAY_MS) return;
+
+  // With "switch automatically" on, the model is changed instead of the user
+  // being told about a cheaper one.
+  const { cbx_aiAutoCheapest: auto } = await getOptions(['cbx_aiAutoCheapest']);
+  if (auto) {
+    const switched = await applyAutoCheapest();
+    if (switched) await notifyAutoSwitched(switched);
+    await writeState({ time: Date.now() });
+    return;
+  }
   await checkCheaperModel();
 }
 

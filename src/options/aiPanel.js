@@ -4,6 +4,7 @@
 // btn_<id>Models, btn_<id>Test, ai_test_<id> (test result); the model field
 // is a dropdown, or an input with datalist models_<id> (freeModel providers).
 import { AI_PROVIDERS } from '../lib/aiProviders.js';
+import { findOffered } from '../lib/aiAutoCheapest.js';
 import { formatPrice, getPrice, typicalCost } from '../lib/aiPricing.js';
 
 /**
@@ -164,11 +165,7 @@ function syncPriceRank(select) {
  * @returns {string}
  */
 export function resolveModelId(offered, name) {
-  return (
-    offered.find((id) => id === name) ??
-    offered.find((id) => id.startsWith(name)) ??
-    name
-  );
+  return findOffered(offered, name) ?? name;
 }
 
 /**

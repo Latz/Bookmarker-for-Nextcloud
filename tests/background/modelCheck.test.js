@@ -5,11 +5,23 @@ vi.mock('../../src/lib/storage.js', () => ({ getOptions: vi.fn() }));
 vi.mock('../../src/lib/aiClient.js', () => ({ listModels: vi.fn() }));
 vi.mock('../../src/background/modules/browser/notification.js', () => ({
   notifyCheaperModel: vi.fn(),
+  notifyAutoSwitched: vi.fn(),
+}));
+vi.mock('../../src/background/modules/ai/autoCheapest.js', () => ({
+  applyAutoCheapest: vi.fn(),
+  hostPattern: vi.fn((url) => {
+    const u = new URL(url);
+    return `${u.protocol}//${u.hostname}/*`;
+  }),
 }));
 
 import { getOptions } from '../../src/lib/storage.js';
 import { listModels } from '../../src/lib/aiClient.js';
-import { notifyCheaperModel } from '../../src/background/modules/browser/notification.js';
+import {
+  notifyAutoSwitched,
+  notifyCheaperModel,
+} from '../../src/background/modules/browser/notification.js';
+import { applyAutoCheapest } from '../../src/background/modules/ai/autoCheapest.js';
 import {
   MODEL_CHECK_ALARM,
   checkCheaperModel,
@@ -143,6 +155,41 @@ describe('modelCheck', () => {
       store.aiModelCheck = { time: Date.now() - 7 * DAY };
       await runScheduledModelCheck();
       expect(listModels).toHaveBeenCalledTimes(2);
+    });
+
+    describe('with "switch automatically to the cheapest model" on', () => {
+      const switched = {
+        provider: 'openai',
+        providerLabel: 'OpenAI',
+        model: 'gpt-5-nano',
+        from: 'gpt-5',
+        price: { input: 0.05, output: 0.4 },
+      };
+
+      beforeEach(() => {
+        options.cbx_aiAutoCheapest = true;
+      });
+
+      it('switches and tells the user, instead of only suggesting a model', async () => {
+        applyAutoCheapest.mockResolvedValue(switched);
+
+        await runScheduledModelCheck();
+
+        expect(applyAutoCheapest).toHaveBeenCalledTimes(1);
+        expect(notifyAutoSwitched).toHaveBeenCalledWith(switched);
+        expect(notifyCheaperModel).not.toHaveBeenCalled();
+        expect(listModels).not.toHaveBeenCalled();
+      });
+
+      it('stays silent when nothing was switched, and remembers the check', async () => {
+        applyAutoCheapest.mockResolvedValue(null);
+
+        await runScheduledModelCheck();
+        await runScheduledModelCheck(); // a few days later is too soon
+
+        expect(notifyAutoSwitched).not.toHaveBeenCalled();
+        expect(applyAutoCheapest).toHaveBeenCalledTimes(1);
+      });
     });
 
     it('skips an alarm that fires only a few days after the last check', async () => {
