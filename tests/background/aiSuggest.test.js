@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('../../src/lib/storage.js', () => ({ getOptions: vi.fn() }));
 vi.mock('../../src/lib/aiClient.js', () => ({ askAI: vi.fn() }));
@@ -267,6 +267,62 @@ describe('aiSuggest', () => {
 
         expect(await getAiSuggestions(request)).toEqual({ keywords: ['c'] });
       });
+    });
+  });
+
+  describe('debug output (development build only)', () => {
+    const request = { tags: true, url: 'https://x.test/' };
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    });
+
+    const load = async (mode) => {
+      vi.stubEnv('MODE', mode);
+      vi.resetModules();
+      return import('../../src/background/modules/page/aiSuggest.js');
+    };
+
+    it('logs the AI tags and the filtered ones in a development build', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      getOptions.mockResolvedValue({
+        select_aiProvider: 'openai',
+        cbx_reduceKeywords: true,
+      });
+      cacheGet.mockResolvedValue(['Linux']);
+      askAI.mockResolvedValue('{"tags":["linux","docker"]}');
+      const { getAiSuggestions: run } = await load('development');
+
+      await run(request);
+
+      const lines = logSpy.mock.calls.map((call) => call.join(' '));
+      expect(
+        lines.some(
+          (l) =>
+            l.includes('tags found by the AI') && l.includes('linux,docker'),
+        ),
+      ).toBe(true);
+      expect(
+        lines.some(
+          (l) =>
+            l.includes('tags after filtering') &&
+            l.includes('Linux') &&
+            l.includes('removed: docker'),
+        ),
+      ).toBe(true);
+      logSpy.mockRestore();
+    });
+
+    it('logs nothing in a release build', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      askAI.mockResolvedValue('{"tags":["a"]}');
+      const { getAiSuggestions: run } = await load('production');
+
+      await run(request);
+
+      expect(logSpy).not.toHaveBeenCalled();
+      logSpy.mockRestore();
     });
   });
 });

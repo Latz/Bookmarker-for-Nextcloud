@@ -11,7 +11,11 @@ import log from '../../../lib/log.js';
 import { mergeKeywords } from './getKeywords.js';
 import { extractPageText } from './extractPageText.js';
 
-const DEBUG = false;
+// Logs what the AI found and what is left after filtering to the service
+// worker console -- only in a development build (`npm run build:dev`), never in
+// a release.
+const DEBUG = import.meta.env?.MODE === 'development';
+const debug = (...args) => log(DEBUG, '[ai]', ...args);
 
 // TEMPORARILY OFF: suggestions are neither read from nor written to the cache
 // (src/lib/aiCache.js), so every call asks the AI. Set to true to switch it on.
@@ -174,7 +178,10 @@ export async function getAiSuggestions(request) {
         ? stored.filter((tag) => typeof tag === 'string')
         : [];
       // Nothing to choose from: no tag can survive, so do not ask for any
-      if (restrict && allKnown.length === 0) missing.tags = false;
+      if (restrict && allKnown.length === 0) {
+        debug('no tags on the server and tags are restricted: not asking for tags');
+        missing.tags = false;
+      }
     }
     if (!missing.tags && !missing.description) return result;
 
@@ -204,11 +211,22 @@ export async function getAiSuggestions(request) {
     /** @type {{keywords?: string[], description?: string}} */
     const fresh = {};
     if (missing.tags && Array.isArray(answer.tags)) {
+      debug('tags found by the AI:', answer.tags);
+      debug(
+        `restricted to existing tags: ${Boolean(restrict)} (${allKnown.length} on the server)`,
+      );
       const keywords = matchKnownTags(
         mergeKeywords(answer.tags),
         allKnown,
         Boolean(restrict),
       ).slice(0, MAX_TAGS);
+      const removed = answer.tags.filter(
+        (tag) =>
+          !keywords.some(
+            (kept) => String(kept).toLowerCase() === String(tag).toLowerCase(),
+          ),
+      );
+      debug('tags after filtering:', keywords, '| removed:', removed);
       if (keywords.length > 0) fresh.keywords = keywords;
     }
     if (missing.description && typeof answer.description === 'string') {
