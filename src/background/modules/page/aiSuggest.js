@@ -20,7 +20,10 @@ const USE_CACHE = false;
 const MAX_PAGE_CHARS = 3000;
 const MAX_TAGS = 5;
 const MAX_DESCRIPTION_CHARS = 300;
+// How many of the server's existing tags the prompt lists; a restricted
+// choice needs the whole vocabulary, so it gets more room.
 const MAX_KNOWN_TAGS = 200;
+const MAX_KNOWN_TAGS_RESTRICTED = 500;
 
 /**
  * @typedef {object} AiRequest
@@ -37,16 +40,19 @@ const MAX_KNOWN_TAGS = 200;
  * @param {AiRequest} request
  * @param {{headings: string[], text: string}} page
  * @param {string[]} knownTags - Tags that already exist on the server.
+ * @param {boolean} [restrict] - Only tags from that list are wanted.
  * @returns {string}
  */
-export function buildPrompt(request, page, knownTags) {
+export function buildPrompt(request, page, knownTags, restrict = false) {
   const wanted = [];
   if (request.tags) {
     wanted.push(
       `"tags": an array of at most ${MAX_TAGS} short, lowercase keywords that describe the page` +
-        (knownTags.length > 0
-          ? `; prefer tags from this list of existing tags when they fit: ${JSON.stringify(knownTags)}`
-          : ''),
+        (knownTags.length === 0
+          ? ''
+          : restrict
+            ? `; use ONLY tags from this list of existing tags (spelled exactly like there), fewer or none if none fits: ${JSON.stringify(knownTags)}`
+            : `; prefer tags from this list of existing tags when they fit (spelled exactly like there): ${JSON.stringify(knownTags)}`),
     );
   }
   if (request.description) {
@@ -106,6 +112,31 @@ function shorten(text, max) {
 }
 
 /**
+ * Matches suggested tags against the tags that already exist on the server:
+ * a tag the server has (in any letter case) takes the server's spelling, so
+ * "linux" does not become a second tag next to "Linux". With `restrict` only
+ * those tags are kept.
+ * @param {string[]} tags - Suggested tags.
+ * @param {string[]} known - Existing tags.
+ * @param {boolean} restrict - Drop tags that do not exist yet.
+ * @returns {string[]} Without duplicates.
+ */
+export function matchKnownTags(tags, known, restrict) {
+  const canonical = new Map(known.map((tag) => [tag.toLowerCase(), tag]));
+  const matched = [];
+  const seen = new Set();
+  for (const tag of tags) {
+    const existing = canonical.get(tag.toLowerCase());
+    if (!existing && restrict) continue;
+    const value = existing ?? tag;
+    if (seen.has(value.toLowerCase())) continue;
+    seen.add(value.toLowerCase());
+    matched.push(value);
+  }
+  return matched;
+}
+
+/**
  * Asks the AI for the requested fields of the active tab's page.
  * @param {AiRequest} request
  * @returns {Promise<{keywords?: string[], description?: string}>} Only the
@@ -117,9 +148,8 @@ export async function getAiSuggestions(request) {
   const result = {};
   try {
     if (!request?.tags && !request?.description) return {};
-    const { select_aiProvider: provider } = await getOptions([
-      'select_aiProvider',
-    ]);
+    const { select_aiProvider: provider, cbx_reduceKeywords: restrict } =
+      await getOptions(['select_aiProvider', 'cbx_reduceKeywords']);
     if (!provider || provider === 'off') return {};
 
     // Suggestions given for this page before are reused; only what is still
@@ -134,6 +164,18 @@ export async function getAiSuggestions(request) {
       tags: request.tags && !result.keywords,
       description: request.description && !result.description,
     };
+
+    // The tags that exist on the server: suggestions are matched against them,
+    // and with "restrict keywords" on they are the only ones that may be used.
+    let allKnown = [];
+    if (missing.tags) {
+      const stored = await cacheGet('keywords').catch(() => []);
+      allKnown = Array.isArray(stored)
+        ? stored.filter((tag) => typeof tag === 'string')
+        : [];
+      // Nothing to choose from: no tag can survive, so do not ask for any
+      if (restrict && allKnown.length === 0) missing.tags = false;
+    }
     if (!missing.tags && !missing.description) return result;
 
     const [activeTab] = await chrome.tabs.query({
@@ -142,29 +184,31 @@ export async function getAiSuggestions(request) {
     });
     if (!activeTab?.id) return result;
 
-    const [injection, known] = await Promise.all([
-      chrome.scripting.executeScript({
-        target: { tabId: activeTab.id },
-        func: extractPageText,
-        args: [MAX_PAGE_CHARS],
-      }),
-      missing.tags ? cacheGet('keywords').catch(() => []) : Promise.resolve([]),
-    ]);
+    const injection = await chrome.scripting.executeScript({
+      target: { tabId: activeTab.id },
+      func: extractPageText,
+      args: [MAX_PAGE_CHARS],
+    });
     const page = injection?.[0]?.result;
     if (!page || 'error' in page) return result;
 
-    const knownTags = Array.isArray(known)
-      ? known.filter((tag) => typeof tag === 'string').slice(0, MAX_KNOWN_TAGS)
-      : [];
+    const knownTags = allKnown.slice(
+      0,
+      restrict ? MAX_KNOWN_TAGS_RESTRICTED : MAX_KNOWN_TAGS,
+    );
     const answer = parseAnswer(
-      await askAI(buildPrompt(missing, page, knownTags)),
+      await askAI(buildPrompt(missing, page, knownTags, Boolean(restrict))),
     );
     if (!answer) return result;
 
     /** @type {{keywords?: string[], description?: string}} */
     const fresh = {};
     if (missing.tags && Array.isArray(answer.tags)) {
-      const keywords = mergeKeywords(answer.tags).slice(0, MAX_TAGS);
+      const keywords = matchKnownTags(
+        mergeKeywords(answer.tags),
+        allKnown,
+        Boolean(restrict),
+      ).slice(0, MAX_TAGS);
       if (keywords.length > 0) fresh.keywords = keywords;
     }
     if (missing.description && typeof answer.description === 'string') {

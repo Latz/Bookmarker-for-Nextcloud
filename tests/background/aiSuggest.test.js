@@ -16,6 +16,7 @@ import { getAiCached, setAiCached } from '../../src/lib/aiCache.js';
 import {
   buildPrompt,
   getAiSuggestions,
+  matchKnownTags,
   parseAnswer,
 } from '../../src/background/modules/page/aiSuggest.js';
 
@@ -50,6 +51,34 @@ describe('aiSuggest', () => {
     });
   });
 
+  describe('matchKnownTags', () => {
+    const known = ['Linux', 'self-hosting', 'rust'];
+
+    it('adopts the spelling of the existing tag and keeps new ones', () => {
+      expect(matchKnownTags(['linux', 'docker', 'RUST'], known, false)).toEqual(
+        ['Linux', 'docker', 'rust'],
+      );
+    });
+
+    it('keeps only existing tags when restricted', () => {
+      expect(matchKnownTags(['linux', 'docker', 'RUST'], known, true)).toEqual([
+        'Linux',
+        'rust',
+      ]);
+    });
+
+    it('drops duplicates that only differ in letter case', () => {
+      expect(matchKnownTags(['linux', 'LINUX', 'Linux'], known, true)).toEqual([
+        'Linux',
+      ]);
+      expect(matchKnownTags(['x', 'X'], [], false)).toEqual(['x']);
+    });
+
+    it('keeps nothing when restricted and there is nothing to match', () => {
+      expect(matchKnownTags(['linux'], [], true)).toEqual([]);
+    });
+  });
+
   describe('buildPrompt', () => {
     it('asks only for the requested fields and marks the page as data', () => {
       const tags = buildPrompt(
@@ -62,6 +91,10 @@ describe('aiSuggest', () => {
       expect(tags).toContain('["known"]');
       expect(tags).toContain('<page_data>');
       expect(tags).toContain('Some page text');
+
+      const restricted = buildPrompt({ tags: true }, page, ['known'], true);
+      expect(restricted).toContain('use ONLY tags from this list');
+      expect(tags).not.toContain('use ONLY');
 
       const description = buildPrompt({ description: true }, page, []);
       expect(description).toContain('"description"');
@@ -121,6 +154,67 @@ describe('aiSuggest', () => {
       askAI.mockResolvedValue('{}');
       arrange();
       expect(await getAiSuggestions({ tags: true })).toEqual({});
+    });
+
+    describe('restricting tags to the existing ones (cbx_reduceKeywords)', () => {
+      const request = { tags: true, url: 'https://x.test/' };
+
+      beforeEach(() => {
+        getOptions.mockResolvedValue({
+          select_aiProvider: 'openai',
+          cbx_reduceKeywords: true,
+        });
+        cacheGet.mockResolvedValue(['Linux', 'rust']);
+      });
+
+      it('keeps only tags that exist, spelled like the server has them', async () => {
+        askAI.mockResolvedValue('{"tags":["linux","docker","Rust"]}');
+
+        const result = await getAiSuggestions(request);
+
+        expect(result).toEqual({ keywords: ['Linux', 'rust'] });
+        expect(askAI.mock.calls[0][0]).toContain(
+          'use ONLY tags from this list',
+        );
+      });
+
+      it('has no tags when none of the suggestions exists', async () => {
+        askAI.mockResolvedValue('{"tags":["docker"]}');
+        expect(await getAiSuggestions(request)).toEqual({});
+      });
+
+      it('does not ask for tags when the server has none', async () => {
+        cacheGet.mockResolvedValue([]);
+
+        expect(await getAiSuggestions(request)).toEqual({});
+        expect(askAI).not.toHaveBeenCalled();
+      });
+
+      it('still asks for the description then', async () => {
+        cacheGet.mockResolvedValue([]);
+        askAI.mockResolvedValue('{"description":"A page."}');
+
+        const result = await getAiSuggestions({
+          ...request,
+          description: true,
+        });
+
+        expect(result).toEqual({ description: 'A page.' });
+        expect(askAI.mock.calls[0][0]).not.toContain('"tags"');
+      });
+
+      it('when switched off, new tags stay but existing ones take the server spelling', async () => {
+        getOptions.mockResolvedValue({
+          select_aiProvider: 'openai',
+          cbx_reduceKeywords: false,
+        });
+        askAI.mockResolvedValue('{"tags":["linux","docker"]}');
+
+        expect(await getAiSuggestions(request)).toEqual({
+          keywords: ['Linux', 'docker'],
+        });
+        expect(askAI.mock.calls[0][0]).not.toContain('use ONLY');
+      });
     });
 
     // TODO: re-enable together with USE_CACHE in aiSuggest.js
