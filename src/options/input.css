@@ -79,3 +79,10 @@ select[data-price-rank='2'] {
   color: var(--price-second);
   font-weight: 600;
 }
+/* Options without a rank inherit the colour of the dropdown, so with a green
+   model selected the whole list would turn green: give them the normal text
+   colour back. */
+select[data-price-rank] option:not([data-price-rank]) {
+  color: var(--color-base-content);
+  font-weight: normal;
+}
