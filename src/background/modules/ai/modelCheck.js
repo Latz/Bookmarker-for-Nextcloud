@@ -12,7 +12,9 @@ import {
   MODEL_CHECK_STATE_KEY,
 } from '../../../lib/aiCheckStatus.js';
 import log from '../../../lib/log.js';
+import { loadAiData } from '../../../lib/aiData.js';
 import { applyAutoCheapest, hostPattern } from './autoCheapest.js';
+import { updatePrices } from './priceUpdate.js';
 import {
   notifyAutoSwitched,
   notifyCheaperModel,
@@ -136,9 +138,14 @@ export async function checkCheaperModel() {
  * @param {{manual?: boolean}} [how] - `manual`: the user asked for it; the
  *   weekly alarm starts over from now.
  * @returns {Promise<{switched?: import('./autoCheapest.js').Switched | null,
- *   cheaper?: import('../../../lib/aiModelCheck.js').CheaperModel | null}>}
+ *   cheaper?: import('../../../lib/aiModelCheck.js').CheaperModel | null,
+ *   prices: import('./priceUpdate.js').PriceUpdate}>}
  */
 export async function runModelCheckNow({ manual = false } = {}) {
+  // First the prices and details from the providers' pages, so that the
+  // check works with fresh ones; without them the saved/built-in ones do.
+  const prices = await updatePrices();
+  if (!prices.ok) await loadAiData();
   const { cbx_aiAutoCheapest: auto } = await getOptions(['cbx_aiAutoCheapest']);
   /** @type {Awaited<ReturnType<typeof runModelCheckNow>>} */
   let result;
@@ -152,7 +159,7 @@ export async function runModelCheckNow({ manual = false } = {}) {
     result = { cheaper: await checkCheaperModel() };
   }
   if (manual) await restartSchedule();
-  return result;
+  return { ...result, prices };
 }
 
 /**

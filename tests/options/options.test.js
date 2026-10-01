@@ -83,7 +83,11 @@ vi.mock('../../src/popup/modules/fillFolders.js', () => ({
 import Tagify from '@yaireo/tagify';
 import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
 import { setModelOptions, showAiProvider } from '../../src/options/aiPanel.js';
-import { renderCheapestModels } from '../../src/options/aiCheapestPanel.js';
+import {
+  addUpdateFooter,
+  renderCheapestModels,
+} from '../../src/options/aiCheapestPanel.js';
+import { SOURCE_ORIGINS } from '../../src/lib/aiPriceSources.js';
 import {
   applyAutoCheapest,
   providersWithKey,
@@ -851,6 +855,71 @@ describe('options.js', () => {
 
         expect(applyAutoCheapest).not.toHaveBeenCalled();
         expect(chrome.permissions.request).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("prices from the providers' pages", () => {
+      const deps = () => addUpdateFooter.mock.calls.at(-1)[1];
+
+      it('the update button asks once for all the pages, then runs the update', async () => {
+        chrome.runtime.sendMessage = vi
+          .fn()
+          .mockResolvedValue({ prices: { ok: true, changed: 1, added: 0 } });
+
+        const outcome = await deps().runUpdate();
+
+        expect(chrome.permissions.request).toHaveBeenCalledWith({
+          origins: SOURCE_ORIGINS,
+        });
+        expect(SOURCE_ORIGINS).toContain('https://docs.mistral.ai/*');
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+          msg: 'aiCheckNow',
+        });
+        expect(outcome.prices.changed).toBe(1);
+      });
+
+      it('runs the update even when the permission is denied or the request fails', async () => {
+        chrome.permissions.request.mockRejectedValueOnce(
+          new Error('no gesture'),
+        );
+        chrome.runtime.sendMessage = vi
+          .fn()
+          .mockResolvedValue({ prices: { ok: false } });
+
+        await deps().runUpdate();
+
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+          msg: 'aiCheckNow',
+        });
+      });
+
+      it('draws the box again and re-reads the times when new prices are saved', () => {
+        const refresh = addUpdateFooter.mock.results.at(-1).value;
+        const listener =
+          chrome.storage.onChanged.addListener.mock.calls.at(-1)[0];
+        renderCheapestModels.mockClear();
+        refresh.mockClear();
+
+        listener({ aiData: { newValue: {} } }, 'local');
+
+        expect(renderCheapestModels).toHaveBeenCalledTimes(1);
+        expect(refresh).toHaveBeenCalled();
+      });
+
+      it('ignores other storage areas, and only re-reads the times for the check state', () => {
+        const refresh = addUpdateFooter.mock.results.at(-1).value;
+        const listener =
+          chrome.storage.onChanged.addListener.mock.calls.at(-1)[0];
+        renderCheapestModels.mockClear();
+        refresh.mockClear();
+
+        listener({ aiData: {} }, 'sync');
+        expect(renderCheapestModels).not.toHaveBeenCalled();
+        expect(refresh).not.toHaveBeenCalled();
+
+        listener({ aiModelCheck: {} }, 'local');
+        expect(renderCheapestModels).not.toHaveBeenCalled();
+        expect(refresh).toHaveBeenCalledTimes(1);
       });
     });
 

@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   addUpdateFooter,
+  describeUpdate,
   formatTokens,
   modelTooltip,
   renderCheapestModels,
@@ -319,5 +320,105 @@ describe('update footer', () => {
     expect(container.querySelector('[role="status"]').textContent).toBe(
       'no connection',
     );
+  });
+});
+
+describe('describeUpdate', () => {
+  const t = (key, substitutions) =>
+    substitutions ? `${key}:${substitutions.join(',')}` : key;
+  const lines = (outcome) => describeUpdate(outcome, t).split('\n');
+
+  it('names the updated prices, then the result of the check', () => {
+    expect(
+      lines({
+        prices: { ok: true, changed: 2, added: 1, failed: [] },
+        cheaper: null,
+      }),
+    ).toEqual(['aiUpdatePricesChanged:3', 'aiUpdateNothing']);
+  });
+
+  it('says when the prices are up to date', () => {
+    expect(lines({ prices: { ok: true, changed: 0, added: 0 } })[0]).toBe(
+      'aiUpdatePricesCurrent',
+    );
+  });
+
+  it('names the sources that could not be read', () => {
+    expect(
+      lines({
+        prices: { ok: true, changed: 0, added: 0, failed: ['groq', 'openai'] },
+      }),
+    ).toEqual([
+      'aiUpdatePricesCurrent',
+      'aiUpdateSourcesFailed:groq, openai',
+      'aiUpdateNothing',
+    ]);
+  });
+
+  it('asks for the permission when no page may be read', () => {
+    expect(lines({ prices: { ok: false, reason: 'permission' } })[0]).toBe(
+      'aiUpdatePermission',
+    );
+  });
+
+  it('shows the error of a failed price update', () => {
+    expect(lines({ prices: { ok: false, error: 'offline' } })[0]).toBe(
+      'offline',
+    );
+    expect(lines({ prices: { ok: false, failed: ['a', 'b'] } })[0]).toBe(
+      'aiUpdateSourcesFailed:a, b',
+    );
+  });
+
+  it('tells about a switch or a cheaper model after the prices', () => {
+    expect(
+      lines({
+        prices: { ok: true, changed: 1, added: 0 },
+        switched: { model: 'gpt-5-nano', providerLabel: 'OpenAI' },
+      }),
+    ).toEqual(['aiUpdatePricesChanged:1', 'aiAutoDone:gpt-5-nano,OpenAI']);
+    expect(lines({ cheaper: { id: 'x' } })).toEqual(['aiUpdateCheaper:x']);
+  });
+});
+
+describe('the box can be drawn again', () => {
+  it('replaces the list but keeps the update footer', async () => {
+    document.body.innerHTML = '<aside id="box"></aside>';
+    const container = document.getElementById('box');
+    globalThis.chrome = {
+      i18n: { getMessage: vi.fn((key) => key) },
+    };
+    renderCheapestModels(container);
+    addUpdateFooter(container, {
+      getStatus: async () => ({ last: null, next: null, prices: '2026-10-02' }),
+      runUpdate: async () => ({}),
+    });
+    const footer = container.querySelector('#btn_updateCheapest');
+
+    renderCheapestModels(container);
+
+    expect(container.querySelectorAll('.ai-cheapest-list')).toHaveLength(1);
+    expect(container.querySelectorAll('li')).toHaveLength(10);
+    expect(container.querySelector('#btn_updateCheapest')).toBe(footer);
+  });
+
+  it('shows the day of the prices, or "built in"', async () => {
+    document.body.innerHTML = '<aside id="box"></aside>';
+    const container = document.getElementById('box');
+    globalThis.chrome = { i18n: { getMessage: vi.fn((key) => key) } };
+    const status = vi
+      .fn()
+      .mockResolvedValue({ last: null, next: null, prices: null });
+    const refresh = addUpdateFooter(container, {
+      getStatus: status,
+      runUpdate: async () => ({}),
+    });
+
+    await refresh();
+    expect(container.textContent).toContain('aiUpdateData: aiUpdateBuiltIn');
+
+    status.mockResolvedValue({ last: null, next: null, prices: '2026-10-02' });
+    await refresh();
+    expect(container.textContent).toContain('aiUpdateData: 2026-10-02');
   });
 });

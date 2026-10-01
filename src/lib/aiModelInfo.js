@@ -399,10 +399,24 @@ export const MODEL_INFO = {
   }
 };
 
+// The details in use: the built-in ones (MODEL_INFO), or, once the extension
+// has read the providers' pages, those it saved (see aiData.js).
+/** @type {Record<string, ModelInfo>} */
+let current = MODEL_INFO;
+
+/**
+ * Replaces the details in use.
+ * @param {Record<string, ModelInfo> | null | undefined} map - null brings
+ *   back the built-in details.
+ */
+export function setModelInfo(map) {
+  current = map ?? MODEL_INFO;
+}
+
 /**
  * @param {string} prefix - A model of the price list.
  * @returns {ModelInfo | null}
  */
 export function getModelInfo(prefix) {
-  return MODEL_INFO[prefix] ?? null;
+  return current[prefix] ?? null;
 }

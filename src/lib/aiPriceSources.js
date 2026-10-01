@@ -107,6 +107,18 @@ export const SOURCES = [
 ];
 
 /**
+ * Host permission pattern of a source's server ("https://docs.mistral.ai/*").
+ * @param {PriceSource} source
+ * @returns {string}
+ */
+export function sourceOrigin(source) {
+  return `${new URL(source.url).origin}/*`;
+}
+
+/** The host permission patterns of all sources. */
+export const SOURCE_ORIGINS = SOURCES.map(sourceOrigin);
+
+/**
  * Downloads one source and extracts its rows. Never throws: a failure is
  * reported in `error`.
  * @param {PriceSource} source

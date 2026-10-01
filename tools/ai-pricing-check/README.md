@@ -14,6 +14,18 @@ npm run check:prices -- -v --json prices.json
 
 Exit code 1 if a source could not be read.
 
+## The same logic runs in the extension
+
+The extractors, the list of pages and the comparison live in `src/lib/`
+(`aiPriceExtractors.js`, `aiPriceSources.js`, `aiPriceMerge.js`); this tool only
+adds fetching with Node (and jsdom for the HTML) and writing the source files.
+The extension reads the same seven pages itself when you press the update button
+in the AI tab (and weekly): the pages are fetched and parsed in the offscreen
+document, new and changed prices and the details are saved in
+`chrome.storage.local` (`aiData`) and used instead of the built-in ones. Running
+this tool (`--write`) updates the **built-in** values, the starting point of a new
+build. A page that changes its layout breaks the tool and the extension alike.
+
 ## Sources
 
 | Source | What is read | Used for |

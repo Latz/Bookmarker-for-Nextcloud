@@ -55,13 +55,15 @@ export async function ensureOffscreenDocument() {
 
     // Create the offscreen document
     // Use the correct path that Vite will bundle
-    const offscreenPath = 'src/background/modules/browser/offscreen/offscreen.html';
+    const offscreenPath =
+      'src/background/modules/browser/offscreen/offscreen.html';
 
     try {
       await chrome.offscreen.createDocument({
         url: chrome.runtime.getURL(offscreenPath),
-        reasons: ['MATCH_MEDIA'],
-        justification: 'matchmedia request for browser theme detection',
+        reasons: ['MATCH_MEDIA', 'DOM_PARSER'],
+        justification:
+          'matchmedia request for browser theme detection; parsing the HTML of the AI providers price pages',
       });
     } catch (error) {
       // If creation fails because document already exists, ignore

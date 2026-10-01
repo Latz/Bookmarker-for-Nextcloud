@@ -150,7 +150,16 @@ export function renderCheapestModels(container, onPick) {
     list.append(item);
   });
 
-  container.replaceChildren(
+  // The list lives in its own element, so that it can be drawn again (after
+  // the prices were updated) without losing the update footer below it.
+  let inner = Array.from(container.children).find((child) =>
+    child.classList.contains('ai-cheapest-list'),
+  );
+  if (!inner) {
+    inner = node('div', '', 'ai-cheapest-list');
+    container.prepend(inner);
+  }
+  inner.replaceChildren(
     node('h3', t('aiCheapest'), 'font-medium'),
     list,
     node('p', t('aiCheapestNote'), 'mt-3 text-xs opacity-70'),
@@ -182,14 +191,55 @@ function refreshIcon() {
 }
 
 /**
- * Adds "last update", "next update" and an update button to the box. The
- * update is the weekly check for cheaper models (it loads the model list of
- * the provider in use, or of all providers with a key when switching
- * automatically); the prices and details in the box come with the extension.
+ * What came of an update, in words: first the prices, then the check for a
+ * cheaper model.
+ * @param {any} outcome - The answer of the service worker (runModelCheckNow).
+ * @param {(key: string, substitutions?: string[]) => string} t
+ * @returns {string} One line per part.
+ */
+export function describeUpdate(outcome, t) {
+  const lines = [];
+  const prices = outcome?.prices;
+  if (prices?.reason === 'permission') {
+    lines.push(t('aiUpdatePermission'));
+  } else if (prices?.ok) {
+    const n = (prices.changed ?? 0) + (prices.added ?? 0);
+    lines.push(
+      n > 0
+        ? t('aiUpdatePricesChanged', [String(n)])
+        : t('aiUpdatePricesCurrent'),
+    );
+  } else if (prices) {
+    lines.push(
+      prices.error ??
+        t('aiUpdateSourcesFailed', [(prices.failed ?? []).join(', ')]),
+    );
+  }
+  if (prices?.ok && prices.failed?.length > 0) {
+    lines.push(t('aiUpdateSourcesFailed', [prices.failed.join(', ')]));
+  }
+
+  if (outcome?.error) lines.push(outcome.error);
+  else if (outcome?.switched) {
+    lines.push(
+      t('aiAutoDone', [outcome.switched.model, outcome.switched.providerLabel]),
+    );
+  } else if (outcome?.cheaper) {
+    lines.push(t('aiUpdateCheaper', [outcome.cheaper.id]));
+  } else lines.push(t('aiUpdateNothing'));
+  return lines.join('\n');
+}
+
+/**
+ * Adds "prices as of", "last update", "next update" and an update button to
+ * the box. The update reads the prices and details from the providers' pages
+ * (saved in chrome.storage.local) and then runs the weekly check for cheaper
+ * models: it loads the model list of the provider in use, or of all providers
+ * with a key when switching automatically.
  * @param {HTMLElement} container - The box.
  * @param {object} deps
- * @param {() => Promise<{last: number | null, next: number | null}>} deps.getStatus
- * @param {() => Promise<{switched?: any, cheaper?: any, error?: string}>} deps.runUpdate
+ * @param {() => Promise<{last: number | null, next: number | null, prices?: string | null}>} deps.getStatus
+ * @param {() => Promise<any>} deps.runUpdate - Answers like runModelCheckNow.
  * @returns {() => Promise<void>} Re-reads the times and shows them.
  */
 export function addUpdateFooter(container, { getStatus, runUpdate }) {
@@ -204,7 +254,8 @@ export function addUpdateFooter(container, { getStatus, runUpdate }) {
 
   const last = node('span');
   const next = node('div');
-  const result = node('div', '', 'opacity-70');
+  const dataDay = node('div');
+  const result = node('div', '', 'whitespace-pre-line opacity-70');
   result.setAttribute('role', 'status');
 
   const button = node('button', '', 'btn btn-ghost btn-xs btn-circle shrink-0');
@@ -222,13 +273,14 @@ export function addUpdateFooter(container, { getStatus, runUpdate }) {
     '',
     'mt-3 space-y-0.5 border-t border-base-300 pt-2 text-xs',
   );
-  footer.append(top, next, result);
+  footer.append(top, next, dataDay, result);
   container.append(footer);
 
   const refresh = async () => {
     const status = await getStatus();
     last.textContent = `${t('aiUpdateLast')}: ${when(status.last)}`;
     next.textContent = `${t('aiUpdateNext')}: ${when(status.next)}`;
+    dataDay.textContent = `${t('aiUpdateData')}: ${status.prices ?? t('aiUpdateBuiltIn')}`;
   };
 
   button.addEventListener('click', async () => {
@@ -236,16 +288,7 @@ export function addUpdateFooter(container, { getStatus, runUpdate }) {
     icon.classList.add('animate-spin');
     result.textContent = t('aiUpdateRunning');
     try {
-      const outcome = await runUpdate();
-      if (outcome?.error) result.textContent = outcome.error;
-      else if (outcome?.switched) {
-        result.textContent = t('aiAutoDone', [
-          outcome.switched.model,
-          outcome.switched.providerLabel,
-        ]);
-      } else if (outcome?.cheaper) {
-        result.textContent = t('aiUpdateCheaper', [outcome.cheaper.id]);
-      } else result.textContent = t('aiUpdateNothing');
+      result.textContent = describeUpdate(await runUpdate(), t);
     } catch (error) {
       result.textContent = error?.message ?? String(error);
     } finally {

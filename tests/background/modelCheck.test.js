@@ -7,6 +7,10 @@ vi.mock('../../src/background/modules/browser/notification.js', () => ({
   notifyCheaperModel: vi.fn(),
   notifyAutoSwitched: vi.fn(),
 }));
+vi.mock('../../src/background/modules/ai/priceUpdate.js', () => ({
+  updatePrices: vi.fn(),
+}));
+vi.mock('../../src/lib/aiData.js', () => ({ loadAiData: vi.fn() }));
 vi.mock('../../src/background/modules/ai/autoCheapest.js', () => ({
   applyAutoCheapest: vi.fn(),
   hostPattern: vi.fn((url) => {
@@ -22,6 +26,8 @@ import {
   notifyCheaperModel,
 } from '../../src/background/modules/browser/notification.js';
 import { applyAutoCheapest } from '../../src/background/modules/ai/autoCheapest.js';
+import { updatePrices } from '../../src/background/modules/ai/priceUpdate.js';
+import { loadAiData } from '../../src/lib/aiData.js';
 import {
   MODEL_CHECK_ALARM,
   checkCheaperModel,
@@ -38,6 +44,7 @@ describe('modelCheck', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    updatePrices.mockResolvedValue({ ok: true, changed: 0, added: 0 });
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     store = {};
     options = {
@@ -253,6 +260,45 @@ describe('modelCheck', () => {
 
       expect(result.switched.model).toBe('gpt-5-nano');
       expect(notifyAutoSwitched).toHaveBeenCalled();
+    });
+  });
+
+  describe('prices and details are updated first', () => {
+    it("reads the providers' pages before the check and reports the result", async () => {
+      const order = [];
+      updatePrices.mockImplementation(async () => {
+        order.push('prices');
+        return { ok: true, changed: 2, added: 1, generated: '2026-10-02' };
+      });
+      listModels.mockImplementation(async () => {
+        order.push('check');
+        return [{ id: 'gpt-5' }];
+      });
+
+      const result = await runModelCheckNow({ manual: true });
+
+      expect(order).toEqual(['prices', 'check']);
+      expect(result.prices).toEqual({
+        ok: true,
+        changed: 2,
+        added: 1,
+        generated: '2026-10-02',
+      });
+    });
+
+    it('still checks with the saved or built-in prices when the update did not work', async () => {
+      updatePrices.mockResolvedValue({ ok: false, reason: 'permission' });
+
+      const result = await runModelCheckNow();
+
+      expect(loadAiData).toHaveBeenCalled();
+      expect(listModels).toHaveBeenCalled();
+      expect(result.prices.reason).toBe('permission');
+    });
+
+    it('the weekly alarm updates the prices too', async () => {
+      await runScheduledModelCheck();
+      expect(updatePrices).toHaveBeenCalledTimes(1);
     });
   });
 });

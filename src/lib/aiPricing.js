@@ -80,8 +80,29 @@ export const PRICES = [
   // <prices:end>
 ];
 
+// The prices in use: the built-in ones (PRICES), or, once the extension has
+// read the providers' pages, those it saved (see aiData.js, setPrices).
+/** @type {Array<[prefix: string, input: number, output: number]>} */
+let current = PRICES;
+
 // Longest prefix first, so "gpt-5-mini" wins over "gpt-5".
-const SORTED = [...PRICES].sort((a, b) => b[0].length - a[0].length);
+const byLength = (list) => [...list].sort((a, b) => b[0].length - a[0].length);
+let SORTED = byLength(current);
+
+/**
+ * Replaces the prices in use.
+ * @param {Array<[string, number, number]> | null | undefined} list - null or
+ *   an empty list brings back the built-in prices.
+ */
+export function setPrices(list) {
+  current = Array.isArray(list) && list.length > 0 ? list : PRICES;
+  SORTED = byLength(current);
+}
+
+/** @returns {Array<[string, number, number]>} The prices in use. */
+export function getPricesList() {
+  return current;
+}
 
 // Local servers cost nothing per token.
 const FREE_PROVIDERS = new Set(['ollama']);
@@ -168,10 +189,11 @@ export function providerOfModel(prefix) {
  * @returns {Array<{model: string, provider: string, price: {input: number, output: number}}>}
  */
 export function cheapestModels(limit = 10) {
-  return PRICES.flatMap(([model, input, output]) => {
-    const provider = providerOfModel(model);
-    return provider ? [{ model, provider, price: { input, output } }] : [];
-  })
+  return current
+    .flatMap(([model, input, output]) => {
+      const provider = providerOfModel(model);
+      return provider ? [{ model, provider, price: { input, output } }] : [];
+    })
     .sort((a, b) => typicalCost(a.price) - typicalCost(b.price))
     .slice(0, limit);
 }

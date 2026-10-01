@@ -13,6 +13,7 @@ describe('getCheckStatus', () => {
         local: {
           get: vi.fn().mockResolvedValue({
             [MODEL_CHECK_STATE_KEY]: { time: 1_700_000_000_000 },
+            aiData: { generated: '2026-10-02' },
           }),
         },
       },
@@ -26,6 +27,7 @@ describe('getCheckStatus', () => {
     expect(await getCheckStatus()).toEqual({
       last: 1_700_000_000_000,
       next: 1_700_600_000_000,
+      prices: '2026-10-02',
     });
     expect(chrome.alarms.get).toHaveBeenCalledWith(MODEL_CHECK_ALARM);
   });
@@ -33,11 +35,19 @@ describe('getCheckStatus', () => {
   it('has null for what is not known (never ran, no alarm)', async () => {
     chrome.storage.local.get.mockResolvedValue({});
     chrome.alarms.get.mockResolvedValue(undefined);
-    expect(await getCheckStatus()).toEqual({ last: null, next: null });
+    expect(await getCheckStatus()).toEqual({
+      last: null,
+      next: null,
+      prices: null,
+    });
   });
 
   it('never throws, also without the APIs', async () => {
     globalThis.chrome = {};
-    expect(await getCheckStatus()).toEqual({ last: null, next: null });
+    expect(await getCheckStatus()).toEqual({
+      last: null,
+      next: null,
+      prices: null,
+    });
   });
 });
