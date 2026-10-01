@@ -10,6 +10,7 @@ import { updatePrices } from '../../src/background/modules/ai/priceUpdate.js';
 import { AI_DATA_KEY, applyAiData } from '../../src/lib/aiData.js';
 import { getPrice } from '../../src/lib/aiPricing.js';
 import { SOURCES } from '../../src/lib/aiPriceSources.js';
+import { TEST_INFO, TEST_PRICES } from '../fixtures/aiPrices.js';
 import { getModelInfo } from '../../src/lib/aiModelInfo.js';
 
 const row = (prefix, input, output, source, info) => ({
@@ -27,7 +28,14 @@ describe('updatePrices', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    store = {};
+    // what the extension has saved from earlier updates
+    store = {
+      [AI_DATA_KEY]: {
+        prices: TEST_PRICES,
+        info: TEST_INFO,
+        generated: '2026-09-01',
+      },
+    };
     answers = {
       openai: {
         rows: [row('gpt-5-mini', 0.3, 2.5, 'openai', { cachedInput: 0.03 })],
@@ -149,12 +157,13 @@ describe('updatePrices', () => {
 
   it('says so when no source may be read yet, and changes nothing', async () => {
     chrome.permissions.contains.mockResolvedValue(false);
+    const before = store[AI_DATA_KEY];
 
     const result = await updatePrices();
 
     expect(result).toMatchObject({ ok: false, reason: 'permission' });
     expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-    expect(store[AI_DATA_KEY]).toBeUndefined();
+    expect(store[AI_DATA_KEY]).toBe(before);
   });
 
   it('is not ok when every permitted source fails', async () => {
@@ -162,7 +171,7 @@ describe('updatePrices', () => {
     const result = await updatePrices();
     expect(result.ok).toBe(false);
     expect(result.failed).toHaveLength(SOURCES.length);
-    expect(store[AI_DATA_KEY]).toBeUndefined();
+    expect(store[AI_DATA_KEY].generated).toBe('2026-09-01');
   });
 
   it('an answer from a second update with nothing new still records the day', async () => {
@@ -196,5 +205,35 @@ describe('updatePrices', () => {
     const result = await updatePrices();
 
     expect(result.failed).toContain('groq');
+  });
+
+  it('the first update, with nothing saved yet, takes every price of the pages', async () => {
+    delete store[AI_DATA_KEY];
+
+    const result = await updatePrices();
+
+    expect(result).toMatchObject({ ok: true, changed: 0, added: 2 });
+    expect(store[AI_DATA_KEY].prices.map((p) => p[0]).sort()).toEqual([
+      'claude-opus-9',
+      'gpt-5-mini',
+    ]);
+    expect(getPrice('openai', 'gpt-5-mini')).toEqual({
+      input: 0.3,
+      output: 2.5,
+    });
+    // nothing else has a price: nothing is built in
+    expect(getPrice('claude', 'claude-haiku-4-5')).toBeNull();
+  });
+
+  it("takes OpenRouter's models that the official pages do not list", async () => {
+    delete store[AI_DATA_KEY];
+    answers.openrouter = {
+      rows: [row('gpt-4o', 2.5, 10, 'openrouter', { context: 128000 })],
+    };
+
+    await updatePrices();
+
+    expect(getPrice('openai', 'gpt-4o')).toEqual({ input: 2.5, output: 10 });
+    expect(getModelInfo('gpt-4o').context).toBe(128000);
   });
 });

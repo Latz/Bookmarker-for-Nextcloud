@@ -1,89 +1,17 @@
 // @ts-check
-// Rough prices (US dollars per million tokens) of well-known models, to
-// estimate what the AI calls cost. These are list prices from the providers'
-// price pages and can be out of date; the options page calls the result an
-// estimate. Models that are not listed show their tokens but no cost.
+// The prices (US dollars per million tokens) of the AI models, to estimate what
+// the AI calls cost and to rank the models. The extension has NO built-in
+// prices: they are read from the providers' own pages when the user updates
+// them (src/background/modules/ai/priceUpdate.js), saved in chrome.storage.local
+// and put into use with setPrices (see aiData.js). Without them no model has a
+// price: costs show "-", the cheapest-models box asks for an update.
 // A model matches the longest prefix of its id (so dated ids like
 // "claude-haiku-4-5-20251001" find "claude-haiku-4-5").
-//
-// The list between the markers is kept up to date by
-// tools/ai-pricing-check (`npm run check:prices -- --write`), which reads the
-// providers' price pages; edit it by hand only for models that tool cannot see.
 
+// The prices in use: those the extension read from the providers' pages and
+// saved (see aiData.js); none before that.
 /** @type {Array<[prefix: string, input: number, output: number]>} */
-export const PRICES = [
-  // <prices:begin>
-  // Anthropic
-  ['claude-3-5-haiku', 0.8, 4],
-  ['claude-fable-5', 10, 50],
-  ['claude-fable-5-1', 10, 50],
-  ['claude-haiku-4-5', 1, 5],
-  ['claude-mythos-5', 10, 50],
-  ['claude-mythos-5-1', 10, 50],
-  ['claude-opus-4', 15, 75],
-  ['claude-opus-4-1', 15, 75],
-  ['claude-opus-4-5', 5, 25],
-  ['claude-opus-4-6', 5, 25],
-  ['claude-opus-4-7', 5, 25],
-  ['claude-opus-4-8', 5, 25],
-  ['claude-opus-5', 5, 25],
-  ['claude-opus-5-5', 4, 20],
-  ['claude-sonnet-4', 3, 15],
-  ['claude-sonnet-4-5', 3, 15],
-  ['claude-sonnet-4-6', 3, 15],
-  ['claude-sonnet-5', 2, 10],
-  ['claude-sonnet-5-5', 2, 10],
-  // OpenAI
-  ['gpt-4.1', 2, 8],
-  ['gpt-4.1-mini', 0.4, 1.6],
-  ['gpt-4.1-nano', 0.1, 0.4],
-  ['gpt-4o', 2.5, 10],
-  ['gpt-4o-mini', 0.15, 0.6],
-  ['gpt-5', 1.25, 10],
-  ['gpt-5-mini', 0.25, 2],
-  ['gpt-5-nano', 0.05, 0.4],
-  ['gpt-6-astra', 10, 50],
-  ['gpt-6-luna', 0.1, 0.5],
-  ['gpt-6.1-sol', 2, 10],
-  ['o3-mini', 1.1, 4.4],
-  // Google
-  ['gemini-2.5-flash', 0.3, 2.5],
-  ['gemini-2.5-flash-lite', 0.1, 0.4],
-  ['gemini-2.5-pro', 1.25, 10],
-  ['gemini-3-flash-preview', 0.5, 3],
-  ['gemini-3.1-flash-lite', 0.25, 1.5],
-  ['gemini-3.5-flash', 1.5, 9],
-  ['gemini-3.5-flash-lite', 0.3, 2.5],
-  ['gemini-3.6-flash', 0.75, 3.75],
-  ['gemini-3.7-flash', 0.75, 3.75],
-  ['gemini-3.8-flash', 0.75, 3.75],
-  ['gemini-omni-1.1-flash', 1.5, 9],
-  ['gemini-omni-flash-preview', 1.5, 9],
-  // Mistral
-  ['codestral', 0.3, 0.9],
-  ['ministral-14b', 0.2, 0.2],
-  ['ministral-3b', 0.1, 0.1],
-  ['ministral-8b', 0.15, 0.15],
-  ['mistral-large', 0.5, 1.5],
-  ['mistral-medium', 1.5, 7.5],
-  ['mistral-small', 0.15, 0.6],
-  // DeepSeek
-  ['deepseek-flash', 0.3, 1.2],
-  ['deepseek-v4-flash', 0.3, 1.2],
-  ['deepseek-v4-flash-vision-exp', 0.3, 1.2],
-  ['deepseek-v4-pro', 1.32, 3.96],
-  // Groq
-  ['gpt-oss-120b', 0.15, 0.6],
-  ['gpt-oss-20b', 0.075, 0.3],
-  ['llama-3.3-70b', 0.59, 0.79],
-  ['qwen3.8-27b', 0.8, 4],
-  // <prices:end>
-];
-
-// The prices in use: the built-in ones (PRICES), or, once the extension has
-// read the providers' pages, those it saved (see aiData.js, setPrices).
-/** @type {Array<[prefix: string, input: number, output: number]>} */
-let current = PRICES;
+let current = [];
 
 // Longest prefix first, so "gpt-5-mini" wins over "gpt-5".
 const byLength = (list) => [...list].sort((a, b) => b[0].length - a[0].length);
@@ -92,10 +20,10 @@ let SORTED = byLength(current);
 /**
  * Replaces the prices in use.
  * @param {Array<[string, number, number]> | null | undefined} list - null or
- *   an empty list brings back the built-in prices.
+ *   an empty list: no model has a price.
  */
 export function setPrices(list) {
-  current = Array.isArray(list) && list.length > 0 ? list : PRICES;
+  current = Array.isArray(list) ? list : [];
   SORTED = byLength(current);
 }
 

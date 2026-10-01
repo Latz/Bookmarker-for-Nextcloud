@@ -16,13 +16,7 @@ import {
   firstSentence,
   parseTokenCount,
 } from '../../src/lib/aiPriceExtractors.js';
-import {
-  collectInfo,
-  compare,
-  renderBlock,
-  renderInfoFile,
-  replaceBlock,
-} from '../../tools/ai-pricing-check/compare.js';
+import { collectInfo, compare } from '../../src/lib/aiPriceMerge.js';
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -370,19 +364,6 @@ describe('model details', () => {
       expect(info).toEqual({});
     });
   });
-
-  it('renderInfoFile writes a module with sorted keys that can be read back', async () => {
-    const text = renderInfoFile({
-      b: { context: 2 },
-      a: { context: 1, description: 'It\'s "fine".' },
-    });
-    expect(text.indexOf('"a"')).toBeLessThan(text.indexOf('"b"'));
-    const url = `data:text/javascript,${encodeURIComponent(text)}`;
-    const module = await import(/* @vite-ignore */ url);
-    expect(module.MODEL_INFO.a.description).toBe('It\'s "fine".');
-    expect(module.getModelInfo('b')).toEqual({ context: 2 });
-    expect(module.getModelInfo('nope')).toBeNull();
-  });
 });
 
 describe('DeepSeek: description and legacy names', () => {
@@ -598,12 +579,27 @@ describe('compare', () => {
     expect(report.missing).toEqual(['mistral-small']);
   });
 
-  it('takes OpenRouter only for models that are already in the list', () => {
+  it('takes OpenRouter for models the official pages do not list', () => {
     const report = compare(
       [source('openrouter', false, [['brand-new-model', 1, 2]])],
       current,
     );
-    expect(report.added).toEqual([]);
+    expect(report.added.map((r) => r.prefix)).toEqual(['brand-new-model']);
+  });
+
+  it('with nothing known yet every price of the pages is new', () => {
+    const report = compare(
+      [
+        source('anthropic', true, [['claude-haiku-4-5', 1, 5]]),
+        source('openrouter', false, [['gpt-5-mini', 0.25, 2]]),
+      ],
+      [],
+    );
+    expect(report.added.map((r) => r.prefix)).toEqual([
+      'claude-haiku-4-5',
+      'gpt-5-mini',
+    ]);
+    expect(report.changed).toEqual([]);
   });
 
   it('lets the official page win and flags a disagreement with OpenRouter', () => {
@@ -633,57 +629,5 @@ describe('compare', () => {
     );
     expect(report.changed).toEqual([]);
     expect(report.missing).toContain('claude-haiku-4-5');
-  });
-});
-
-describe('renderBlock / replaceBlock', () => {
-  const entries = [
-    ['gpt-5-mini', 0.25, 2],
-    ['claude-opus-5-5', 4, 20],
-    ['claude-haiku-4-5', 1, 5],
-    ['llama-3.3-70b', 0.59, 0.79],
-    ['gpt-oss-20b', 0.075, 0.3],
-  ];
-
-  it('groups by vendor and sorts inside a group', () => {
-    expect(renderBlock(entries)).toBe(
-      [
-        '  // Anthropic',
-        "  ['claude-haiku-4-5', 1, 5],",
-        "  ['claude-opus-5-5', 4, 20],",
-        '  // OpenAI',
-        "  ['gpt-5-mini', 0.25, 2],",
-        '  // Groq',
-        "  ['gpt-oss-20b', 0.075, 0.3],",
-        "  ['llama-3.3-70b', 0.59, 0.79],",
-      ].join('\n'),
-    );
-  });
-
-  const file = (eol) =>
-    [
-      'export const PRICES = [',
-      '  // <prices:begin>',
-      "  ['old', 1, 1],",
-      '  // <prices:end>',
-      '];',
-    ].join(eol);
-
-  it('replaces only the marked block', () => {
-    expect(replaceBlock(file('\n'), "  ['new', 2, 2],")).toBe(
-      file('\n').replace("['old', 1, 1]", "['new', 2, 2]"),
-    );
-  });
-
-  it('keeps CRLF line endings', () => {
-    const result = replaceBlock(file('\r\n'), "  ['a', 1, 1],\n  ['b', 2, 2],");
-    expect(result).toContain(
-      "['a', 1, 1],\r\n  ['b', 2, 2],\r\n  // <prices:end>",
-    );
-    expect(result.replace(/\r\n/g, '')).not.toContain('\n');
-  });
-
-  it('refuses a file without the markers', () => {
-    expect(() => replaceBlock('const PRICES = [];', 'x')).toThrow('markers');
   });
 });

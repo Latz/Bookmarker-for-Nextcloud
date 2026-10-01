@@ -1,11 +1,9 @@
 // @ts-check
-// The prices and model details the extension uses. They start with the
-// built-in ones (aiPricing.js, aiModelInfo.js, shipped with the build) and are
-// replaced by what the extension saved in chrome.storage.local after reading the
-// providers' pages (src/background/modules/ai/priceUpdate.js). Saved prices
-// override the built-in ones model by model; models only the build knows stay.
-import { PRICES, setPrices } from './aiPricing.js';
-import { MODEL_INFO, setModelInfo } from './aiModelInfo.js';
+// The prices and model details the extension uses. There are none built in:
+// they are what the extension saved in chrome.storage.local after reading the
+// providers' pages (src/background/modules/ai/priceUpdate.js).
+import { setPrices } from './aiPricing.js';
+import { setModelInfo } from './aiModelInfo.js';
 
 export const AI_DATA_KEY = 'aiData';
 
@@ -87,47 +85,17 @@ export function validateAiData(data) {
 }
 
 /**
- * The built-in prices with the saved ones on top.
- * @param {Array<[string, number, number]>} saved
- * @returns {Array<[string, number, number]>}
- */
-export function mergePrices(saved) {
-  const map = new Map(PRICES.map((entry) => [entry[0], entry]));
-  for (const entry of saved) map.set(entry[0], entry);
-  return [...map.values()];
-}
-
-/**
- * The built-in details with the saved ones on top, model by model.
- * @param {Record<string, Record<string, unknown>>} saved
- * @returns {Record<string, any>}
- */
-export function mergeInfo(saved) {
-  /** @type {Record<string, any>} */
-  const merged = { ...MODEL_INFO };
-  for (const [model, details] of Object.entries(saved)) {
-    merged[model] = { ...merged[model], ...details };
-  }
-  return merged;
-}
-
-/**
  * Puts saved data into use.
- * @param {AiData | null} data - null brings back the built-in data.
+ * @param {AiData | null} data - null: no prices and no details.
  */
 export function applyAiData(data) {
-  if (!data) {
-    setPrices(null);
-    setModelInfo(null);
-    return;
-  }
-  setPrices(mergePrices(data.prices));
-  setModelInfo(mergeInfo(data.info));
+  setPrices(data?.prices ?? null);
+  setModelInfo(data?.info ?? null);
 }
 
 /**
  * @returns {Promise<AiData | null>} The saved data, null if there is none or
- *   it is not valid (then the built-in data stays in use). Never throws.
+ *   it is not valid (then there are no prices). Never throws.
  */
 export async function readSavedAiData() {
   try {

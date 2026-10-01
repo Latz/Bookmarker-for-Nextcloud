@@ -4,24 +4,17 @@ import {
   AI_DATA_KEY,
   applyAiData,
   loadAiData,
-  mergeInfo,
-  mergePrices,
   readSavedAiData,
   saveAiData,
   validateAiData,
 } from '../../src/lib/aiData.js';
 import {
-  PRICES,
   cheapestModels,
   getPrice,
   getPricesList,
   setPrices,
 } from '../../src/lib/aiPricing.js';
-import {
-  MODEL_INFO,
-  getModelInfo,
-  setModelInfo,
-} from '../../src/lib/aiModelInfo.js';
+import { getModelInfo, setModelInfo } from '../../src/lib/aiModelInfo.js';
 
 const good = () => ({
   prices: [
@@ -79,29 +72,6 @@ describe('validateAiData', () => {
   });
 });
 
-describe('merging with the built-in data', () => {
-  it('saved prices override built-in ones and add new models; the rest stays', () => {
-    const merged = mergePrices(good().prices);
-    const map = new Map(merged);
-    expect(map.get('gpt-5-mini')).toBe(0.3);
-    expect(map.has('brand-new-model')).toBe(true);
-    // a model only the build knows stays
-    expect(map.has(PRICES[0][0])).toBe(true);
-  });
-
-  it('saved details are laid over the built-in ones, field by field', () => {
-    const merged = mergeInfo({
-      'gpt-5-mini': { context: 1 },
-      unknown: { description: 'new' },
-    });
-    expect(merged['gpt-5-mini'].context).toBe(1);
-    expect(merged['gpt-5-mini'].released).toBe(
-      MODEL_INFO['gpt-5-mini'].released,
-    );
-    expect(merged.unknown).toEqual({ description: 'new' });
-  });
-});
-
 describe('using the data', () => {
   afterEach(() => {
     applyAiData(null);
@@ -129,25 +99,32 @@ describe('using the data', () => {
     expect(cheapestModels(1)[0].model).toBe('gpt-5-nano');
   });
 
-  it('applyAiData(null) brings the built-in data back', () => {
+  it('applyAiData(null) leaves no prices and no details: nothing is built in', () => {
     applyAiData(validateAiData(good()).data);
     applyAiData(null);
-    expect(getPrice('openai', 'gpt-5-mini')).toEqual({
-      input: 0.25,
-      output: 2,
-    });
-    expect(getModelInfo('gpt-5-mini').context).toBe(
-      MODEL_INFO['gpt-5-mini'].context,
-    );
+    expect(getPrice('openai', 'gpt-5-mini')).toBeNull();
+    expect(getModelInfo('gpt-5-mini')).toBeNull();
+    expect(cheapestModels(10)).toEqual([]);
   });
 
-  it('setPrices(null) and an empty list also bring the built-in prices back', () => {
+  it('saved data replaces the prices in use as a whole', () => {
+    applyAiData(validateAiData(good()).data);
+    // a model the saved data does not list has no price
+    expect(getPrice('claude', 'claude-haiku-4-5')).toBeNull();
+    expect(getPrice('openai', 'brand-new-model')).toEqual({
+      input: 0.01,
+      output: 0.02,
+    });
+  });
+
+  it('setPrices(null) and an empty list leave no prices', () => {
     setPrices([['x', 1, 1]]);
     expect(getPricesList()).toHaveLength(1);
     setPrices([]);
-    expect(getPricesList()).toBe(PRICES);
+    expect(getPricesList()).toEqual([]);
+    setPrices([['x', 1, 1]]);
     setPrices(null);
-    expect(getPricesList()).toBe(PRICES);
+    expect(getPricesList()).toEqual([]);
     setModelInfo(null);
   });
 });
@@ -220,19 +197,13 @@ describe('storage', () => {
     );
     expect(getPrice('openai', 'gpt-5-mini')).toEqual({ input: 9, output: 9 });
 
-    // the data is removed: the built-in prices are back
+    // the data is removed: no prices
     listeners.at(-1)({ [AI_DATA_KEY]: {} }, 'local');
-    expect(getPrice('openai', 'gpt-5-mini')).toEqual({
-      input: 0.25,
-      output: 2,
-    });
+    expect(getPrice('openai', 'gpt-5-mini')).toBeNull();
 
     // other storage areas and keys are ignored
     listeners.at(-1)({ [AI_DATA_KEY]: { newValue: good() } }, 'sync');
     listeners.at(-1)({ other: {} }, 'local');
-    expect(getPrice('openai', 'gpt-5-mini')).toEqual({
-      input: 0.25,
-      output: 2,
-    });
+    expect(getPrice('openai', 'gpt-5-mini')).toBeNull();
   });
 });

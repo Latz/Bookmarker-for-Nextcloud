@@ -86,6 +86,7 @@
   "aiUpdatePermission": {"message": "Zugriff auf die Seiten der Anbieter erlauben, um die Preise zu aktualisieren."},
   "aiUpdatePricesChanged": {"message": "$n$ Preise aktualisiert.", "placeholders": {"n": {"content": "$1"}}},
   "aiUpdateSourcesFailed": {"message": "Nicht lesbar: $sources$.", "placeholders": {"sources": {"content": "$1"}}},
+  "aiCheapestEmpty": { "message": "Noch keine Preise. Drücke unten auf Aktualisieren, um sie von den Seiten der Anbieter zu lesen." },
   "aiKeyOptional": { "message": "optional" },
   "aiOllamaHint": { "message": "Ollama muss diese Erweiterung zulassen: OLLAMA_ORIGINS=chrome-extension://* setzen und Ollama neu starten." },
   "aiModelsFailed": { "message": "Die Modellliste konnte nicht geladen werden" },

@@ -112,8 +112,9 @@ export function renderCheapestModels(container, onPick) {
   const t = (key) => chrome.i18n.getMessage(key);
   const label = (id) => AI_PROVIDERS.find((p) => p.id === id)?.label ?? id;
 
+  const models = cheapestModels(LIMIT);
   const list = node('ol', '', 'mt-2 space-y-1 text-sm');
-  cheapestModels(LIMIT).forEach((entry, index) => {
+  models.forEach((entry, index) => {
     // The row is the control (a button), so that the info icon can sit inside
     // it without being a button inside a button.
     const item = node(
@@ -158,6 +159,15 @@ export function renderCheapestModels(container, onPick) {
   if (!inner) {
     inner = node('div', '', 'ai-cheapest-list');
     container.prepend(inner);
+  }
+  // There are no built-in prices: until they were read from the providers'
+  // pages (the update button below) there is nothing to show
+  if (models.length === 0) {
+    inner.replaceChildren(
+      node('h3', t('aiCheapest'), 'font-medium'),
+      node('p', t('aiCheapestEmpty'), 'mt-2 text-sm'),
+    );
+    return;
   }
   inner.replaceChildren(
     node('h3', t('aiCheapest'), 'font-medium'),

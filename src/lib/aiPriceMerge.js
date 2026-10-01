@@ -71,12 +71,11 @@ export function compare(sources, current) {
       });
     }
   }
-  // OpenRouter only fills in models the pages did not list, and only ones
-  // that are already in the list (it lists far more models than we track)
+  // OpenRouter fills in the models the official pages do not list (the
+  // OpenAI page, for one, only names the newest models). Its rows are
+  // restricted to the vendors it is trusted for (extractOpenRouter).
   for (const row of router.values()) {
-    if (!official.has(row.prefix) && currentMap.has(row.prefix)) {
-      consider(row, 'openrouter');
-    }
+    if (!official.has(row.prefix)) consider(row, 'openrouter');
   }
   const seen = new Set([...official.keys(), ...router.keys()]);
   for (const [prefix] of current) {

@@ -8,6 +8,7 @@ import {
   renderCheapestModels,
 } from '../../src/options/aiCheapestPanel.js';
 import { getModelInfo } from '../../src/lib/aiModelInfo.js';
+import { setPrices } from '../../src/lib/aiPricing.js';
 import {
   cheapestModels,
   providerOfModel,
@@ -420,5 +421,34 @@ describe('the box can be drawn again', () => {
     status.mockResolvedValue({ last: null, next: null, prices: '2026-10-02' });
     await refresh();
     expect(container.textContent).toContain('aiUpdateData: 2026-10-02');
+  });
+});
+
+describe('without prices (nothing is built in)', () => {
+  let container;
+
+  beforeEach(() => {
+    setPrices(null);
+    document.body.innerHTML = '<aside id="box"></aside>';
+    container = document.getElementById('box');
+    globalThis.chrome = { i18n: { getMessage: vi.fn((key) => key) } };
+  });
+
+  it('says that the prices have to be read first, and lists nothing', () => {
+    renderCheapestModels(container);
+
+    expect(container.textContent).toContain('aiCheapestEmpty');
+    expect(container.querySelectorAll('li')).toHaveLength(0);
+  });
+
+  it('shows the list as soon as the prices are there and the box is drawn again', () => {
+    renderCheapestModels(container);
+    setPrices([['gpt-5-nano', 0.05, 0.4]]);
+
+    renderCheapestModels(container);
+
+    expect(container.querySelectorAll('li')).toHaveLength(1);
+    expect(container.textContent).not.toContain('aiCheapestEmpty');
+    expect(container.querySelectorAll('.ai-cheapest-list')).toHaveLength(1);
   });
 });

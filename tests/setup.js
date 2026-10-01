@@ -3,7 +3,10 @@
  * Runs before all tests to configure the test environment
  */
 
-import { vi, afterEach } from 'vitest';
+import { vi, afterEach, beforeEach } from 'vitest';
+import { setPrices } from '../src/lib/aiPricing.js';
+import { setModelInfo } from '../src/lib/aiModelInfo.js';
+import { TEST_PRICES, TEST_INFO } from './fixtures/aiPrices.js';
 
 // Mock IndexedDB for testing
 import 'fake-indexeddb/auto';
@@ -115,4 +118,11 @@ afterEach(() => {
       writable: true,
     });
   }
+});
+
+// The extension has no built-in prices; the tests work with a snapshot of what
+// it reads from the providers' pages (a test for "no prices" calls setPrices(null)).
+beforeEach(() => {
+  setPrices(TEST_PRICES);
+  setModelInfo(TEST_INFO);
 });
