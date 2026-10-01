@@ -2,6 +2,7 @@
 // errors and cache refresh. Icons follow the browser theme.
 import { getOption } from '../../../lib/storage.js';
 import getBrowserTheme from './getBrowserTheme.js';
+import { formatPrice } from '../../../lib/aiPricing.js';
 
 // OPTIMIZATION: Constant for notification title (avoid repetition)
 const NOTIFICATION_TITLE = 'Bookmarker for Nextcloud';
@@ -188,4 +189,52 @@ export async function cacheRefreshNotification() {
   } catch (error) {
     console.error('Failed to create cache refresh notification:', error);
   }
+}
+
+export const CHEAPER_MODEL_NOTIFICATION_ID = 'ai-cheaper-model';
+
+/**
+ * Tells the user that the AI provider in use offers a cheaper model than the
+ * selected one. Clicking the notification opens the options (see
+ * handleNotificationClick).
+ * @param {{provider: string, selected: string, suggested: string,
+ *   selectedPrice: {input: number, output: number},
+ *   suggestedPrice: {input: number, output: number}}} info
+ * @returns {Promise<void>}
+ */
+export async function notifyCheaperModel(info) {
+  const iconUrl = await getIconUrl();
+  try {
+    await chrome.notifications.create(CHEAPER_MODEL_NOTIFICATION_ID, {
+      title: NOTIFICATION_TITLE,
+      message: chrome.i18n.getMessage('aiCheaperModel', [
+        info.provider,
+        info.suggested,
+        formatPrice(info.suggestedPrice),
+        info.selected,
+        formatPrice(info.selectedPrice),
+      ]),
+      iconUrl,
+      type: 'basic',
+      requireInteraction: true,
+    });
+  } catch (error) {
+    console.error('Failed to create cheaper model notification:', error);
+  }
+}
+
+/**
+ * A click on a notification: the "cheaper model" one opens the options page,
+ * every notification is closed afterwards.
+ * @param {string} notificationId
+ */
+export function handleNotificationClick(notificationId) {
+  if (notificationId === CHEAPER_MODEL_NOTIFICATION_ID) {
+    try {
+      chrome.runtime.openOptionsPage()?.catch?.(() => {});
+    } catch {
+      // options page unavailable
+    }
+  }
+  dismissNotification(notificationId);
 }

@@ -16,7 +16,14 @@ import { getAiSuggestions } from './modules/page/aiSuggest.js';
 import { zenMode } from './modules/bookmarks/zenMode.js';
 import { saveBookmark } from './modules/bookmarks/saveBookmark.js';
 import { handleContextMenuClick } from './modules/browser/contextMenu.js';
-import { dismissNotification } from './modules/browser/notification.js';
+import {
+  dismissNotification,
+  handleNotificationClick,
+} from './modules/browser/notification.js';
+import {
+  MODEL_CHECK_ALARM,
+  runScheduledModelCheck,
+} from './modules/ai/modelCheck.js';
 import { maxAttemptsError } from './modules/loginTimeout.js';
 import { init } from './modules/startup.js';
 import { clearApiCallCache } from '../lib/apiCall.js';
@@ -132,7 +139,16 @@ chrome.contextMenus.onClicked.addListener(handleContextMenuClick);
 
 // The error notification's "Dismiss" button (and a click on the notification)
 chrome.notifications.onButtonClicked.addListener(dismissNotification);
-chrome.notifications.onClicked.addListener(dismissNotification);
+chrome.notifications.onClicked.addListener(handleNotificationClick);
+
+// Weekly check for a cheaper AI model (the alarm is set up in init()).
+// Registered synchronously like the other listeners, so a cold start caused by
+// the alarm still delivers it.
+chrome.alarms?.onAlarm.addListener((alarm) => {
+  if (alarm.name === MODEL_CHECK_ALARM) {
+    runScheduledModelCheck().catch(logError('model check'));
+  }
+});
 
 // ------------------------------------------------------------------------------------------------
 // Initialize extension. Not top-level awaited: service workers disallow top-level

@@ -57,6 +57,8 @@
   "aiUsageSince": { "message": "Counting since" },
   "aiUsageNote": { "message": "Costs are estimates from list prices (US dollars); \"–\" = price unknown, \"+\" = more than shown." },
   "aiPriceFree": { "message": "free" },
+  "aiModelCheck": {"message": "Weekly check for a cheaper model"},
+  "aiCheaperModel": {"message": "A cheaper model for $provider$: $suggested$ ($suggestedPrice$) instead of $selected$ ($selectedPrice$) per 1M tokens. Click to open the settings.", "placeholders": {"provider": {"content": "$1"}, "suggested": {"content": "$2"}, "suggestedPrice": {"content": "$3"}, "selected": {"content": "$4"}, "selectedPrice": {"content": "$5"}}},
   "aiKeyOptional": { "message": "optional" },
   "aiOllamaHint": { "message": "Ollama must allow this extension: set OLLAMA_ORIGINS=chrome-extension://* and restart Ollama." },
   "aiModelsFailed": { "message": "Could not load the model list" },

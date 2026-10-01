@@ -1,0 +1,176 @@
+// @vitest-environment node
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('../../src/lib/storage.js', () => ({ getOptions: vi.fn() }));
+vi.mock('../../src/lib/aiClient.js', () => ({ listModels: vi.fn() }));
+vi.mock('../../src/background/modules/browser/notification.js', () => ({
+  notifyCheaperModel: vi.fn(),
+}));
+
+import { getOptions } from '../../src/lib/storage.js';
+import { listModels } from '../../src/lib/aiClient.js';
+import { notifyCheaperModel } from '../../src/background/modules/browser/notification.js';
+import {
+  MODEL_CHECK_ALARM,
+  checkCheaperModel,
+  runScheduledModelCheck,
+  scheduleModelCheck,
+} from '../../src/background/modules/ai/modelCheck.js';
+
+const DAY = 24 * 60 * 60 * 1000;
+
+describe('modelCheck', () => {
+  let store;
+  let options;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    store = {};
+    options = {
+      select_aiProvider: 'openai',
+      cbx_aiModelCheck: true,
+      input_networkTimeout: 10,
+      input_openaiApiKey: 'key',
+      input_openaiModel: 'gpt-5',
+      input_openaiBaseUrl: 'https://api.openai.com/v1',
+    };
+    getOptions.mockImplementation(async (keys) =>
+      Object.fromEntries(keys.map((key) => [key, options[key]])),
+    );
+    listModels.mockResolvedValue([
+      { id: 'gpt-5', label: 'gpt-5' },
+      { id: 'gpt-5-nano', label: 'gpt-5-nano' },
+    ]);
+    globalThis.chrome = {
+      permissions: { contains: vi.fn().mockResolvedValue(true) },
+      storage: {
+        local: {
+          get: vi.fn(async (key) => ({ [key]: store[key] })),
+          set: vi.fn(async (values) => Object.assign(store, values)),
+        },
+      },
+      alarms: { get: vi.fn(), create: vi.fn() },
+    };
+  });
+
+  describe('checkCheaperModel', () => {
+    it('downloads the list and notifies about a cheaper model', async () => {
+      const result = await checkCheaperModel();
+
+      expect(listModels).toHaveBeenCalledWith(
+        'openai',
+        'key',
+        'https://api.openai.com/v1',
+        10,
+      );
+      expect(result.id).toBe('gpt-5-nano');
+      expect(notifyCheaperModel).toHaveBeenCalledWith({
+        provider: 'OpenAI',
+        selected: 'gpt-5',
+        suggested: 'gpt-5-nano',
+        selectedPrice: { input: 1.25, output: 10 },
+        suggestedPrice: { input: 0.05, output: 0.4 },
+      });
+    });
+
+    it('tells about the same suggestion only once', async () => {
+      await checkCheaperModel();
+      await checkCheaperModel();
+      expect(notifyCheaperModel).toHaveBeenCalledTimes(1);
+
+      // another model is suggested later: that is news again
+      listModels.mockResolvedValue([
+        { id: 'gpt-5', label: 'gpt-5' },
+        { id: 'gpt-5-mini', label: 'gpt-5-mini' },
+      ]);
+      await checkCheaperModel();
+      expect(notifyCheaperModel).toHaveBeenCalledTimes(2);
+    });
+
+    it('is silent when the selected model is the cheapest', async () => {
+      options.input_openaiModel = 'gpt-5-nano';
+      expect(await checkCheaperModel()).toBeNull();
+      expect(notifyCheaperModel).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['the AI is off', { select_aiProvider: 'off' }],
+      ['the check is switched off', { cbx_aiModelCheck: false }],
+      ['the key is missing', { input_openaiApiKey: '' }],
+      ['no model is selected', { input_openaiModel: '' }],
+    ])('does nothing when %s', async (_name, change) => {
+      Object.assign(options, change);
+      expect(await checkCheaperModel()).toBeNull();
+      expect(listModels).not.toHaveBeenCalled();
+    });
+
+    it('does not ask a server it has no permission for', async () => {
+      chrome.permissions.contains.mockResolvedValue(false);
+      expect(await checkCheaperModel()).toBeNull();
+      expect(chrome.permissions.contains).toHaveBeenCalledWith({
+        origins: ['https://api.openai.com/*'],
+      });
+      expect(listModels).not.toHaveBeenCalled();
+    });
+
+    it('needs no key for a local server', async () => {
+      Object.assign(options, {
+        select_aiProvider: 'ollama',
+        input_ollamaApiKey: '',
+        input_ollamaModel: 'llama3',
+        input_ollamaBaseUrl: 'http://localhost:11434/v1',
+      });
+      await checkCheaperModel();
+      expect(chrome.permissions.contains).toHaveBeenCalledWith({
+        origins: ['http://localhost/*'],
+      });
+      expect(listModels).toHaveBeenCalled();
+    });
+
+    it('never throws when the list cannot be loaded', async () => {
+      listModels.mockRejectedValue(new Error('401'));
+      expect(await checkCheaperModel()).toBeNull();
+      expect(notifyCheaperModel).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('runScheduledModelCheck', () => {
+    it('checks when there was no check yet or the last one is a week old', async () => {
+      await runScheduledModelCheck();
+      expect(listModels).toHaveBeenCalledTimes(1);
+
+      store.aiModelCheck = { time: Date.now() - 7 * DAY };
+      await runScheduledModelCheck();
+      expect(listModels).toHaveBeenCalledTimes(2);
+    });
+
+    it('skips an alarm that fires only a few days after the last check', async () => {
+      store.aiModelCheck = { time: Date.now() - 2 * DAY };
+      await runScheduledModelCheck();
+      expect(listModels).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('scheduleModelCheck', () => {
+    it('creates a weekly alarm if there is none', async () => {
+      chrome.alarms.get.mockResolvedValue(undefined);
+      await scheduleModelCheck();
+      expect(chrome.alarms.create).toHaveBeenCalledWith(MODEL_CHECK_ALARM, {
+        delayInMinutes: 5,
+        periodInMinutes: 7 * 24 * 60,
+      });
+    });
+
+    it('keeps an existing alarm', async () => {
+      chrome.alarms.get.mockResolvedValue({ name: MODEL_CHECK_ALARM });
+      await scheduleModelCheck();
+      expect(chrome.alarms.create).not.toHaveBeenCalled();
+    });
+
+    it('does not throw without the alarms API', async () => {
+      globalThis.chrome = {};
+      await expect(scheduleModelCheck()).resolves.toBeUndefined();
+    });
+  });
+});

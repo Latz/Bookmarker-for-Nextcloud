@@ -19,6 +19,7 @@ vi.mock('../../src/background/modules/browser/getBrowserTheme.js', () => ({
 globalThis.chrome = {
   runtime: {
     getURL: vi.fn((path) => `chrome-extension://mock-id/${path}`),
+    openOptionsPage: vi.fn(),
   },
   notifications: {
     create: vi.fn(),
@@ -48,6 +49,9 @@ import {
   cacheRefreshNotification,
   dismissNotification,
   initializeErrorIconCache,
+  notifyCheaperModel,
+  handleNotificationClick,
+  CHEAPER_MODEL_NOTIFICATION_ID,
   _resetErrorIconCacheForTesting,
 } from '../../src/background/modules/browser/notification.js';
 import { getOption } from '../../src/lib/storage.js';
@@ -502,5 +506,51 @@ describe('initializeErrorIconCache', () => {
 
     // Partial data — should re-fetch
     expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('cheaper model notification', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getBrowserTheme.mockResolvedValue('light');
+    chrome.notifications.create.mockResolvedValue('id');
+  });
+
+  it('names both models with their prices and stays until it is clicked', async () => {
+    await notifyCheaperModel({
+      provider: 'OpenAI',
+      selected: 'gpt-5',
+      suggested: 'gpt-5-nano',
+      selectedPrice: { input: 1.25, output: 10 },
+      suggestedPrice: { input: 0.05, output: 0.4 },
+    });
+
+    expect(chrome.i18n.getMessage).toHaveBeenCalledWith('aiCheaperModel', [
+      'OpenAI',
+      'gpt-5-nano',
+      '$0.05 / $0.40',
+      'gpt-5',
+      '$1.25 / $10',
+    ]);
+    expect(chrome.notifications.create).toHaveBeenCalledWith(
+      CHEAPER_MODEL_NOTIFICATION_ID,
+      expect.objectContaining({ type: 'basic', requireInteraction: true }),
+    );
+  });
+
+  it('opens the options when the notification is clicked, and closes it', () => {
+    handleNotificationClick(CHEAPER_MODEL_NOTIFICATION_ID);
+
+    expect(chrome.runtime.openOptionsPage).toHaveBeenCalledTimes(1);
+    expect(chrome.notifications.clear).toHaveBeenCalledWith(
+      CHEAPER_MODEL_NOTIFICATION_ID,
+    );
+  });
+
+  it('only closes any other notification', () => {
+    handleNotificationClick('some-other-id');
+
+    expect(chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
+    expect(chrome.notifications.clear).toHaveBeenCalledWith('some-other-id');
   });
 });
