@@ -4,8 +4,7 @@
 // the AI calls cost.
 //
 // Sources: the price pages of Anthropic, OpenAI, Google, DeepSeek, Groq (the
-// models table of its console docs) and Mistral (only the one price its FAQ
-// states as an example) as the official prices, and OpenRouter's model list
+// models table of its console docs) and Mistral (the pricing page of its docs) as the official prices, and OpenRouter's model list
 // (used to cross-check OpenAI/Anthropic/Google prices and to fill in models
 // whose page cannot be read). Models a page does not price publicly (Groq's
 // Llama models say "Contact Sales") keep their hand-entered price and are
@@ -78,9 +77,9 @@ const SOURCES = [
   },
   {
     name: 'mistral',
-    url: 'https://mistral.ai/pricing',
+    url: 'https://docs.mistral.ai/inference/pricing',
     official: true,
-    extract: ({ document }) => extractMistral(documentText(document)),
+    extract: ({ tables }) => extractMistral(tables),
   },
   {
     name: 'openrouter',

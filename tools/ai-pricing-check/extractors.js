@@ -295,24 +295,41 @@ export function extractGroq(document) {
 }
 
 /**
- * Mistral: the price table of mistral.ai/pricing is built by JavaScript and
- * not in the HTML, but the FAQ states one price as an example: "Mistral Large
- * costs $0.5 /M tokens in and $1.5 /M tokens out". Only such sentences are
- * read, so it is usually one model (the example may change).
- * @param {string} text - The visible text of the page.
- * @returns {Array<{prefix: string, input: number, output: number, source: string}>}
+ * Mistral: the pricing page of the docs (docs.mistral.ai/inference/pricing) has
+ * tables "Model | Input | Cached input | Output" with the current models and
+ * dollars per million tokens. Models are named by size in the price list, the
+ * way Mistral's "-latest" names are ("Mistral Small 4" is `mistral-small`,
+ * "Ministral 3 14B" is `ministral-14b`, "Codestral" is `codestral`). Rows with
+ * other units (pages, minutes, characters), embeddings, OCR, speech,
+ * moderation and models of other makers are skipped.
+ * @param {string[][][]} tables
+ * @returns {Array<{prefix: string, input: number, output: number, source: string, info: Record<string, any>}>}
  */
-export function extractMistral(text) {
+export function extractMistral(tables) {
   const rows = [];
-  const sentence =
-    /Mistral (Large|Medium|Small) costs \$([\d.]+) ?\/ ?M tokens in and \$([\d.]+) ?\/ ?M tokens out/gi;
-  for (const [, size, input, output] of text.matchAll(sentence)) {
-    rows.push({
-      prefix: `mistral-${size.toLowerCase()}`,
-      input: Number(input),
-      output: Number(output),
-      source: 'mistral',
-    });
+  for (const table of tables) {
+    if (table[0]?.join('|') !== 'Model|Input|Cached input|Output') continue;
+    for (const cells of table.slice(1)) {
+      const name = (cells[0] ?? '').replace('\u2197', '').trim();
+      const plain = (cell) => /^\$[\d.]+$/.test((cell ?? '').trim());
+      if (!plain(cells[1]) || !plain(cells[3])) continue;
+      let prefix = null;
+      const size = /^Mistral (Large|Medium|Small)\b/i.exec(name);
+      const ministral = /^Ministral \d+ (\d+B)$/i.exec(name);
+      if (size) prefix = `mistral-${size[1].toLowerCase()}`;
+      else if (ministral) prefix = `ministral-${ministral[1].toLowerCase()}`;
+      else if (/^Codestral$/i.test(name)) prefix = 'codestral';
+      if (!prefix) continue;
+      rows.push({
+        prefix,
+        input: dollars(cells[1]),
+        output: dollars(cells[3]),
+        source: 'mistral',
+        info: compact({
+          cachedInput: plain(cells[2]) ? dollars(cells[2]) : null,
+        }),
+      });
+    }
   }
   return rows;
 }
@@ -325,7 +342,15 @@ const NOT_A_CHAT_MODEL =
 // Vendors whose OpenRouter price is the vendor's own (OpenRouter passes the
 // list price through). Other models there cost what the cheapest host charges.
 const OPENROUTER_VENDORS = new Set(['openai', 'anthropic', 'google']);
-const MISTRAL_FAMILIES = ['mistral-large', 'mistral-medium', 'mistral-small'];
+const MISTRAL_FAMILIES = [
+  'mistral-large',
+  'mistral-medium',
+  'mistral-small',
+  'ministral-14b',
+  'ministral-8b',
+  'ministral-3b',
+  'codestral',
+];
 
 // gpt-oss and the like are open weights, hosted (and priced) by many providers
 const OPENROUTER_SKIP = /(free|extended|online|:|^gpt-oss)/;

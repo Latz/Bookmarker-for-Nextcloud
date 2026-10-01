@@ -23,17 +23,15 @@ Exit code 1 if a source could not be read.
 | Google | "Paid Tier" input/output rows per model on the Gemini pricing page (requested in English) | official prices |
 | DeepSeek | pricing table, **PEAK** cache-miss input and output price; context window, largest answer, a description made of its "model version" and "thinking mode" rows; the legacy names its footnote says are still accepted get the same price and details | official prices |
 | Groq | models table of `console.groq.com/docs/models` (model id from the `id` attribute, price "$x input$y output") | official prices |
-| Mistral | the one price the FAQ of `mistral.ai/pricing` gives as an example ("Mistral Large costs $0.5 /M tokens in ...") | official price of that model |
+| Mistral | the tables of `docs.mistral.ai/inference/pricing` (current chat models; named by size: `mistral-large`, `ministral-14b`, `codestral`, ...; plus cached input) | official prices |
 | OpenRouter | `/api/v1/models` (OpenAI, Anthropic, Google models; for Mistral only the newest model of each size stands for `mistral-large` / `-medium` / `-small`) | cross-check, details, and a fallback for models already in the list |
 
 **Limits:**
 
-- **Mistral:** the price table of `mistral.ai/pricing` and the models pages of the
-  docs are rendered by JavaScript and hold no prices in the HTML. The official
-  source is only the example sentence in the FAQ (today Mistral Large). The sizes
-  (`mistral-large`, `-medium`, `-small`) are filled from OpenRouter's newest model
-  of that size: Mistral's own price matched there for Mistral Large, but it is
-  still a fallback, not the price page. Other Mistral models are not tracked.
+- **Mistral:** `mistral.ai/pricing` has no prices in its HTML, but the pricing page
+  of the docs does. The price list uses Mistral's size names (`mistral-small`, as
+  `mistral-small-latest`), not the dated API ids. Other Mistral models (Voxtral,
+  OCR, embeddings, per-page or per-minute prices) are not tracked.
 - **Groq:** the Llama models say "Contact Sales" (no public price), so
   `llama-3.3-70b` keeps its old hand-entered price and is listed as "on no page".
   Models priced per hour or per character (Whisper, text-to-speech) are skipped.
@@ -47,7 +45,7 @@ answer, release date, input types and a one-sentence description (OpenRouter's
 model list, for OpenAI, Anthropic and Google models), cached-input price
 (Anthropic and OpenAI price tables), context window and largest answer
 (DeepSeek, with a description made of its table), speed, context window and
-largest answer (Groq); Mistral's from OpenRouter's newest model of the size. An
+largest answer (Groq); Mistral's from OpenRouter's newest model of each size name (prices are the docs'). An
 official page overrides OpenRouter where both know a detail. Only models of the
 price list get details.
 

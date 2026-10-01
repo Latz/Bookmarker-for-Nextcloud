@@ -184,16 +184,70 @@ describe('extractGroq', () => {
 });
 
 describe('extractMistral', () => {
-  it('reads the price the FAQ names as an example', () => {
-    const text =
-      'How is API pricing calculated? For example, Mistral Large costs $0.5 /M tokens in and $1.5 /M tokens out. Batch processing ...';
-    expect(extractMistral(text)).toEqual([
-      { prefix: 'mistral-large', input: 0.5, output: 1.5, source: 'mistral' },
+  const header = ['Model', 'Input', 'Cached input', 'Output'];
+  const chat = [
+    header,
+    ['Mistral Large 3 \u2197', '$0.5', '$0.05', '$1.5'],
+    ['Mistral Medium 3.5 \u2197', '$1.5', '$0.15', '$7.5'],
+    ['Mistral Small 4 \u2197', '$0.15', '$0.015', '$0.6'],
+    ['Ministral 3 14B \u2197', '$0.2', '$0.02', '$0.2'],
+    ['Ministral 3 3B \u2197', '$0.1', '$0.01', '$0.1'],
+  ];
+
+  it('names the models by size, as the price list does, with prices and cached input', () => {
+    expect(
+      extractMistral([chat]).map((r) => [
+        r.prefix,
+        r.input,
+        r.output,
+        r.info.cachedInput,
+      ]),
+    ).toEqual([
+      ['mistral-large', 0.5, 1.5, 0.05],
+      ['mistral-medium', 1.5, 7.5, 0.15],
+      ['mistral-small', 0.15, 0.6, 0.015],
+      ['ministral-14b', 0.2, 0.2, 0.02],
+      ['ministral-3b', 0.1, 0.1, 0.01],
     ]);
+    expect(extractMistral([chat])[0].source).toBe('mistral');
   });
 
-  it('finds nothing when the sentence is not there (page changed)', () => {
-    expect(extractMistral('Plans: Free, Pro, Team')).toEqual([]);
+  it('reads Codestral from any of the tables', () => {
+    const rows = extractMistral([
+      chat,
+      [header, ['Codestral \u2197', '$0.3', '$0.03', '$0.9']],
+    ]);
+    expect(rows.at(-1)).toMatchObject({
+      prefix: 'codestral',
+      input: 0.3,
+      output: 0.9,
+    });
+  });
+
+  it('skips other units, embeddings, speech, moderation and other makers', () => {
+    const rows = extractMistral([
+      [
+        header,
+        ['OCR 4.1 \u2197', '$4 /1000 Pages', '$0.4 /1000 Pages', '\u2014'],
+        ['Voxtral TTS \u2197', '$0 /M Chars', '$0 /M Chars', '$16 /M Chars'],
+        ['Mistral Moderation 2 \u2197', 'Free', 'Free', 'Free'],
+        ['Codestral Embed \u2197', '$0.15', '$0.015', '\u2014'],
+        ['Z.ai GLM 5.3 \u2197', '$1.4', '$0.14', '$4.4'],
+      ],
+    ]);
+    expect(rows).toEqual([]);
+  });
+
+  it('finds nothing when the tables look different (page changed)', () => {
+    expect(extractMistral([])).toEqual([]);
+    expect(
+      extractMistral([
+        [
+          ['Name', 'Price'],
+          ['x', '$1'],
+        ],
+      ]),
+    ).toEqual([]);
   });
 });
 
@@ -437,7 +491,7 @@ describe('OpenRouter: Mistral sizes', () => {
   it('does not use other Mistral models under their own names', () => {
     const rows = extractOpenRouter({
       data: [
-        model('mistralai/codestral-2508', 1750000000, '0.0000003', '0.0000009'),
+        model('mistralai/mistral-nemo', 1750000000, '0.0000003', '0.0000009'),
       ],
     });
     expect(rows).toEqual([]);

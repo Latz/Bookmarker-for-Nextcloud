@@ -19,6 +19,8 @@ describe('providerOfModel', () => {
     ['o3-mini', 'openai'],
     ['gemini-2.5-flash', 'gemini'],
     ['mistral-small', 'mistral'],
+    ['ministral-14b', 'mistral'],
+    ['codestral', 'mistral'],
     ['deepseek-flash', 'deepseek'],
     ['llama-3.3-70b', 'groq'],
     ['gpt-oss-120b', 'groq'],

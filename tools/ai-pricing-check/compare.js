@@ -96,7 +96,7 @@ export function renderBlock(entries) {
     if (/^(llama|gpt-oss|qwen)/.test(prefix)) return 'Groq';
     if (/^(gpt-|chatgpt-|o\d)/.test(prefix)) return 'OpenAI';
     if (prefix.startsWith('gemini')) return 'Google';
-    if (prefix.startsWith('mistral')) return 'Mistral';
+    if (/^(mistral|ministral|codestral)/.test(prefix)) return 'Mistral';
     if (prefix.startsWith('deepseek')) return 'DeepSeek';
     return 'Others';
   };

@@ -149,6 +149,14 @@ export const MODEL_INFO = {
     "description": "Claude Sonnet 5.5 is Anthropic's Sonnet-class model for well-scoped everyday work, succeeding Claude Sonnet 5 as a direct upgrade.",
     "cachedInput": 0.2
   },
+  "codestral": {
+    "context": 256000,
+    "maxOutput": 204800,
+    "released": "2025-08-01",
+    "modalities": "text, file",
+    "description": "Mistral's cutting-edge language model for coding released end of July 2025.",
+    "cachedInput": 0.03
+  },
   "deepseek-flash": {
     "context": 1000000,
     "maxOutput": 384000,
@@ -329,19 +337,53 @@ export const MODEL_INFO = {
     "context": 131072,
     "maxOutput": 65536
   },
+  "ministral-14b": {
+    "context": 262144,
+    "maxOutput": 209715,
+    "released": "2025-12-02",
+    "modalities": "text, image",
+    "description": "The largest model in the Ministral 3 family, Ministral 3 14B offers frontier capabilities and performance comparable to its larger Mistral Small 3.2 24B counterpart.",
+    "cachedInput": 0.02
+  },
+  "ministral-3b": {
+    "context": 131072,
+    "maxOutput": 104857,
+    "released": "2025-12-02",
+    "modalities": "text, image",
+    "description": "The smallest model in the Ministral 3 family, Ministral 3 3B is a powerful, efficient tiny language model with vision capabilities.",
+    "cachedInput": 0.01
+  },
+  "ministral-8b": {
+    "context": 262144,
+    "maxOutput": 209715,
+    "released": "2025-12-02",
+    "modalities": "text, image",
+    "description": "A balanced model in the Ministral 3 family, Ministral 3 8B is a powerful, efficient tiny language model with vision capabilities.",
+    "cachedInput": 0.015
+  },
   "mistral-large": {
     "context": 262144,
     "maxOutput": 209715,
     "released": "2025-12-01",
     "modalities": "text, image, file",
-    "description": "Mistral Large 3 2512 is Mistral’s most capable model to date, featuring a sparse mixture-of-experts architecture with 41B active parameters (675B total), and released under the Apache 2.0 license."
+    "description": "Mistral Large 3 2512 is Mistral’s most capable model to date, featuring a sparse mixture-of-experts architecture with 41B active parameters (675B total), and released under the Apache 2.0 license.",
+    "cachedInput": 0.05
+  },
+  "mistral-medium": {
+    "context": 262144,
+    "maxOutput": 209715,
+    "released": "2026-04-30",
+    "modalities": "text, image, file",
+    "description": "Mistral Medium 3.5 is a dense 128B instruction-following model from Mistral AI.",
+    "cachedInput": 0.15
   },
   "mistral-small": {
     "context": 262144,
     "maxOutput": 209715,
     "released": "2026-03-16",
     "modalities": "text, image",
-    "description": "Mistral Small 4 is the next major release in the Mistral Small family, unifying the capabilities of several flagship Mistral models into a single system."
+    "description": "Mistral Small 4 is the next major release in the Mistral Small family, unifying the capabilities of several flagship Mistral models into a single system.",
+    "cachedInput": 0.015
   },
   "o3-mini": {
     "context": 200000,

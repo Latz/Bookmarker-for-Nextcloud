@@ -60,7 +60,12 @@ export const PRICES = [
   ['gemini-omni-1.1-flash', 1.5, 9],
   ['gemini-omni-flash-preview', 1.5, 9],
   // Mistral
+  ['codestral', 0.3, 0.9],
+  ['ministral-14b', 0.2, 0.2],
+  ['ministral-3b', 0.1, 0.1],
+  ['ministral-8b', 0.15, 0.15],
   ['mistral-large', 0.5, 1.5],
+  ['mistral-medium', 1.5, 7.5],
   ['mistral-small', 0.15, 0.6],
   // DeepSeek
   ['deepseek-flash', 0.3, 1.2],
@@ -151,7 +156,7 @@ export function providerOfModel(prefix) {
   if (/^(llama|gpt-oss|qwen)/.test(prefix)) return 'groq';
   if (/^(gpt-|chatgpt-|o\d)/.test(prefix)) return 'openai';
   if (prefix.startsWith('gemini')) return 'gemini';
-  if (prefix.startsWith('mistral')) return 'mistral';
+  if (/^(mistral|ministral|codestral)/.test(prefix)) return 'mistral';
   if (prefix.startsWith('deepseek')) return 'deepseek';
   return null;
 }
