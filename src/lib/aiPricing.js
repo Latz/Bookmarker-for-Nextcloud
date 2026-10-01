@@ -61,10 +61,11 @@ export const PRICES = [
   ['gemini-omni-flash-preview', 1.5, 9],
   // Mistral
   ['mistral-large', 0.5, 1.5],
-  ['mistral-small', 0.1, 0.3],
+  ['mistral-small', 0.15, 0.6],
   // DeepSeek
-  ['deepseek-chat', 0.28, 0.42],
   ['deepseek-flash', 0.3, 1.2],
+  ['deepseek-v4-flash', 0.3, 1.2],
+  ['deepseek-v4-flash-vision-exp', 0.3, 1.2],
   ['deepseek-v4-pro', 1.32, 3.96],
   // Groq
   ['gpt-oss-120b', 0.15, 0.6],

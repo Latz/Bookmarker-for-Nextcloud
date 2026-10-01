@@ -67,7 +67,8 @@ const SOURCES = [
     name: 'deepseek',
     url: 'https://api-docs.deepseek.com/quick_start/pricing',
     official: true,
-    extract: ({ tables }) => extractDeepSeek(tables),
+    extract: ({ document, tables }) =>
+      extractDeepSeek(tables, documentText(document)),
   },
   {
     name: 'groq',

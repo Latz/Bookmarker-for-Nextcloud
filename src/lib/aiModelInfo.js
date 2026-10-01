@@ -151,11 +151,23 @@ export const MODEL_INFO = {
   },
   "deepseek-flash": {
     "context": 1000000,
-    "maxOutput": 384000
+    "maxOutput": 384000,
+    "description": "DeepSeek-V4.1-Flash: Supports both non-thinking and thinking (default) modes."
+  },
+  "deepseek-v4-flash": {
+    "context": 1000000,
+    "maxOutput": 384000,
+    "description": "DeepSeek-V4.1-Flash: Supports both non-thinking and thinking (default) modes."
+  },
+  "deepseek-v4-flash-vision-exp": {
+    "context": 1000000,
+    "maxOutput": 384000,
+    "description": "DeepSeek-V4.1-Flash: Supports both non-thinking and thinking (default) modes."
   },
   "deepseek-v4-pro": {
     "context": 1000000,
-    "maxOutput": 384000
+    "maxOutput": 384000,
+    "description": "DeepSeek-V4-Pro-0813: Supports both non-thinking and thinking (default) modes."
   },
   "gemini-2.5-flash": {
     "context": 1048576,
@@ -316,6 +328,20 @@ export const MODEL_INFO = {
     "speed": 1000,
     "context": 131072,
     "maxOutput": 65536
+  },
+  "mistral-large": {
+    "context": 262144,
+    "maxOutput": 209715,
+    "released": "2025-12-01",
+    "modalities": "text, image, file",
+    "description": "Mistral Large 3 2512 is Mistral’s most capable model to date, featuring a sparse mixture-of-experts architecture with 41B active parameters (675B total), and released under the Apache 2.0 license."
+  },
+  "mistral-small": {
+    "context": 262144,
+    "maxOutput": 209715,
+    "released": "2026-03-16",
+    "modalities": "text, image",
+    "description": "Mistral Small 4 is the next major release in the Mistral Small family, unifying the capabilities of several flagship Mistral models into a single system."
   },
   "o3-mini": {
     "context": 200000,

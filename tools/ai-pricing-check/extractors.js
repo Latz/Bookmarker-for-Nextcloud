@@ -178,7 +178,7 @@ export function extractGoogle(document) {
  * @param {string[][][]} tables
  * @returns {Array<{prefix: string, input: number, output: number, source: string}>}
  */
-export function extractDeepSeek(tables) {
+export function extractDeepSeek(tables, text = '') {
   const table = tables.find((rows) => rows[0]?.[0] === 'MODEL');
   if (!table) return [];
   const names = table[0].slice(1).map((name) =>
@@ -203,30 +203,55 @@ export function extractDeepSeek(tables) {
       prices[section] = amounts.slice(-names.length);
     }
   }
-  // "CONTEXT LENGTH" / "MAX OUTPUT": one value for all models, or one each
-  const limit = (label, index) => {
+  // A row of the table: one value for all models, or one each
+  const cell = (label, index) => {
     const row = table.find((cells) => cells[0]?.trim() === label);
     const values = row?.slice(1) ?? [];
-    return parseTokenCount(values[values.length === 1 ? 0 : index]);
+    return values[values.length === 1 ? 0 : index];
   };
-  return names.flatMap((prefix, index) => {
+  const rows = names.flatMap((prefix, index) => {
     const input = prices.input[index];
     const output = prices.output[index];
-    return input > 0 && output > 0
-      ? [
-          {
-            prefix,
-            input,
-            output,
-            source: 'deepseek',
-            info: compact({
-              context: limit('CONTEXT LENGTH', index),
-              maxOutput: limit('MAX OUTPUT', index),
-            }),
-          },
-        ]
-      : [];
+    if (!(input > 0 && output > 0)) return [];
+    // The page has no description; its "model version" and "thinking mode"
+    // rows say what the model is.
+    const version = cell('MODEL VERSION', index)?.trim();
+    const thinking = cell('THINKING MODE', index)?.split('See ')[0].trim();
+    return [
+      {
+        prefix,
+        input,
+        output,
+        source: 'deepseek',
+        info: compact({
+          context: parseTokenCount(cell('CONTEXT LENGTH', index)),
+          maxOutput: parseTokenCount(cell('MAX OUTPUT', index)),
+          description: version && thinking ? `${version}: ${thinking}.` : '',
+        }),
+        version: version?.toLowerCase(),
+      },
+    ];
   });
+
+  // A footnote names old model names that are still accepted and billed like
+  // the current model they are served by ("... served by the DeepSeek-V4.1-Flash
+  // model and billed at the Flash price"): they get its price and details.
+  const legacy =
+    /legacy names? (.+?) (?:is|are) still accepted.*?served by the ([A-Za-z0-9.\-]+) model/i.exec(
+      text,
+    );
+  if (legacy) {
+    const target = rows.find((row) => row.version === legacy[2].toLowerCase());
+    if (target) {
+      for (const name of legacy[1].split(/,| and /)) {
+        const alias = name.trim().toLowerCase();
+        if (/^deepseek-[a-z0-9.\-]+$/.test(alias)) {
+          rows.push({ ...target, prefix: alias });
+        }
+      }
+    }
+  }
+  return rows.map(({ version, ...row }) => row);
 }
 
 /**
@@ -300,6 +325,8 @@ const NOT_A_CHAT_MODEL =
 // Vendors whose OpenRouter price is the vendor's own (OpenRouter passes the
 // list price through). Other models there cost what the cheapest host charges.
 const OPENROUTER_VENDORS = new Set(['openai', 'anthropic', 'google']);
+const MISTRAL_FAMILIES = ['mistral-large', 'mistral-medium', 'mistral-small'];
+
 // gpt-oss and the like are open weights, hosted (and priced) by many providers
 const OPENROUTER_SKIP = /(free|extended|online|:|^gpt-oss)/;
 
@@ -311,23 +338,19 @@ const OPENROUTER_SKIP = /(free|extended|online|:|^gpt-oss)/;
  */
 export function extractOpenRouter(json) {
   const rows = [];
-  for (const model of json?.data ?? []) {
-    const [vendor, name] = String(model.id).split('/');
-    if (!OPENROUTER_VENDORS.has(vendor) || !name) continue;
-    if (OPENROUTER_SKIP.test(name) || NOT_A_CHAT_MODEL.test(name)) continue;
-    const perMillion = (value) => {
-      const number = Number(value) * 1e6;
-      return Number.isFinite(number) && number > 0
-        ? Number(number.toPrecision(6))
-        : null;
-    };
+  const perMillion = (value) => {
+    const number = Number(value) * 1e6;
+    return Number.isFinite(number) && number > 0
+      ? Number(number.toPrecision(6))
+      : null;
+  };
+  /** The row of one OpenRouter model, under the given name of the list. */
+  const rowOf = (model, prefix) => {
     const input = perMillion(model.pricing?.prompt);
     const output = perMillion(model.pricing?.completion);
-    if (input === null || output === null) continue;
-    // Anthropic ids use dashes ("claude-haiku-4-5"), OpenRouter dots
-    const prefix = vendor === 'anthropic' ? name.replaceAll('.', '-') : name;
+    if (input === null || output === null) return null;
     const created = Number(model.created);
-    rows.push({
+    return {
       prefix,
       input,
       output,
@@ -342,7 +365,37 @@ export function extractOpenRouter(json) {
         modalities: model.architecture?.input_modalities?.join(', '),
         description: firstSentence(model.description),
       }),
-    });
+    };
+  };
+
+  for (const model of json?.data ?? []) {
+    const [vendor, name] = String(model.id).split('/');
+    if (!OPENROUTER_VENDORS.has(vendor) || !name) continue;
+    if (OPENROUTER_SKIP.test(name) || NOT_A_CHAT_MODEL.test(name)) continue;
+    // Anthropic ids use dashes ("claude-haiku-4-5"), OpenRouter dots
+    const prefix = vendor === 'anthropic' ? name.replaceAll('.', '-') : name;
+    const row = rowOf(model, prefix);
+    if (row) rows.push(row);
+  }
+
+  // Mistral names its models by size ("mistral-small") and moves the name to
+  // the newest version, while OpenRouter lists every version separately
+  // ("mistral-small-2603", "mistral-small-3.2-24b-instruct", ...): the newest
+  // one of a size stands for the name. Its price is Mistral's own (checked:
+  // Mistral Large is $0.5 / $1.5 on both).
+  for (const family of MISTRAL_FAMILIES) {
+    const newest = (json?.data ?? [])
+      .filter((model) => {
+        const [vendor, name = ''] = String(model.id).split('/');
+        return (
+          vendor === 'mistralai' &&
+          name.startsWith(family) &&
+          !name.includes(':')
+        );
+      })
+      .sort((a, b) => Number(b.created) - Number(a.created))[0];
+    const row = newest && rowOf(newest, family);
+    if (row) rows.push(row);
   }
   return rows;
 }

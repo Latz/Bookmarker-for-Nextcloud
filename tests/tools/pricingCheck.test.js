@@ -331,6 +331,119 @@ describe('model details', () => {
   });
 });
 
+describe('DeepSeek: description and legacy names', () => {
+  const table = [
+    ['MODEL', 'deepseek-flash(1)', 'deepseek-v4-pro'],
+    ['MODEL VERSION', 'DeepSeek-V4.1-Flash', 'DeepSeek-V4-Pro-0813'],
+    [
+      'THINKING MODE',
+      'Supports both non-thinking and thinking (default) modesSee Thinking Mode for how to switch',
+    ],
+    ['CONTEXT LENGTH', '1M'],
+    ['1M INPUT TOKENS(CACHE MISS)', 'OFF-PEAK', '$0.15', '$0.66'],
+    ['PEAK', '$0.3', '$1.32'],
+    ['1M OUTPUT TOKENS', 'OFF-PEAK', '$0.6', '$1.98'],
+    ['PEAK', '$1.2', '$3.96'],
+  ];
+  const footnote =
+    '(1) Use deepseek-flash as the model name. The legacy names deepseek-v4-flash and deepseek-v4-flash-vision-exp are still accepted, but the corresponding models have been retired, their requests are served by the DeepSeek-V4.1-Flash model and billed at the Flash price.(2) Off-peak rates';
+
+  it('describes a model by its version and thinking mode', () => {
+    const rows = extractDeepSeek([table]);
+    expect(rows[0].info.description).toBe(
+      'DeepSeek-V4.1-Flash: Supports both non-thinking and thinking (default) modes.',
+    );
+    expect(rows[1].info.description).toContain('DeepSeek-V4-Pro-0813');
+    expect(rows[0]).not.toHaveProperty('version');
+  });
+
+  it('gives the legacy names that are still accepted the price and details of their model', () => {
+    const rows = extractDeepSeek([table], footnote);
+    const flash = rows.find((r) => r.prefix === 'deepseek-flash');
+
+    expect(rows.map((r) => r.prefix)).toEqual([
+      'deepseek-flash',
+      'deepseek-v4-pro',
+      'deepseek-v4-flash',
+      'deepseek-v4-flash-vision-exp',
+    ]);
+    for (const alias of rows.slice(2)) {
+      expect(alias).toEqual({ ...flash, prefix: alias.prefix });
+    }
+  });
+
+  it('adds no legacy names without the footnote or when it names an unknown model', () => {
+    expect(extractDeepSeek([table])).toHaveLength(2);
+    expect(
+      extractDeepSeek(
+        [table],
+        footnote.replace('DeepSeek-V4.1-Flash', 'Other'),
+      ),
+    ).toHaveLength(2);
+  });
+});
+
+describe('OpenRouter: Mistral sizes', () => {
+  const model = (id, created, prompt, completion) => ({
+    id,
+    created,
+    pricing: { prompt, completion },
+    context_length: 1000,
+  });
+
+  it('lets the newest model of a size stand for its name', () => {
+    const rows = extractOpenRouter({
+      data: [
+        model(
+          'mistralai/mistral-small-3.2-24b-instruct',
+          1750000000,
+          '0.0000001',
+          '0.0000003',
+        ),
+        model(
+          'mistralai/mistral-small-2603',
+          1773000000,
+          '0.00000015',
+          '0.0000006',
+        ),
+        model(
+          'mistralai/mistral-small-24b-instruct-2501',
+          1738000000,
+          '0.00000005',
+          '0.00000008',
+        ),
+        model(
+          'mistralai/mistral-large-2512',
+          1764000000,
+          '0.0000005',
+          '0.0000015',
+        ),
+        model(
+          'mistralai/mistral-large-2407',
+          1721000000,
+          '0.000002',
+          '0.000006',
+        ),
+        model('mistralai/mistral-small-2603:free', 1773000001, '0', '0'),
+      ],
+    });
+    expect(rows.map((r) => [r.prefix, r.input, r.output])).toEqual([
+      ['mistral-large', 0.5, 1.5],
+      ['mistral-small', 0.15, 0.6],
+    ]);
+    expect(rows[0].info.context).toBe(1000);
+  });
+
+  it('does not use other Mistral models under their own names', () => {
+    const rows = extractOpenRouter({
+      data: [
+        model('mistralai/codestral-2508', 1750000000, '0.0000003', '0.0000009'),
+      ],
+    });
+    expect(rows).toEqual([]);
+  });
+});
+
 describe('extractDeepSeek', () => {
   it('takes the PEAK cache-miss input and the output price per model column', () => {
     const tables = [
