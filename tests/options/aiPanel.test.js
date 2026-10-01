@@ -89,6 +89,13 @@ describe('aiPanel', () => {
     expect(input.type).toBe('password');
   });
 
+  it('marks the key of a provider that works without one as optional in its placeholder', () => {
+    expect(document.getElementById('input_customApiKey').placeholder).toBe(
+      'aiKeyOptional',
+    );
+    expect(document.getElementById('input_claudeApiKey').placeholder).toBe('');
+  });
+
   it('has no eye button for the hidden key field of Ollama', () => {
     const input = document.getElementById('input_ollamaApiKey');
     expect(input.type).toBe('hidden');

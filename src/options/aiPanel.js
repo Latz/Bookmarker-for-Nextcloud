@@ -139,12 +139,13 @@ export function setModelOptions(field, models, current = field.value) {
 function providerPanel(provider) {
   const { id } = provider;
   const t = (key) => chrome.i18n.getMessage(key);
-  const text = (name, type = 'text') =>
+  const text = (name, type = 'text', optional = false) =>
     el('input', {
       type,
       id: `input_${id}${name}`,
       class: 'input input-sm input-info w-[350px]',
       autocomplete: 'off',
+      ...(optional ? { placeholder: t('aiKeyOptional') } : {}),
     });
   // Ollama/custom servers may offer no model list, so their model is typed in
   // (with list suggestions); the others pick from a dropdown.
@@ -173,9 +174,9 @@ function providerPanel(provider) {
   if (provider.needsKey || id === 'custom') {
     fields.push(
       ...row(
-        `${t('aiApiKey')}${provider.needsKey ? '' : ` (${t('aiKeyOptional')})`}`,
+        t('aiApiKey'),
         `input_${id}ApiKey`,
-        secretField(text('ApiKey', 'password')),
+        secretField(text('ApiKey', 'password', !provider.needsKey)),
       ),
     );
   }
@@ -209,7 +210,9 @@ function providerPanel(provider) {
     {
       id: `ai_panel_${id}`,
       class:
-        'hidden mt-4 grid grid-cols-[max-content_1fr] items-center gap-x-6 gap-y-2',
+        // same label column width as the provider dropdown above, so all the
+        // fields start at the same left edge
+        'hidden mt-4 grid grid-cols-[9rem_1fr] items-center gap-x-6 gap-y-2',
     },
     fields,
   );
