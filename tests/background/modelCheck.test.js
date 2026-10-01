@@ -25,6 +25,7 @@ import { applyAutoCheapest } from '../../src/background/modules/ai/autoCheapest.
 import {
   MODEL_CHECK_ALARM,
   checkCheaperModel,
+  runModelCheckNow,
   runScheduledModelCheck,
   scheduleModelCheck,
 } from '../../src/background/modules/ai/modelCheck.js';
@@ -218,6 +219,40 @@ describe('modelCheck', () => {
     it('does not throw without the alarms API', async () => {
       globalThis.chrome = {};
       await expect(scheduleModelCheck()).resolves.toBeUndefined();
+    });
+  });
+
+  describe('runModelCheckNow', () => {
+    it('says what came of the check', async () => {
+      const result = await runModelCheckNow();
+      expect(result.cheaper.id).toBe('gpt-5-nano');
+      expect(chrome.alarms.create).not.toHaveBeenCalled();
+    });
+
+    it('ignores the "not too soon" rule and starts the weekly alarm over when done by hand', async () => {
+      store.aiModelCheck = { time: Date.now() - 1000 };
+
+      const result = await runModelCheckNow({ manual: true });
+
+      expect(listModels).toHaveBeenCalledTimes(1);
+      expect(result.cheaper.id).toBe('gpt-5-nano');
+      expect(chrome.alarms.create).toHaveBeenCalledWith(MODEL_CHECK_ALARM, {
+        delayInMinutes: 7 * 24 * 60,
+        periodInMinutes: 7 * 24 * 60,
+      });
+    });
+
+    it('with automatic switching on, says what was switched to', async () => {
+      options.cbx_aiAutoCheapest = true;
+      applyAutoCheapest.mockResolvedValue({
+        model: 'gpt-5-nano',
+        providerLabel: 'OpenAI',
+      });
+
+      const result = await runModelCheckNow({ manual: true });
+
+      expect(result.switched.model).toBe('gpt-5-nano');
+      expect(notifyAutoSwitched).toHaveBeenCalled();
     });
   });
 });

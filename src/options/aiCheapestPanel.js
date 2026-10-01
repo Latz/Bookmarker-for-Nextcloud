@@ -156,3 +156,104 @@ export function renderCheapestModels(container, onPick) {
     node('p', t('aiCheapestNote'), 'mt-3 text-xs opacity-70'),
   );
 }
+
+/**
+ * The refresh icon of the "update now" button.
+ * @returns {SVGElement}
+ */
+function refreshIcon() {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 20 20');
+  svg.setAttribute('width', '16');
+  svg.setAttribute('height', '16');
+  svg.setAttribute('aria-hidden', 'true');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute(
+    'd',
+    'M16.2 8A6.5 6.5 0 0 0 4.5 6.3M3.8 12A6.5 6.5 0 0 0 15.5 13.7M16.5 3.5v4h-4M3.5 16.5v-4h4',
+  );
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', 'currentColor');
+  path.setAttribute('stroke-width', '1.8');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('stroke-linejoin', 'round');
+  svg.append(path);
+  return svg;
+}
+
+/**
+ * Adds "last update", "next update" and an update button to the box. The
+ * update is the weekly check for cheaper models (it loads the model list of
+ * the provider in use, or of all providers with a key when switching
+ * automatically); the prices and details in the box come with the extension.
+ * @param {HTMLElement} container - The box.
+ * @param {object} deps
+ * @param {() => Promise<{last: number | null, next: number | null}>} deps.getStatus
+ * @param {() => Promise<{switched?: any, cheaper?: any, error?: string}>} deps.runUpdate
+ * @returns {() => Promise<void>} Re-reads the times and shows them.
+ */
+export function addUpdateFooter(container, { getStatus, runUpdate }) {
+  const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
+  const when = (time) =>
+    time
+      ? new Date(time).toLocaleString(navigator.language, {
+          dateStyle: 'medium',
+          timeStyle: 'short',
+        })
+      : t('aiUpdateNone');
+
+  const last = node('span');
+  const next = node('div');
+  const result = node('div', '', 'opacity-70');
+  result.setAttribute('role', 'status');
+
+  const button = node('button', '', 'btn btn-ghost btn-xs btn-circle shrink-0');
+  button.type = 'button';
+  button.id = 'btn_updateCheapest';
+  button.title = t('aiUpdateNow');
+  button.setAttribute('aria-label', t('aiUpdateNow'));
+  const icon = refreshIcon();
+  button.append(icon);
+
+  const top = node('div', '', 'flex items-center justify-between gap-2');
+  top.append(last, button);
+  const footer = node(
+    'div',
+    '',
+    'mt-3 space-y-0.5 border-t border-base-300 pt-2 text-xs',
+  );
+  footer.append(top, next, result);
+  container.append(footer);
+
+  const refresh = async () => {
+    const status = await getStatus();
+    last.textContent = `${t('aiUpdateLast')}: ${when(status.last)}`;
+    next.textContent = `${t('aiUpdateNext')}: ${when(status.next)}`;
+  };
+
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    icon.classList.add('animate-spin');
+    result.textContent = t('aiUpdateRunning');
+    try {
+      const outcome = await runUpdate();
+      if (outcome?.error) result.textContent = outcome.error;
+      else if (outcome?.switched) {
+        result.textContent = t('aiAutoDone', [
+          outcome.switched.model,
+          outcome.switched.providerLabel,
+        ]);
+      } else if (outcome?.cheaper) {
+        result.textContent = t('aiUpdateCheaper', [outcome.cheaper.id]);
+      } else result.textContent = t('aiUpdateNothing');
+    } catch (error) {
+      result.textContent = error?.message ?? String(error);
+    } finally {
+      button.disabled = false;
+      icon.classList.remove('animate-spin');
+      await refresh();
+    }
+  });
+
+  return refresh;
+}

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
+  addUpdateFooter,
   formatTokens,
   modelTooltip,
   renderCheapestModels,
@@ -202,5 +203,121 @@ describe('info icon in the rows', () => {
     expect(onPick).toHaveBeenCalledTimes(2);
     expect(row.getAttribute('role')).toBe('button');
     expect(row.tabIndex).toBe(0);
+  });
+});
+
+describe('update footer', () => {
+  let container;
+  let getStatus;
+  let runUpdate;
+
+  const setup = async () => {
+    const refresh = addUpdateFooter(container, { getStatus, runUpdate });
+    await refresh();
+    return refresh;
+  };
+  const click = async () => {
+    container.querySelector('#btn_updateCheapest').click();
+    await vi.waitFor(() =>
+      expect(container.querySelector('#btn_updateCheapest').disabled).toBe(
+        false,
+      ),
+    );
+  };
+
+  beforeEach(() => {
+    document.body.innerHTML = '<aside id="box"></aside>';
+    container = document.getElementById('box');
+    globalThis.chrome = {
+      i18n: {
+        getMessage: vi.fn((key, substitutions) =>
+          substitutions ? `${key}:${substitutions.join(',')}` : key,
+        ),
+      },
+    };
+    getStatus = vi.fn().mockResolvedValue({
+      last: Date.UTC(2026, 9, 1, 12, 0),
+      next: Date.UTC(2026, 9, 8, 12, 0),
+    });
+    runUpdate = vi.fn().mockResolvedValue({});
+  });
+
+  it('shows the last and the next update, and an update button', async () => {
+    await setup();
+
+    const text = container.textContent;
+    expect(text).toContain('aiUpdateLast: ');
+    expect(text).toContain('aiUpdateNext: ');
+    expect(text).toMatch(/2026/);
+    const button = container.querySelector('#btn_updateCheapest');
+    expect(button.querySelector('svg')).not.toBeNull();
+    expect(button.title).toBe('aiUpdateNow');
+    expect(button.getAttribute('aria-label')).toBe('aiUpdateNow');
+  });
+
+  it('shows a dash for times that are not known', async () => {
+    getStatus.mockResolvedValue({ last: null, next: null });
+    await setup();
+    expect(container.textContent).toContain('aiUpdateLast: aiUpdateNone');
+    expect(container.textContent).toContain('aiUpdateNext: aiUpdateNone');
+  });
+
+  it('updates on a click: runs the check, spins meanwhile and reads the times again', async () => {
+    let finish;
+    runUpdate.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    await setup();
+    getStatus.mockClear();
+
+    const button = container.querySelector('#btn_updateCheapest');
+    button.click();
+    await vi.waitFor(() => expect(button.disabled).toBe(true));
+    expect(button.querySelector('svg').classList.contains('animate-spin')).toBe(
+      true,
+    );
+    expect(container.querySelector('[role="status"]').textContent).toBe(
+      'aiUpdateRunning',
+    );
+
+    finish({});
+    await vi.waitFor(() => expect(button.disabled).toBe(false));
+
+    expect(runUpdate).toHaveBeenCalledTimes(1);
+    expect(button.querySelector('svg').classList.contains('animate-spin')).toBe(
+      false,
+    );
+    expect(getStatus).toHaveBeenCalled();
+  });
+
+  it.each([
+    ['nothing cheaper', {}, 'aiUpdateNothing'],
+    [
+      'a cheaper model',
+      { cheaper: { id: 'gpt-5-nano' } },
+      'aiUpdateCheaper:gpt-5-nano',
+    ],
+    [
+      'a switch',
+      { switched: { model: 'gpt-5-nano', providerLabel: 'OpenAI' } },
+      'aiAutoDone:gpt-5-nano,OpenAI',
+    ],
+    ['an error', { error: 'boom' }, 'boom'],
+  ])('says what came of it: %s', async (_name, outcome, text) => {
+    runUpdate.mockResolvedValue(outcome);
+    await setup();
+    await click();
+    expect(container.querySelector('[role="status"]').textContent).toBe(text);
+  });
+
+  it('survives an update that throws', async () => {
+    runUpdate.mockRejectedValue(new Error('no connection'));
+    await setup();
+    await click();
+    expect(container.querySelector('[role="status"]').textContent).toBe(
+      'no connection',
+    );
   });
 });

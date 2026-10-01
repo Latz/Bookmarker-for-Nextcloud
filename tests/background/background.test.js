@@ -101,6 +101,7 @@ vi.mock('../../src/background/modules/browser/notification.js', () => ({
 vi.mock('../../src/background/modules/ai/modelCheck.js', () => ({
   MODEL_CHECK_ALARM: 'aiModelCheck',
   runScheduledModelCheck: vi.fn(() => Promise.resolve()),
+  runModelCheckNow: vi.fn(() => Promise.resolve({ cheaper: null })),
   scheduleModelCheck: vi.fn(() => Promise.resolve()),
 }));
 
@@ -314,6 +315,45 @@ describe('background.js', () => {
       // Without this the popup would wait until the service worker dies.
       expect(sendResponse).toHaveBeenCalledWith({ ok: false, error: 'boom' });
       consoleError.mockRestore();
+    });
+
+    it('runs the model check by hand on aiCheckNow and answers with what came of it', async () => {
+      const sendResponse = vi.fn();
+      const { runModelCheckNow } =
+        await import('../../src/background/modules/ai/modelCheck.js');
+      runModelCheckNow.mockResolvedValueOnce({ cheaper: { id: 'gpt-5-nano' } });
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      expect(messageListener({ msg: 'aiCheckNow' }, {}, sendResponse)).toBe(
+        true,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(runModelCheckNow).toHaveBeenCalledWith({ manual: true });
+      expect(sendResponse).toHaveBeenCalledWith({
+        cheaper: { id: 'gpt-5-nano' },
+      });
+    });
+
+    it('answers aiCheckNow with the error when the check throws', async () => {
+      const sendResponse = vi.fn();
+      const { runModelCheckNow } =
+        await import('../../src/background/modules/ai/modelCheck.js');
+      runModelCheckNow.mockRejectedValueOnce(new Error('boom'));
+
+      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
+        messageListener = callback;
+      });
+
+      await import('../../src/background/background.js');
+      messageListener({ msg: 'aiCheckNow' }, {}, sendResponse);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(sendResponse).toHaveBeenCalledWith({ error: 'boom' });
     });
 
     it('answers an aiSuggest request with the AI suggestions', async () => {

@@ -7,6 +7,10 @@ import { listModels } from '../../../lib/aiClient.js';
 import { findCheaperModel } from '../../../lib/aiModelCheck.js';
 import { getProvider } from '../../../lib/aiProviders.js';
 import { getOptions } from '../../../lib/storage.js';
+import {
+  MODEL_CHECK_ALARM,
+  MODEL_CHECK_STATE_KEY,
+} from '../../../lib/aiCheckStatus.js';
 import log from '../../../lib/log.js';
 import { applyAutoCheapest, hostPattern } from './autoCheapest.js';
 import {
@@ -16,13 +20,13 @@ import {
 
 const DEBUG = import.meta.env?.MODE === 'development';
 
-export const MODEL_CHECK_ALARM = 'aiModelCheck';
+export { MODEL_CHECK_ALARM };
 const WEEK_MINUTES = 7 * 24 * 60;
 const DAY_MS = 24 * 60 * 60 * 1000;
 // An alarm that was missed fires when the browser starts again; a check this
 // recent makes it unnecessary.
 const MIN_DAYS_BETWEEN_CHECKS = 6;
-const STATE_KEY = 'aiModelCheck';
+const STATE_KEY = MODEL_CHECK_STATE_KEY;
 
 /**
  * @returns {Promise<{time?: number, notified?: {provider: string, model: string, suggested: string}}>}
@@ -126,24 +130,55 @@ export async function checkCheaperModel() {
 }
 
 /**
- * The alarm's job: switches to the cheapest model (option on) or looks for a
- * cheaper one to tell about, unless a check ran only a few days ago.
+ * Does the check: switches to the cheapest model ("switch automatically" on)
+ * or looks for a cheaper one to tell about. Said what came of it, for the
+ * "update now" button on the options page.
+ * @param {{manual?: boolean}} [how] - `manual`: the user asked for it; the
+ *   weekly alarm starts over from now.
+ * @returns {Promise<{switched?: import('./autoCheapest.js').Switched | null,
+ *   cheaper?: import('../../../lib/aiModelCheck.js').CheaperModel | null}>}
+ */
+export async function runModelCheckNow({ manual = false } = {}) {
+  const { cbx_aiAutoCheapest: auto } = await getOptions(['cbx_aiAutoCheapest']);
+  /** @type {Awaited<ReturnType<typeof runModelCheckNow>>} */
+  let result;
+  if (auto) {
+    // The model is changed instead of the user being told about a cheaper one
+    const switched = await applyAutoCheapest();
+    if (switched) await notifyAutoSwitched(switched);
+    await writeState({ time: Date.now() });
+    result = { switched };
+  } else {
+    result = { cheaper: await checkCheaperModel() };
+  }
+  if (manual) await restartSchedule();
+  return result;
+}
+
+/**
+ * The alarm's job: the check, unless one ran only a few days ago.
  * @returns {Promise<void>}
  */
 export async function runScheduledModelCheck() {
   const { time } = await readState();
   if (time && Date.now() - time < MIN_DAYS_BETWEEN_CHECKS * DAY_MS) return;
+  await runModelCheckNow();
+}
 
-  // With "switch automatically" on, the model is changed instead of the user
-  // being told about a cheaper one.
-  const { cbx_aiAutoCheapest: auto } = await getOptions(['cbx_aiAutoCheapest']);
-  if (auto) {
-    const switched = await applyAutoCheapest();
-    if (switched) await notifyAutoSwitched(switched);
-    await writeState({ time: Date.now() });
-    return;
+/**
+ * Starts the weekly alarm over, a week from now (after an update by hand).
+ * Never throws.
+ * @returns {Promise<void>}
+ */
+async function restartSchedule() {
+  try {
+    chrome.alarms?.create(MODEL_CHECK_ALARM, {
+      delayInMinutes: WEEK_MINUTES,
+      periodInMinutes: WEEK_MINUTES,
+    });
+  } catch {
+    // no alarms API: the old schedule stays
   }
-  await checkCheaperModel();
 }
 
 /**

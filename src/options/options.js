@@ -32,7 +32,8 @@ import {
   hostPattern,
   providersWithKey,
 } from '../background/modules/ai/autoCheapest.js';
-import { renderCheapestModels } from './aiCheapestPanel.js';
+import { getCheckStatus, MODEL_CHECK_STATE_KEY } from '../lib/aiCheckStatus.js';
+import { addUpdateFooter, renderCheapestModels } from './aiCheapestPanel.js';
 import { initAiUsage } from './aiUsagePanel.js';
 import {
   clampTimeoutSetting,
@@ -514,6 +515,22 @@ function setupAiOptions(selected = 'off') {
   };
 
   select.addEventListener('change', () => void chooseProvider(select.value));
+
+  // Last and next update of the weekly check, and an "update now" button
+  const refreshUpdateTimes = addUpdateFooter(
+    document.getElementById('ai_cheapest'),
+    {
+      getStatus: getCheckStatus,
+      runUpdate: () => chrome.runtime.sendMessage({ msg: 'aiCheckNow' }),
+    },
+  );
+  void refreshUpdateTimes();
+  // The check also runs by itself (the alarm) while this page is open
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && MODEL_CHECK_STATE_KEY in changes) {
+      void refreshUpdateTimes();
+    }
+  });
 
   // "Switch automatically to the cheapest model of a provider with an API
   // key": switching the option on does it right away (and asks, in this one

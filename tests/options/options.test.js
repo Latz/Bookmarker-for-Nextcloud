@@ -11,6 +11,10 @@ globalThis.chrome = {
   i18n: {
     getMessage: vi.fn((key) => `[i18n:${key}]`),
   },
+  storage: {
+    ...globalThis.chrome?.storage,
+    onChanged: { addListener: vi.fn() },
+  },
 };
 
 // Mock Tagify - needs to be a constructor function
@@ -22,6 +26,7 @@ vi.mock('../../src/background/modules/ai/autoCheapest.js', () => ({
 
 vi.mock('../../src/options/aiCheapestPanel.js', () => ({
   renderCheapestModels: vi.fn(),
+  addUpdateFooter: vi.fn(() => vi.fn(() => Promise.resolve())),
 }));
 
 vi.mock('../../src/options/aiUsagePanel.js', () => ({

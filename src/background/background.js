@@ -22,6 +22,7 @@ import {
 } from './modules/browser/notification.js';
 import {
   MODEL_CHECK_ALARM,
+  runModelCheckNow,
   runScheduledModelCheck,
 } from './modules/ai/modelCheck.js';
 import { maxAttemptsError } from './modules/loginTimeout.js';
@@ -105,6 +106,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // by the popup when the normal extraction found none. getAiSuggestions
       // never throws; it answers {} on any failure.
       void getAiSuggestions(request.data).then(sendResponse);
+      return true;
+    case 'aiCheckNow':
+      // "Update now" next to the cheapest models on the options page: the
+      // weekly check right away; answers what came of it.
+      void runModelCheckNow({ manual: true })
+        .then(sendResponse)
+        .catch((error) =>
+          sendResponse({ error: error?.message ?? String(error) }),
+        );
       return true;
     case 'authorize':
       // Opens the login page in a new tab (the Nextcloud login flow v2 runs there).
