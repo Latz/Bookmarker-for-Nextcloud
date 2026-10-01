@@ -122,18 +122,31 @@
   grid-area: 2/2/3/3;
 }
 
+/* Rainbow colours of the AI status line and icon: darker in light mode,
+   lighter in dark mode, so they stay readable on both backgrounds
+   (light-dark() follows the daisyUI theme's colour-scheme). */
+:root {
+  --rainbow-red: light-dark(#dc2626, #fca5a5);
+  --rainbow-orange: light-dark(#ea580c, #fdba74);
+  --rainbow-yellow: light-dark(#ca8a04, #fde047);
+  --rainbow-green: light-dark(#16a34a, #86efac);
+  --rainbow-blue: light-dark(#0284c7, #7dd3fc);
+  --rainbow-violet: light-dark(#7c3aed, #c4b5fd);
+  --rainbow-pink: light-dark(#db2777, #f9a8d4);
+}
+
 /* "AI is suggesting ...": rainbow text that flows while the AI is working */
 .ai-rainbow {
   background: linear-gradient(
     90deg,
-    #f87171,
-    #fb923c,
-    #facc15,
-    #4ade80,
-    #38bdf8,
-    #a78bfa,
-    #f472b6,
-    #f87171
+    var(--rainbow-red),
+    var(--rainbow-orange),
+    var(--rainbow-yellow),
+    var(--rainbow-green),
+    var(--rainbow-blue),
+    var(--rainbow-violet),
+    var(--rainbow-pink),
+    var(--rainbow-red)
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -163,22 +176,22 @@
 @keyframes ai-hue {
   0%,
   100% {
-    color: #f87171;
+    color: var(--rainbow-red);
   }
   16% {
-    color: #fb923c;
+    color: var(--rainbow-orange);
   }
   33% {
-    color: #facc15;
+    color: var(--rainbow-yellow);
   }
   50% {
-    color: #4ade80;
+    color: var(--rainbow-green);
   }
   66% {
-    color: #38bdf8;
+    color: var(--rainbow-blue);
   }
   83% {
-    color: #a78bfa;
+    color: var(--rainbow-violet);
   }
 }
 @keyframes ai-pulse {
@@ -195,5 +208,6 @@
 @media (prefers-reduced-motion: reduce) {
   .ai-badge {
     animation: none;
+    color: var(--rainbow-red);
   }
 }
