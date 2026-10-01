@@ -155,6 +155,23 @@ function syncPriceRank(select) {
 }
 
 /**
+ * The model id to put into a model field for a name of the price list. The
+ * list holds the start of an id ("claude-3-5-haiku"), the dropdown the exact
+ * ids the API offers: an exact match wins, else the first id that starts with
+ * the name (the API lists the newest first), else the name itself.
+ * @param {string[]} offered - The ids in the dropdown.
+ * @param {string} name
+ * @returns {string}
+ */
+export function resolveModelId(offered, name) {
+  return (
+    offered.find((id) => id === name) ??
+    offered.find((id) => id.startsWith(name)) ??
+    name
+  );
+}
+
+/**
  * Sets the models offered by a model field: the options of a dropdown (the
  * current value always stays selectable) or the suggestions of a text input.
  * @param {HTMLElement} field - The `input_<id>Model` element.

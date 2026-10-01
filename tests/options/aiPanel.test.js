@@ -4,6 +4,7 @@ import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
 import {
   priceRanks,
   renderAiPanel,
+  resolveModelId,
   setModelOptions,
   showAiProvider,
 } from '../../src/options/aiPanel.js';
@@ -233,5 +234,33 @@ describe('aiPanel', () => {
     expect(field.tagName).toBe('INPUT');
     setModelOptions(field, [{ id: 'llama3', label: 'llama3' }]);
     expect(document.getElementById('models_ollama').children).toHaveLength(1);
+  });
+
+  describe('resolveModelId', () => {
+    const offered = [
+      'claude-haiku-4-5-20251001',
+      'claude-3-5-haiku-20241022',
+      'claude-3-5-haiku-20240307',
+      'gpt-5-mini',
+      'gpt-5-mini-2025-08-07',
+    ];
+
+    it('prefers an exact match', () => {
+      expect(resolveModelId(offered, 'gpt-5-mini')).toBe('gpt-5-mini');
+    });
+
+    it('takes the first offered id that starts with the name (newest first)', () => {
+      expect(resolveModelId(offered, 'claude-3-5-haiku')).toBe(
+        'claude-3-5-haiku-20241022',
+      );
+      expect(resolveModelId(offered, 'claude-haiku-4-5')).toBe(
+        'claude-haiku-4-5-20251001',
+      );
+    });
+
+    it('uses the name itself when nothing offered fits (no list loaded)', () => {
+      expect(resolveModelId([], 'gpt-5-nano')).toBe('gpt-5-nano');
+      expect(resolveModelId(offered, 'unknown-model')).toBe('unknown-model');
+    });
   });
 });

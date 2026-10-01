@@ -24,6 +24,7 @@ vi.mock('../../src/options/aiUsagePanel.js', () => ({
 
 vi.mock('../../src/options/aiPanel.js', () => ({
   renderAiPanel: vi.fn(),
+  resolveModelId: vi.fn((offered, name) => name),
   setModelOptions: vi.fn(),
   showAiProvider: vi.fn(),
 }));
@@ -70,7 +71,8 @@ vi.mock('../../src/popup/modules/fillFolders.js', () => ({
 // Import after mocking
 import Tagify from '@yaireo/tagify';
 import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
-import { showAiProvider } from '../../src/options/aiPanel.js';
+import { setModelOptions, showAiProvider } from '../../src/options/aiPanel.js';
+import { renderCheapestModels } from '../../src/options/aiCheapestPanel.js';
 import {
   load_data_all,
   load_data,
@@ -725,6 +727,34 @@ describe('options.js', () => {
       );
       expect(chrome.permissions.request).toHaveBeenCalledWith({
         origins: ['https://generativelanguage.googleapis.com/*'],
+      });
+    });
+
+    it('a click on a model in the cheapest box picks that provider and model', async () => {
+      mockElements.input_claudeBaseUrl.value = 'https://api.anthropic.com';
+      const pick = renderCheapestModels.mock.calls.at(-1)[1];
+
+      pick('claude', 'claude-haiku-4-5');
+      await Promise.resolve();
+
+      expect(setModelOptions).toHaveBeenLastCalledWith(
+        mockElements.input_claudeModel,
+        [],
+        'claude-haiku-4-5',
+      );
+      expect(store_data).toHaveBeenCalledWith('options', {
+        input_claudeModel: 'claude-haiku-4-5',
+      });
+      expect(mockElements.select_aiProvider.value).toBe('claude');
+      expect(store_data).toHaveBeenCalledWith('options', {
+        select_aiProvider: 'claude',
+      });
+      expect(showAiProvider).toHaveBeenLastCalledWith(
+        mockElements.ai_panels,
+        'claude',
+      );
+      expect(chrome.permissions.request).toHaveBeenCalledWith({
+        origins: ['https://api.anthropic.com/*'],
       });
     });
 

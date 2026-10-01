@@ -61,6 +61,26 @@ describe('renderCheapestModels', () => {
     expect(first.textContent).toContain(' / ');
   });
 
+  it('picks the provider and model of a row when it is clicked', () => {
+    const onPick = vi.fn();
+    renderCheapestModels(container, onPick);
+    const entries = cheapestModels(10);
+
+    const rows = container.querySelectorAll('li button');
+    expect(rows).toHaveLength(10);
+    rows[3].click();
+
+    expect(onPick).toHaveBeenCalledWith(entries[3].provider, entries[3].model);
+    expect(rows[3].dataset.provider).toBe(entries[3].provider);
+    expect(rows[3].dataset.model).toBe(entries[3].model);
+    expect(rows[3].title).toBe('aiCheapestPick');
+  });
+
+  it('can be shown without a click handler', () => {
+    renderCheapestModels(container);
+    expect(() => container.querySelector('li button').click()).not.toThrow();
+  });
+
   it('marks the cheapest green (1) and the second cheapest yellow (2) only', () => {
     const ranks = [...container.querySelectorAll('li')].map(
       (li) => li.dataset.priceRank,

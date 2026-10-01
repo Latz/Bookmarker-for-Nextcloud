@@ -21,7 +21,12 @@ import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
 import { listModels, testProvider } from '../lib/aiClient.js';
 import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
-import { renderAiPanel, setModelOptions, showAiProvider } from './aiPanel.js';
+import {
+  renderAiPanel,
+  resolveModelId,
+  setModelOptions,
+  showAiProvider,
+} from './aiPanel.js';
 import { renderCheapestModels } from './aiCheapestPanel.js';
 import { initAiUsage } from './aiUsagePanel.js';
 import {
@@ -348,7 +353,6 @@ async function setOptions() {
  */
 function setupAiOptions(selected = 'off') {
   initAiUsage();
-  renderCheapestModels(document.getElementById('ai_cheapest'));
   const select = document.getElementById('select_aiProvider');
   const panels = document.getElementById('ai_panels');
   const errorBox = document.getElementById('ai_error');
@@ -481,9 +485,10 @@ function setupAiOptions(selected = 'off') {
   showFeatures(select.value);
   if (current) void loadModels(current, { silent: true });
 
-  select.addEventListener('change', async () => {
+  // Makes `id` the provider in use: stores it, shows its panel and asks for
+  // the host permission of its server.
+  const chooseProvider = async (id) => {
     showError('');
-    const id = select.value;
     void store_data(OPTION_STORE, { select_aiProvider: id });
     showAiProvider(panels, id);
     showFeatures(id);
@@ -501,7 +506,23 @@ function setupAiOptions(selected = 'off') {
     } catch (error) {
       showError(error?.message ?? String(error));
     }
-  });
+  };
+
+  select.addEventListener('change', () => void chooseProvider(select.value));
+
+  // A click in the box of the cheapest models: that provider and that model
+  renderCheapestModels(
+    document.getElementById('ai_cheapest'),
+    (providerId, model) => {
+      const field = document.getElementById(`input_${providerId}Model`);
+      const offered = Array.from(field.options ?? [], (option) => option.value);
+      const value = resolveModelId(offered, model);
+      setModelOptions(field, [], value);
+      void store_data(OPTION_STORE, { [field.id]: value });
+      select.value = providerId;
+      void chooseProvider(providerId);
+    },
+  );
 }
 
 /**

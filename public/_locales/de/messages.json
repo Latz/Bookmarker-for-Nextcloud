@@ -61,6 +61,7 @@
   "aiCheaperModel": {"message": "Ein günstigeres Modell bei $provider$: $suggested$ ($suggestedPrice$) statt $selected$ ($selectedPrice$) pro 1 Mio. Tokens. Klicken, um die Einstellungen zu öffnen.", "placeholders": {"provider": {"content": "$1"}, "suggested": {"content": "$2"}, "suggestedPrice": {"content": "$3"}, "selected": {"content": "$4"}, "selectedPrice": {"content": "$5"}}},
   "aiCheapest": { "message": "Günstigste Modelle" },
   "aiCheapestNote": { "message": "Alle Anbieter, günstigstes zuerst. Preis pro 1 Mio. Tokens (Input / Output); sortiert nach den Kosten einer typischen Anfrage. Listenpreise, eine Schätzung." },
+  "aiCheapestPick": { "message": "Dieses Modell verwenden" },
   "aiKeyOptional": { "message": "optional" },
   "aiOllamaHint": { "message": "Ollama muss diese Erweiterung zulassen: OLLAMA_ORIGINS=chrome-extension://* setzen und Ollama neu starten." },
   "aiModelsFailed": { "message": "Die Modellliste konnte nicht geladen werden" },
