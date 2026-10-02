@@ -25,7 +25,6 @@
     "extension_pages": "script-src 'self'; object-src 'self'; form-action 'none'; img-src 'self'"
   },
   "permissions": [
-    "alarms",
     "contextMenus",
     "activeTab",
     "notifications",

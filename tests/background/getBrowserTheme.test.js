@@ -57,8 +57,8 @@ describe('getBrowserTheme module', () => {
       // Verify offscreen document was created
       expect(chrome.offscreen.createDocument).toHaveBeenCalledWith({
         url: 'chrome-extension://mock-id/src/background/modules/browser/offscreen/offscreen.html',
-        reasons: ['MATCH_MEDIA', 'DOM_PARSER'],
-        justification: expect.stringContaining('browser theme detection'),
+        reasons: ['MATCH_MEDIA'],
+        justification: 'matchmedia request for browser theme detection',
       });
 
       // Verify message was sent
@@ -127,9 +127,7 @@ describe('getBrowserTheme module', () => {
     it('should not cache the fallback, so a later call can detect the real theme', async () => {
       chrome.offscreen.hasDocument.mockResolvedValue(false);
       chrome.runtime.getContexts.mockResolvedValue([]);
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
       chrome.runtime.sendMessage
         .mockRejectedValueOnce(new Error('offscreen not ready')) // ready check
         .mockResolvedValue(true); // browser is light -> dark icon
@@ -231,7 +229,7 @@ describe('getBrowserTheme module', () => {
 
       expect(chrome.offscreen.createDocument).toHaveBeenCalledWith(
         expect.objectContaining({
-          reasons: ['MATCH_MEDIA', 'DOM_PARSER'],
+          reasons: ['MATCH_MEDIA'],
         }),
       );
     });
@@ -324,7 +322,7 @@ describe('Integration tests', () => {
 
     expect(chrome.offscreen.createDocument).toHaveBeenCalledTimes(1);
     expect(chrome.offscreen.createDocument).toHaveBeenCalledWith(
-      expect.objectContaining({ reasons: ['MATCH_MEDIA', 'DOM_PARSER'] }),
+      expect.objectContaining({ reasons: ['MATCH_MEDIA'] }),
     );
     // Document is NOT closed -- kept open for potential reuse.
     expect(chrome.offscreen.closeDocument).not.toHaveBeenCalled();

@@ -21,21 +21,7 @@ import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 
 import { listModels, testProvider } from '../lib/aiClient.js';
 import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
-import {
-  renderAiPanel,
-  resolveModelId,
-  setModelOptions,
-  showAiProvider,
-} from './aiPanel.js';
-import {
-  applyAutoCheapest,
-  hostPattern,
-  providersWithKey,
-} from '../background/modules/ai/autoCheapest.js';
-import { getCheckStatus, MODEL_CHECK_STATE_KEY } from '../lib/aiCheckStatus.js';
-import { AI_DATA_KEY, loadAiData } from '../lib/aiData.js';
-import { SOURCE_ORIGINS } from '../lib/aiPriceSources.js';
-import { addUpdateFooter, renderCheapestModels } from './aiCheapestPanel.js';
+import { renderAiPanel, setModelOptions, showAiProvider } from './aiPanel.js';
 import { initAiUsage } from './aiUsagePanel.js';
 import {
   clampTimeoutSetting,
@@ -226,10 +212,6 @@ function changeContent(activeTab, target) {
 async function setOptions() {
   const options = document.getElementById('content');
   const optionsData = await load_data_all(OPTION_STORE);
-
-  // The prices the extension has read from the providers' pages (if it has)
-  // must be in use before the AI tab is drawn
-  await loadAiData();
 
   // The AI fields must exist before the stored values are filled in
   renderAiPanel(
@@ -521,94 +503,6 @@ function setupAiOptions(selected = 'off') {
   };
 
   select.addEventListener('change', () => void chooseProvider(select.value));
-
-  // "Switch automatically to the cheapest model of a provider with an API
-  // key": switching the option on does it right away (and asks, in this one
-  // click, for the servers of all providers with a key); after that the
-  // weekly check in the service worker keeps doing it.
-  const autoBox = document.getElementById('cbx_aiAutoCheapest');
-  const autoStatus = document.getElementById('ai_auto_status');
-  const showAutoStatus = (message, ok = true) => {
-    autoStatus.textContent = message;
-    autoStatus.classList.toggle('hidden', !message);
-    autoStatus.classList.toggle('text-success', ok);
-    autoStatus.classList.toggle('text-error', !ok);
-  };
-  autoBox.addEventListener('change', async () => {
-    if (!autoBox.checked) {
-      showAutoStatus('');
-      return;
-    }
-    showAutoStatus(chrome.i18n.getMessage('aiAutoWorking'));
-    try {
-      const origins = (await providersWithKey())
-        .map((provider) => hostPattern(provider.baseUrl))
-        .filter(Boolean);
-      if (origins.length > 0) await chrome.permissions.request({ origins });
-
-      const switched = await applyAutoCheapest();
-      if (!switched) {
-        showAutoStatus(chrome.i18n.getMessage('aiAutoNothing'));
-        return;
-      }
-      // applyAutoCheapest has saved the choice; show it
-      select.value = switched.provider;
-      showAiProvider(panels, switched.provider);
-      showFeatures(switched.provider);
-      setModelOptions(
-        document.getElementById(`input_${switched.provider}Model`),
-        [],
-        switched.model,
-      );
-      showAutoStatus(
-        chrome.i18n.getMessage('aiAutoDone', [
-          switched.model,
-          switched.providerLabel,
-        ]),
-      );
-    } catch (error) {
-      showAutoStatus(error?.message ?? String(error), false);
-    }
-  });
-
-  // A click in the box of the cheapest models: that provider and that model
-  const pickModel = (providerId, model) => {
-    const field = document.getElementById(`input_${providerId}Model`);
-    const offered = Array.from(field.options ?? [], (option) => option.value);
-    const value = resolveModelId(offered, model);
-    setModelOptions(field, [], value);
-    void store_data(OPTION_STORE, { [field.id]: value });
-    select.value = providerId;
-    void chooseProvider(providerId);
-  };
-  const cheapestBox = document.getElementById('ai_cheapest');
-  const showCheapest = () => renderCheapestModels(cheapestBox, pickModel);
-  showCheapest();
-
-  // Last and next update of the weekly check, and an "update now" button
-  const refreshUpdateTimes = addUpdateFooter(cheapestBox, {
-    getStatus: getCheckStatus,
-    runUpdate: async () => {
-      // The click may ask for the providers' pages (once, for all of them)
-      try {
-        await chrome.permissions.request({ origins: SOURCE_ORIGINS });
-      } catch {
-        // denied or unavailable: the update then reads what it may
-      }
-      return chrome.runtime.sendMessage({ msg: 'aiCheckNow' });
-    },
-  });
-  void refreshUpdateTimes();
-  // The check also runs by itself (the alarm) while this page is open
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'local') return;
-    if (MODEL_CHECK_STATE_KEY in changes) void refreshUpdateTimes();
-    // new prices: the list is drawn again, the day is shown
-    if (AI_DATA_KEY in changes) {
-      showCheapest();
-      void refreshUpdateTimes();
-    }
-  });
 }
 
 /**

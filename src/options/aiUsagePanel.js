@@ -1,10 +1,9 @@
 // Shows the AI usage in the panel of each provider (AI tab): requests,
-// input/output tokens and the estimated cost per model, with a total if the
+// input/output tokens per model, with a total if the
 // provider was used with several models and a reset button. Every panel shows
 // only its own provider's usage. Re-renders by itself whenever the statistics
 // change (e.g. after a request from the popup).
 import { AI_PROVIDERS } from '../lib/aiProviders.js';
-import { estimateCost } from '../lib/aiPricing.js';
 import { getUsage, resetUsage, USAGE_STORAGE_KEY } from '../lib/aiUsage.js';
 
 /**
@@ -21,39 +20,12 @@ function cell(tag, text = '', className = '') {
 }
 
 /**
- * Dollar amount with as many decimals as needed to see small sums.
- * @param {number} dollars
- * @returns {string}
- */
-export function formatCost(dollars) {
-  const digits = dollars >= 1 ? 2 : dollars >= 0.01 ? 3 : 4;
-  return `$${dollars.toLocaleString(navigator.language, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: digits,
-  })}`;
-}
-
-/**
- * Sums up usage rows; `unknownCost` is set if a model has no known price.
+ * Sums up usage rows.
  * @param {Array<import('../lib/aiUsage.js').ModelUsage>} rows
  */
 function sumRows(rows) {
-  const total = {
-    requests: 0,
-    inputTokens: 0,
-    outputTokens: 0,
-    cost: 0,
-    unknownCost: false,
-  };
+  const total = { requests: 0, inputTokens: 0, outputTokens: 0 };
   for (const row of rows) {
-    const cost = estimateCost(
-      row.provider,
-      row.model,
-      row.inputTokens,
-      row.outputTokens,
-    );
-    if (cost === null) total.unknownCost = true;
-    else total.cost += cost;
     total.requests += row.requests;
     total.inputTokens += row.inputTokens;
     total.outputTokens += row.outputTokens;
@@ -62,14 +34,13 @@ function sumRows(rows) {
 }
 
 /**
- * A table row with the five usage columns.
+ * A table row with the usage columns.
  * @param {string} name
  * @param {{requests: number, inputTokens: number, outputTokens: number}} values
- * @param {string} costText
  * @param {string} [className]
  * @returns {HTMLElement}
  */
-function usageRow(name, values, costText, className = '') {
+function usageRow(name, values, className = '') {
   const number = (value) => value.toLocaleString(navigator.language);
   const tr = document.createElement('tr');
   if (className) tr.className = className;
@@ -78,7 +49,6 @@ function usageRow(name, values, costText, className = '') {
     cell('td', number(values.requests), 'text-right'),
     cell('td', number(values.inputTokens), 'text-right'),
     cell('td', number(values.outputTokens), 'text-right'),
-    cell('td', costText, 'text-right'),
   );
   return tr;
 }
@@ -97,23 +67,12 @@ function providerTable(rows) {
     cell('th', t('aiUsageRequests'), 'text-right'),
     cell('th', t('aiUsageInput'), 'text-right'),
     cell('th', t('aiUsageOutput'), 'text-right'),
-    cell('th', t('aiUsageCost'), 'text-right'),
   );
   const thead = document.createElement('thead');
   thead.append(head);
 
   const tbody = document.createElement('tbody');
-  for (const row of rows) {
-    const cost = estimateCost(
-      row.provider,
-      row.model,
-      row.inputTokens,
-      row.outputTokens,
-    );
-    tbody.append(
-      usageRow(row.model, row, cost === null ? '–' : `≈ ${formatCost(cost)}`),
-    );
-  }
+  for (const row of rows) tbody.append(usageRow(row.model, row));
 
   const table = document.createElement('table');
   table.className = 'table table-xs';
@@ -121,14 +80,7 @@ function providerTable(rows) {
   if (rows.length > 1) {
     const total = sumRows(rows);
     const tfoot = document.createElement('tfoot');
-    tfoot.append(
-      usageRow(
-        t('aiUsageTotal'),
-        total,
-        `≈ ${formatCost(total.cost)}${total.unknownCost ? '+' : ''}`,
-        'font-medium',
-      ),
-    );
+    tfoot.append(usageRow(t('aiUsageTotal'), total, 'font-medium'));
     table.append(tfoot);
   }
   return table;
@@ -165,11 +117,7 @@ export async function renderProviderUsage(container, providerId) {
   container.replaceChildren(
     heading,
     providerTable(rows),
-    cell(
-      'p',
-      `${t('aiUsageSince')} ${since} · ${t('aiUsageNote')}`,
-      'mt-2 text-xs opacity-70',
-    ),
+    cell('p', `${t('aiUsageSince')} ${since}`, 'mt-2 text-xs opacity-70'),
     reset,
   );
 }

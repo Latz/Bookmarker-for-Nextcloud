@@ -2,9 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
 import {
-  priceRanks,
   renderAiPanel,
-  resolveModelId,
   setModelOptions,
   showAiProvider,
 } from '../../src/options/aiPanel.js';
@@ -126,141 +124,10 @@ describe('aiPanel', () => {
     expect(field.options).toHaveLength(1);
   });
 
-  it('shows the price per million tokens in the model dropdown', () => {
-    const field = document.getElementById('input_openaiModel');
-    setModelOptions(field, [
-      { id: 'gpt-5-mini', label: 'gpt-5-mini' },
-      { id: 'gpt-4.1-mini', label: 'gpt-4.1-mini' },
-      { id: 'brand-new-model', label: 'brand-new-model' },
-    ]);
-
-    const labels = [...field.options].map((o) => o.textContent);
-    expect(labels).toEqual([
-      'gpt-5-mini  ·  $0.25 / $2',
-      'gpt-4.1-mini  ·  $0.40 / $1.60',
-      'brand-new-model',
-    ]);
-    // the value stays the plain model id
-    expect([...field.options].map((o) => o.value)).toEqual([
-      'gpt-5-mini',
-      'gpt-4.1-mini',
-      'brand-new-model',
-    ]);
-  });
-
-  describe('price colours', () => {
-    const ids = (...list) => list.map((id) => ({ id, label: id }));
-
-    it('ranks by the cost of a typical request: cheapest 1, second cheapest 2', () => {
-      // typical request = 10 input tokens + 1 output token (per million):
-      // gpt-5-mini 2.5+2=4.5, gpt-4.1-mini 4+1.6=5.6, gpt-5-nano 0.5+0.4=0.9,
-      // gpt-5 12.5+10=22.5
-      const ranks = priceRanks(
-        ids('gpt-5-mini', 'gpt-4.1-mini', 'gpt-5-nano', 'gpt-5'),
-        'openai',
-      );
-      expect(ranks.get('gpt-5-nano')).toBe(1);
-      expect(ranks.get('gpt-5-mini')).toBe(2);
-      expect(ranks.has('gpt-4.1-mini')).toBe(false);
-      expect(ranks.has('gpt-5')).toBe(false);
-    });
-
-    it('gives models with the same price the same rank and skips unknown prices', () => {
-      const ranks = priceRanks(
-        ids(
-          'claude-sonnet-4-6',
-          'claude-sonnet-4-5',
-          'mystery',
-          'claude-haiku-4-5',
-        ),
-        'claude',
-      );
-      expect(ranks.get('claude-haiku-4-5')).toBe(1);
-      expect(ranks.get('claude-sonnet-4-6')).toBe(2);
-      expect(ranks.get('claude-sonnet-4-5')).toBe(2);
-      expect(ranks.has('mystery')).toBe(false);
-    });
-
-    it('marks the options and copies the selected rank onto the closed dropdown', () => {
-      const field = document.getElementById('input_openaiModel');
-      setModelOptions(
-        field,
-        ids('gpt-5-mini', 'gpt-4.1-mini', 'gpt-5-nano', 'gpt-5'),
-        'gpt-5-nano',
-      );
-
-      const rank = (id) =>
-        [...field.options].find((o) => o.value === id).dataset.priceRank;
-      expect(rank('gpt-5-nano')).toBe('1');
-      expect(rank('gpt-5-mini')).toBe('2');
-      expect(rank('gpt-4.1-mini')).toBeUndefined();
-      expect(rank('gpt-5')).toBeUndefined();
-      expect(field.dataset.priceRank).toBe('1');
-
-      field.value = 'gpt-5-mini';
-      field.dispatchEvent(new Event('change'));
-      expect(field.dataset.priceRank).toBe('2');
-
-      field.value = 'gpt-5';
-      field.dispatchEvent(new Event('change'));
-      expect(field.dataset.priceRank).toBeUndefined();
-    });
-
-    it('colours nothing in the suggestions of text-input providers', () => {
-      const field = document.getElementById('input_ollamaModel');
-      setModelOptions(field, ids('llama3', 'qwen'));
-      expect(
-        document.querySelectorAll('#models_ollama [data-price-rank]'),
-      ).toHaveLength(0);
-    });
-  });
-
-  it('also shows the price of a stored model that is not in the list', () => {
-    const field = document.getElementById('input_claudeModel');
-    setModelOptions(field, [], 'claude-haiku-4-5');
-    expect(field.options[0].textContent).toBe('claude-haiku-4-5  ·  $1 / $5');
-  });
-
-  it('does not put prices into the suggestions of text-input providers', () => {
-    const field = document.getElementById('input_ollamaModel');
-    setModelOptions(field, [{ id: 'llama3', label: 'llama3' }]);
-    expect(
-      document.getElementById('models_ollama').firstChild.textContent,
-    ).toBe('llama3');
-  });
-
   it('uses a text input with suggestions for Ollama and custom servers', () => {
     const field = document.getElementById('input_ollamaModel');
     expect(field.tagName).toBe('INPUT');
     setModelOptions(field, [{ id: 'llama3', label: 'llama3' }]);
     expect(document.getElementById('models_ollama').children).toHaveLength(1);
-  });
-
-  describe('resolveModelId', () => {
-    const offered = [
-      'claude-haiku-4-5-20251001',
-      'claude-3-5-haiku-20241022',
-      'claude-3-5-haiku-20240307',
-      'gpt-5-mini',
-      'gpt-5-mini-2025-08-07',
-    ];
-
-    it('prefers an exact match', () => {
-      expect(resolveModelId(offered, 'gpt-5-mini')).toBe('gpt-5-mini');
-    });
-
-    it('takes the first offered id that starts with the name (newest first)', () => {
-      expect(resolveModelId(offered, 'claude-3-5-haiku')).toBe(
-        'claude-3-5-haiku-20241022',
-      );
-      expect(resolveModelId(offered, 'claude-haiku-4-5')).toBe(
-        'claude-haiku-4-5-20251001',
-      );
-    });
-
-    it('uses the name itself when nothing offered fits (no list loaded)', () => {
-      expect(resolveModelId([], 'gpt-5-nano')).toBe('gpt-5-nano');
-      expect(resolveModelId(offered, 'unknown-model')).toBe('unknown-model');
-    });
   });
 });

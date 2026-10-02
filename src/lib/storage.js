@@ -518,8 +518,6 @@ const DEFAULT_OPTIONS = {
   ...aiProviderDefaults(), // input_<id>ApiKey / Model / BaseUrl per provider
   cbx_aiTags: false,
   cbx_aiDescription: false,
-  cbx_aiModelCheck: true, // weekly check for a cheaper model
-  cbx_aiAutoCheapest: false, // switch to the cheapest model of a provider with a key
   cbx_zenUseAi: false, // Zen mode: ask the AI for missing tags/description
 };
 

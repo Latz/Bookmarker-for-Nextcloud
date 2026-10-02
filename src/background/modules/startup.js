@@ -9,7 +9,6 @@ import {
 import { initializeErrorIconCache } from './browser/notification.js';
 import getBrowserTheme from './browser/getBrowserTheme.js';
 import { createContextMenus } from './browser/contextMenu.js';
-import { scheduleModelCheck } from './ai/modelCheck.js';
 
 /**
  * Sets the toolbar icon to match the browser theme.
@@ -94,8 +93,6 @@ export async function init() {
   // everything below is local work that would otherwise delay the very thing
   // this call exists to do early.
   warmupConnection().catch(() => {});
-  // The weekly check for a cheaper AI model; never throws
-  void scheduleModelCheck();
 
   // Options introduced after the user installed are absent from their database.
   // Not awaited: nothing below depends on it, and a failure only means the

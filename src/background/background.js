@@ -16,15 +16,7 @@ import { getAiSuggestions } from './modules/page/aiSuggest.js';
 import { zenMode } from './modules/bookmarks/zenMode.js';
 import { saveBookmark } from './modules/bookmarks/saveBookmark.js';
 import { handleContextMenuClick } from './modules/browser/contextMenu.js';
-import {
-  dismissNotification,
-  handleNotificationClick,
-} from './modules/browser/notification.js';
-import {
-  MODEL_CHECK_ALARM,
-  runModelCheckNow,
-  runScheduledModelCheck,
-} from './modules/ai/modelCheck.js';
+import { dismissNotification } from './modules/browser/notification.js';
 import { maxAttemptsError } from './modules/loginTimeout.js';
 import { init } from './modules/startup.js';
 import { clearApiCallCache } from '../lib/apiCall.js';
@@ -107,15 +99,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // never throws; it answers {} on any failure.
       void getAiSuggestions(request.data).then(sendResponse);
       return true;
-    case 'aiCheckNow':
-      // "Update now" next to the cheapest models on the options page: the
-      // weekly check right away; answers what came of it.
-      void runModelCheckNow({ manual: true })
-        .then(sendResponse)
-        .catch((error) =>
-          sendResponse({ error: error?.message ?? String(error) }),
-        );
-      return true;
     case 'authorize':
       // Opens the login page in a new tab (the Nextcloud login flow v2 runs there).
       chrome.tabs
@@ -149,16 +132,7 @@ chrome.contextMenus.onClicked.addListener(handleContextMenuClick);
 
 // The error notification's "Dismiss" button (and a click on the notification)
 chrome.notifications.onButtonClicked.addListener(dismissNotification);
-chrome.notifications.onClicked.addListener(handleNotificationClick);
-
-// Weekly check for a cheaper AI model (the alarm is set up in init()).
-// Registered synchronously like the other listeners, so a cold start caused by
-// the alarm still delivers it.
-chrome.alarms?.onAlarm.addListener((alarm) => {
-  if (alarm.name === MODEL_CHECK_ALARM) {
-    runScheduledModelCheck().catch(logError('model check'));
-  }
-});
+chrome.notifications.onClicked.addListener(dismissNotification);
 
 // ------------------------------------------------------------------------------------------------
 // Initialize extension. Not top-level awaited: service workers disallow top-level

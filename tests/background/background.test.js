@@ -40,11 +40,6 @@ globalThis.chrome = {
       set: vi.fn(),
     },
   },
-  alarms: {
-    onAlarm: { addListener: vi.fn() },
-    get: vi.fn(),
-    create: vi.fn(),
-  },
   contextMenus: {
     removeAll: vi.fn(),
     create: vi.fn(),
@@ -94,15 +89,7 @@ vi.mock('../../src/lib/storage.js', () => ({
 vi.mock('../../src/background/modules/browser/notification.js', () => ({
   notifyUser: vi.fn(),
   dismissNotification: vi.fn(),
-  handleNotificationClick: vi.fn(),
   initializeErrorIconCache: vi.fn(() => Promise.resolve()),
-}));
-
-vi.mock('../../src/background/modules/ai/modelCheck.js', () => ({
-  MODEL_CHECK_ALARM: 'aiModelCheck',
-  runScheduledModelCheck: vi.fn(() => Promise.resolve()),
-  runModelCheckNow: vi.fn(() => Promise.resolve({ cheaper: null })),
-  scheduleModelCheck: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../../src/background/modules/browser/getBrowserTheme.js', () => ({
@@ -247,30 +234,17 @@ describe('background.js', () => {
 
     it('closes a notification when its Dismiss button or the notification is clicked', async () => {
       await import('../../src/background/background.js');
-      const { dismissNotification, handleNotificationClick } =
-        await import('../../src/background/modules/browser/notification.js');
+      const { dismissNotification } = await import(
+        '../../src/background/modules/browser/notification.js'
+      );
 
       // Registered synchronously at top level, like the other listeners
-      expect(
-        chrome.notifications.onButtonClicked.addListener,
-      ).toHaveBeenCalledWith(dismissNotification);
-      // a click also opens the options for the "cheaper model" notification
-      expect(chrome.notifications.onClicked.addListener).toHaveBeenCalledWith(
-        handleNotificationClick,
+      expect(chrome.notifications.onButtonClicked.addListener).toHaveBeenCalledWith(
+        dismissNotification,
       );
-    });
-
-    it('runs the model check when its alarm fires, and ignores other alarms', async () => {
-      await import('../../src/background/background.js');
-      const { runScheduledModelCheck } =
-        await import('../../src/background/modules/ai/modelCheck.js');
-      const onAlarm = chrome.alarms.onAlarm.addListener.mock.calls[0][0];
-
-      onAlarm({ name: 'something-else' });
-      expect(runScheduledModelCheck).not.toHaveBeenCalled();
-
-      onAlarm({ name: 'aiModelCheck' });
-      expect(runScheduledModelCheck).toHaveBeenCalledTimes(1);
+      expect(chrome.notifications.onClicked.addListener).toHaveBeenCalledWith(
+        dismissNotification,
+      );
     });
 
     it('drops the cached auth header when the credentials changed elsewhere', async () => {
@@ -294,9 +268,7 @@ describe('background.js', () => {
     it('always answers a getData request, even when getData throws', async () => {
       const sendResponse = vi.fn();
       getData.mockRejectedValueOnce(new Error('boom'));
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
         messageListener = callback;
@@ -315,45 +287,6 @@ describe('background.js', () => {
       // Without this the popup would wait until the service worker dies.
       expect(sendResponse).toHaveBeenCalledWith({ ok: false, error: 'boom' });
       consoleError.mockRestore();
-    });
-
-    it('runs the model check by hand on aiCheckNow and answers with what came of it', async () => {
-      const sendResponse = vi.fn();
-      const { runModelCheckNow } =
-        await import('../../src/background/modules/ai/modelCheck.js');
-      runModelCheckNow.mockResolvedValueOnce({ cheaper: { id: 'gpt-5-nano' } });
-
-      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
-        messageListener = callback;
-      });
-
-      await import('../../src/background/background.js');
-      expect(messageListener({ msg: 'aiCheckNow' }, {}, sendResponse)).toBe(
-        true,
-      );
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(runModelCheckNow).toHaveBeenCalledWith({ manual: true });
-      expect(sendResponse).toHaveBeenCalledWith({
-        cheaper: { id: 'gpt-5-nano' },
-      });
-    });
-
-    it('answers aiCheckNow with the error when the check throws', async () => {
-      const sendResponse = vi.fn();
-      const { runModelCheckNow } =
-        await import('../../src/background/modules/ai/modelCheck.js');
-      runModelCheckNow.mockRejectedValueOnce(new Error('boom'));
-
-      chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
-        messageListener = callback;
-      });
-
-      await import('../../src/background/background.js');
-      messageListener({ msg: 'aiCheckNow' }, {}, sendResponse);
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(sendResponse).toHaveBeenCalledWith({ error: 'boom' });
     });
 
     it('answers an aiSuggest request with the AI suggestions', async () => {
@@ -383,11 +316,7 @@ describe('background.js', () => {
       });
 
       await import('../../src/background/background.js');
-      const result = messageListener(
-        { msg: 'getBookmarkStatus' },
-        {},
-        sendResponse,
-      );
+      const result = messageListener({ msg: 'getBookmarkStatus' }, {}, sendResponse);
       expect(result).toBe(true);
 
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -399,9 +328,7 @@ describe('background.js', () => {
     it('always answers a getBookmarkStatus request, even when it throws', async () => {
       const sendResponse = vi.fn();
       getBookmarkStatus.mockRejectedValueOnce(new Error('aborted'));
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       chrome.runtime.onMessage.addListener.mockImplementation((callback) => {
         messageListener = callback;
@@ -412,10 +339,7 @@ describe('background.js', () => {
 
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(sendResponse).toHaveBeenCalledWith({
-        ok: false,
-        error: 'aborted',
-      });
+      expect(sendResponse).toHaveBeenCalledWith({ ok: false, error: 'aborted' });
       consoleError.mockRestore();
     });
 

@@ -18,24 +18,12 @@ globalThis.chrome = {
 };
 
 // Mock Tagify - needs to be a constructor function
-vi.mock('../../src/background/modules/ai/autoCheapest.js', () => ({
-  applyAutoCheapest: vi.fn(),
-  hostPattern: vi.fn((url) => `${new URL(url).origin}/*`),
-  providersWithKey: vi.fn(),
-}));
-
-vi.mock('../../src/options/aiCheapestPanel.js', () => ({
-  renderCheapestModels: vi.fn(),
-  addUpdateFooter: vi.fn(() => vi.fn(() => Promise.resolve())),
-}));
-
 vi.mock('../../src/options/aiUsagePanel.js', () => ({
   initAiUsage: vi.fn(),
 }));
 
 vi.mock('../../src/options/aiPanel.js', () => ({
   renderAiPanel: vi.fn(),
-  resolveModelId: vi.fn((offered, name) => name),
   setModelOptions: vi.fn(),
   showAiProvider: vi.fn(),
 }));
@@ -83,15 +71,6 @@ vi.mock('../../src/popup/modules/fillFolders.js', () => ({
 import Tagify from '@yaireo/tagify';
 import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
 import { setModelOptions, showAiProvider } from '../../src/options/aiPanel.js';
-import {
-  addUpdateFooter,
-  renderCheapestModels,
-} from '../../src/options/aiCheapestPanel.js';
-import { SOURCE_ORIGINS } from '../../src/lib/aiPriceSources.js';
-import {
-  applyAutoCheapest,
-  providersWithKey,
-} from '../../src/background/modules/ai/autoCheapest.js';
 import {
   load_data_all,
   load_data,
@@ -221,18 +200,6 @@ describe('options.js', () => {
         addEventListener: vi.fn(),
       },
       ai_panels: { id: 'ai_panels' },
-      ai_cheapest: { id: 'ai_cheapest' },
-      cbx_aiAutoCheapest: {
-        id: 'cbx_aiAutoCheapest',
-        type: 'checkbox',
-        checked: false,
-        addEventListener: vi.fn(),
-      },
-      ai_auto_status: {
-        id: 'ai_auto_status',
-        textContent: '',
-        classList: { toggle: vi.fn() },
-      },
       ai_features: { id: 'ai_features', classList: { toggle: vi.fn() } },
       ...Object.fromEntries(
         AI_PROVIDERS.flatMap((provider) => [
@@ -757,169 +724,6 @@ describe('options.js', () => {
       );
       expect(chrome.permissions.request).toHaveBeenCalledWith({
         origins: ['https://generativelanguage.googleapis.com/*'],
-      });
-    });
-
-    it('a click on a model in the cheapest box picks that provider and model', async () => {
-      mockElements.input_claudeBaseUrl.value = 'https://api.anthropic.com';
-      const pick = renderCheapestModels.mock.calls.at(-1)[1];
-
-      pick('claude', 'claude-haiku-4-5');
-      await Promise.resolve();
-
-      expect(setModelOptions).toHaveBeenLastCalledWith(
-        mockElements.input_claudeModel,
-        [],
-        'claude-haiku-4-5',
-      );
-      expect(store_data).toHaveBeenCalledWith('options', {
-        input_claudeModel: 'claude-haiku-4-5',
-      });
-      expect(mockElements.select_aiProvider.value).toBe('claude');
-      expect(store_data).toHaveBeenCalledWith('options', {
-        select_aiProvider: 'claude',
-      });
-      expect(showAiProvider).toHaveBeenLastCalledWith(
-        mockElements.ai_panels,
-        'claude',
-      );
-      expect(chrome.permissions.request).toHaveBeenCalledWith({
-        origins: ['https://api.anthropic.com/*'],
-      });
-    });
-
-    describe('switching automatically to the cheapest model', () => {
-      const change = () => handler(mockElements.cbx_aiAutoCheapest, 'change')();
-
-      beforeEach(() => {
-        mockElements.cbx_aiAutoCheapest.checked = true;
-        providersWithKey.mockResolvedValue([
-          {
-            id: 'openai',
-            label: 'OpenAI',
-            apiKey: 'k',
-            baseUrl: 'https://api.openai.com/v1',
-          },
-          {
-            id: 'claude',
-            label: 'Claude',
-            apiKey: 'k',
-            baseUrl: 'https://api.anthropic.com',
-          },
-        ]);
-        applyAutoCheapest.mockResolvedValue(null);
-      });
-
-      it('asks once for the servers of all providers with a key, then switches', async () => {
-        applyAutoCheapest.mockResolvedValue({
-          provider: 'claude',
-          providerLabel: 'Claude',
-          model: 'claude-haiku-4-5-20251001',
-          from: 'gpt-5',
-          price: { input: 1, output: 5 },
-        });
-
-        await change();
-
-        expect(chrome.permissions.request).toHaveBeenCalledTimes(1);
-        expect(chrome.permissions.request).toHaveBeenCalledWith({
-          origins: ['https://api.openai.com/*', 'https://api.anthropic.com/*'],
-        });
-        expect(mockElements.select_aiProvider.value).toBe('claude');
-        expect(showAiProvider).toHaveBeenLastCalledWith(
-          mockElements.ai_panels,
-          'claude',
-        );
-        expect(setModelOptions).toHaveBeenLastCalledWith(
-          mockElements.input_claudeModel,
-          [],
-          'claude-haiku-4-5-20251001',
-        );
-        expect(chrome.i18n.getMessage).toHaveBeenCalledWith('aiAutoDone', [
-          'claude-haiku-4-5-20251001',
-          'Claude',
-        ]);
-      });
-
-      it('says so when nothing cheaper is available', async () => {
-        await change();
-
-        expect(mockElements.select_aiProvider.value).toBe('openai');
-        expect(chrome.i18n.getMessage).toHaveBeenCalledWith('aiAutoNothing');
-      });
-
-      it('does nothing when it is switched off', async () => {
-        mockElements.cbx_aiAutoCheapest.checked = false;
-
-        await change();
-
-        expect(applyAutoCheapest).not.toHaveBeenCalled();
-        expect(chrome.permissions.request).not.toHaveBeenCalled();
-      });
-    });
-
-    describe("prices from the providers' pages", () => {
-      const deps = () => addUpdateFooter.mock.calls.at(-1)[1];
-
-      it('the update button asks once for all the pages, then runs the update', async () => {
-        chrome.runtime.sendMessage = vi
-          .fn()
-          .mockResolvedValue({ prices: { ok: true, changed: 1, added: 0 } });
-
-        const outcome = await deps().runUpdate();
-
-        expect(chrome.permissions.request).toHaveBeenCalledWith({
-          origins: SOURCE_ORIGINS,
-        });
-        expect(SOURCE_ORIGINS).toContain('https://docs.mistral.ai/*');
-        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
-          msg: 'aiCheckNow',
-        });
-        expect(outcome.prices.changed).toBe(1);
-      });
-
-      it('runs the update even when the permission is denied or the request fails', async () => {
-        chrome.permissions.request.mockRejectedValueOnce(
-          new Error('no gesture'),
-        );
-        chrome.runtime.sendMessage = vi
-          .fn()
-          .mockResolvedValue({ prices: { ok: false } });
-
-        await deps().runUpdate();
-
-        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
-          msg: 'aiCheckNow',
-        });
-      });
-
-      it('draws the box again and re-reads the times when new prices are saved', () => {
-        const refresh = addUpdateFooter.mock.results.at(-1).value;
-        const listener =
-          chrome.storage.onChanged.addListener.mock.calls.at(-1)[0];
-        renderCheapestModels.mockClear();
-        refresh.mockClear();
-
-        listener({ aiData: { newValue: {} } }, 'local');
-
-        expect(renderCheapestModels).toHaveBeenCalledTimes(1);
-        expect(refresh).toHaveBeenCalled();
-      });
-
-      it('ignores other storage areas, and only re-reads the times for the check state', () => {
-        const refresh = addUpdateFooter.mock.results.at(-1).value;
-        const listener =
-          chrome.storage.onChanged.addListener.mock.calls.at(-1)[0];
-        renderCheapestModels.mockClear();
-        refresh.mockClear();
-
-        listener({ aiData: {} }, 'sync');
-        expect(renderCheapestModels).not.toHaveBeenCalled();
-        expect(refresh).not.toHaveBeenCalled();
-
-        listener({ aiModelCheck: {} }, 'local');
-        expect(renderCheapestModels).not.toHaveBeenCalled();
-        expect(refresh).toHaveBeenCalledTimes(1);
       });
     });
 

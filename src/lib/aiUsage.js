@@ -1,7 +1,7 @@
 // @ts-check
 // Counts what the AI calls use: requests and input/output tokens per provider
 // and model, as reported by the API. Kept in chrome.storage.local and shown in
-// the options (AI tab), together with an estimated cost (see aiPricing.js).
+// the options (AI tab).
 
 const STORAGE_KEY = 'aiUsage';
 

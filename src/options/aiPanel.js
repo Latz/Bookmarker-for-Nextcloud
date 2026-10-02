@@ -4,8 +4,6 @@
 // btn_<id>Models, btn_<id>Test, ai_test_<id> (test result); the model field
 // is a dropdown, or an input with datalist models_<id> (freeModel providers).
 import { AI_PROVIDERS } from '../lib/aiProviders.js';
-import { findOffered } from '../lib/aiAutoCheapest.js';
-import { formatPrice, getPrice, typicalCost } from '../lib/aiPricing.js';
 
 /**
  * @param {string} tag
@@ -103,72 +101,6 @@ function row(label, id, field) {
 }
 
 /**
- * The label of a model with its price per million tokens (input / output),
- * "free" for local servers, unchanged if the price is not known.
- * @param {string} label
- * @param {string} providerId
- * @param {string} model
- * @returns {string}
- */
-function withPrice(label, providerId, model) {
-  const price = getPrice(providerId, model);
-  if (!price) return label;
-  const text =
-    price.input === 0 && price.output === 0
-      ? chrome.i18n.getMessage('aiPriceFree')
-      : formatPrice(price);
-  return `${label}  ·  ${text}`;
-}
-
-/**
- * Ranks the models of a dropdown by price: 1 = the cheapest, 2 = the second
- * cheapest. Compared by the cost of a typical request (typicalCost: mostly
- * input tokens, few output tokens); models with the same cost share a rank,
- * models without a known price get none.
- * @param {Array<{id: string}>} entries
- * @param {string} providerId
- * @returns {Map<string, number>} Model id -> rank (only ranks 1 and 2).
- */
-export function priceRanks(entries, providerId) {
-  const costs = new Map();
-  for (const { id } of entries) {
-    const price = getPrice(providerId, id);
-    if (price) costs.set(id, typicalCost(price));
-  }
-  const levels = [...new Set(costs.values())].sort((a, b) => a - b);
-  const ranks = new Map();
-  for (const [id, cost] of costs) {
-    const rank = levels.indexOf(cost) + 1;
-    if (rank <= 2) ranks.set(id, rank);
-  }
-  return ranks;
-}
-
-/**
- * A closed dropdown shows the colour of the dropdown itself, not of the
- * selected option, so the selected option's rank is copied onto it.
- * @param {HTMLSelectElement} select
- */
-function syncPriceRank(select) {
-  const rank = select.selectedOptions?.[0]?.dataset.priceRank;
-  if (rank) select.dataset.priceRank = rank;
-  else delete select.dataset.priceRank;
-}
-
-/**
- * The model id to put into a model field for a name of the price list. The
- * list holds the start of an id ("claude-3-5-haiku"), the dropdown the exact
- * ids the API offers: an exact match wins, else the first id that starts with
- * the name (the API lists the newest first), else the name itself.
- * @param {string[]} offered - The ids in the dropdown.
- * @param {string} name
- * @returns {string}
- */
-export function resolveModelId(offered, name) {
-  return findOffered(offered, name) ?? name;
-}
-
-/**
  * Sets the models offered by a model field: the options of a dropdown (the
  * current value always stays selectable) or the suggestions of a text input.
  * @param {HTMLElement} field - The `input_<id>Model` element.
@@ -184,28 +116,15 @@ export function setModelOptions(field, models, current = field.value) {
   ) {
     entries.unshift({ id: current, label: current });
   }
-  // field ids are input_<provider>Model; the dropdown shows each price
-  const providerId = field.id.replace(/^input_/, '').replace(/Model$/, '');
-  const isSelect = field.tagName === 'SELECT';
-  const ranks = isSelect ? priceRanks(entries, providerId) : new Map();
   const options = entries.map((model) => {
     const option = document.createElement('option');
     option.value = model.id;
-    option.textContent = isSelect
-      ? withPrice(model.label, providerId, model.id)
-      : model.label;
-    const rank = ranks.get(model.id);
-    if (rank) option.dataset.priceRank = String(rank);
+    option.textContent = model.label;
     return option;
   });
-  if (isSelect) {
+  if (field.tagName === 'SELECT') {
     field.replaceChildren(...options);
     field.value = current;
-    syncPriceRank(field);
-    if (!field.dataset.priceRankBound) {
-      field.dataset.priceRankBound = 'true';
-      field.addEventListener('change', () => syncPriceRank(field));
-    }
   } else {
     document
       .getElementById(field.getAttribute('list'))

@@ -13,9 +13,6 @@ vi.mock('../../src/lib/storage.js', () => ({
 vi.mock('../../src/background/modules/browser/notification.js', () => ({
   initializeErrorIconCache: vi.fn(),
 }));
-vi.mock('../../src/background/modules/ai/modelCheck.js', () => ({
-  scheduleModelCheck: vi.fn(() => Promise.resolve()),
-}));
 vi.mock('../../src/background/modules/browser/getBrowserTheme.js', () => ({
   default: vi.fn(),
 }));
@@ -31,7 +28,6 @@ import {
   ensureDefaults,
 } from '../../src/lib/storage.js';
 import { initializeErrorIconCache } from '../../src/background/modules/browser/notification.js';
-import { scheduleModelCheck } from '../../src/background/modules/ai/modelCheck.js';
 import getBrowserTheme from '../../src/background/modules/browser/getBrowserTheme.js';
 import { createContextMenus } from '../../src/background/modules/browser/contextMenu.js';
 import { init } from '../../src/background/modules/startup.js';
@@ -78,7 +74,6 @@ describe('startup init', () => {
       expect.objectContaining({ message: 'no theme' }),
     );
     expect(createContextMenus).toHaveBeenCalled();
-    expect(scheduleModelCheck).toHaveBeenCalled();
   });
 
   it('builds the context menu with the stored zen mode state', async () => {

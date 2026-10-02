@@ -9,7 +9,6 @@ vi.mock('../../src/lib/aiUsage.js', () => ({
 
 import { getUsage, resetUsage } from '../../src/lib/aiUsage.js';
 import {
-  formatCost,
   initAiUsage,
   renderProviderUsage,
 } from '../../src/options/aiUsagePanel.js';
@@ -70,7 +69,7 @@ describe('aiUsagePanel', () => {
     expect(container.textContent).not.toContain('gpt-5-mini');
   });
 
-  it('lists the models with tokens and estimated cost, plus a total', async () => {
+  it('lists the models with their requests and tokens, plus a total', async () => {
     getUsage.mockResolvedValue({
       since: Date.now(),
       models: {
@@ -85,8 +84,8 @@ describe('aiUsagePanel', () => {
           'claude',
           'claude-sonnet-5-5',
           1,
-          1000000,
-          0,
+          500,
+          20,
         ),
       },
     });
@@ -98,11 +97,16 @@ describe('aiUsagePanel', () => {
       'claude-haiku-4-5',
       'claude-sonnet-5-5',
     ]);
-    expect(rows[0].textContent).toContain('≈ $1.50'); // $1 + 100k * $5/M
-    expect(container.querySelector('tfoot').textContent).toContain('≈ $3.50');
+    expect(rows[0].textContent).toContain(
+      (1000000).toLocaleString(navigator.language),
+    );
+    const total = container.querySelector('tfoot').textContent;
+    expect(total).toContain('3'); // requests
+    expect(total).toContain((1000500).toLocaleString(navigator.language)); // input tokens
+    expect(total).toContain((100020).toLocaleString(navigator.language)); // output tokens
   });
 
-  it('has no total row for a single model, and a dash for an unknown price', async () => {
+  it('has four columns and no cost', async () => {
     getUsage.mockResolvedValue({
       since: Date.now(),
       models: { 'custom|mine': entry('custom', 'mine', 1, 5, 5) },
@@ -110,8 +114,10 @@ describe('aiUsagePanel', () => {
 
     await renderProviderUsage(container, 'custom');
 
-    expect(container.querySelector('tfoot')).toBeNull();
-    expect(container.querySelector('tbody').textContent).toContain('–');
+    expect(container.querySelectorAll('thead th')).toHaveLength(4);
+    expect(container.querySelector('tfoot')).toBeNull(); // one model: no total row
+    expect(container.textContent).not.toContain('$');
+    expect(container.textContent).not.toContain('≈');
   });
 
   it('resets only this provider with its button', async () => {
@@ -160,10 +166,5 @@ describe('aiUsagePanel', () => {
       listener({ aiUsage: {} }, 'local');
       expect(getUsage).toHaveBeenCalled();
     });
-  });
-
-  it('formats small sums with more decimals', () => {
-    expect(formatCost(0.00123)).toContain('0.0012');
-    expect(formatCost(12.3456)).toContain('12.35');
   });
 });

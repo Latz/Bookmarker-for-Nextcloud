@@ -10,12 +10,6 @@
 // Every message carries `target: 'offscreen'` so this listener ignores the
 // messages that are meant for the service worker.
 // -----------------------------------------------------------------------------
-import {
-  SOURCES,
-  cleanDocument,
-  readSource,
-} from '../../../../lib/aiPriceSources.js';
-
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   // Validate message is intended for offscreen document
   if (request.target !== 'offscreen') {
@@ -42,34 +36,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       // Default to light theme on error
       sendResponse(true);
     }
-    return true; // Keep channel open for async response
-  }
-
-  // Reading a provider's price page: this document has a DOM, the service
-  // worker has not. It fetches the page itself (extension pages may fetch
-  // servers they have the host permission for) and answers only with the
-  // small result, not the page.
-  if (request.msg === 'readPriceSource') {
-    const source = SOURCES.find((candidate) => candidate.name === request.name);
-    if (!source) {
-      sendResponse({
-        name: request.name,
-        rows: [],
-        error: 'unknown source',
-      });
-      return false;
-    }
-    readSource(source, {
-      fetchText: async (url) => {
-        const response = await fetch(url, {
-          headers: { 'accept-language': 'en-US,en;q=0.9' },
-          signal: AbortSignal.timeout(30000),
-        });
-        return { status: response.status, body: await response.text() };
-      },
-      parseHtml: (html) =>
-        cleanDocument(new DOMParser().parseFromString(html, 'text/html')),
-    }).then(sendResponse);
     return true; // Keep channel open for async response
   }
 
