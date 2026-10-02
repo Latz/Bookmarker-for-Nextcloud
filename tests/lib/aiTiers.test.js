@@ -1,6 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { modelTier } from '../../src/lib/aiTiers.js';
+import {
+  FAMILIES,
+  familyOf,
+  groupByFamily,
+  modelTier,
+} from '../../src/lib/aiTiers.js';
 
 describe('modelTier', () => {
   it.each([
@@ -46,5 +51,58 @@ describe('modelTier', () => {
   it('is not case sensitive and tolerates odd input', () => {
     expect(modelTier('openai', 'GPT-5-NANO')).toBe(1);
     expect(modelTier('openai', undefined)).toBe(0);
+  });
+});
+
+describe('families', () => {
+  it('every provider lists its families from the cheapest to the dearest', () => {
+    for (const families of Object.values(FAMILIES)) {
+      const tiers = families.map((f) => f.tier);
+      // 1, then 2, then 0 (the dearer ones); never a cheaper tier after a dearer one
+      const rank = (tier) => (tier === 0 ? 3 : tier);
+      expect(tiers.map(rank)).toEqual(
+        [...tiers.map(rank)].sort((a, b) => a - b),
+      );
+    }
+  });
+
+  it('a family has a name or the key of one, and a catch-all family comes last', () => {
+    for (const families of Object.values(FAMILIES)) {
+      for (const family of families)
+        expect(family.name ?? family.nameKey).toBeTruthy();
+      const rest = families.findIndex((f) => f.pattern === null);
+      if (rest !== -1) expect(rest).toBe(families.length - 1);
+    }
+  });
+
+  it('familyOf gives the first family that matches, or null', () => {
+    expect(familyOf('openai', 'gpt-5-mini').name).toBe('mini');
+    expect(familyOf('openai', 'o3').nameKey).toBe('aiFamilyFull'); // the rest
+    expect(familyOf('claude', 'something-new')).toBeNull();
+    expect(familyOf('ollama', 'llama3')).toBeNull();
+  });
+
+  it('groupByFamily sorts the offered models into every family, cheapest first', () => {
+    const groups = groupByFamily('claude', [
+      'claude-opus-5-5',
+      'claude-haiku-4-5-20251001',
+      'claude-3-5-haiku-20241022',
+      'claude-sonnet-5-5',
+      'claude-unknown-1',
+    ]);
+    expect(groups.map((g) => [g.family.name, g.models])).toEqual([
+      ['Haiku', ['claude-haiku-4-5-20251001', 'claude-3-5-haiku-20241022']],
+      ['Sonnet', ['claude-sonnet-5-5']],
+      ['Opus', ['claude-opus-5-5']],
+    ]);
+  });
+
+  it('groupByFamily shows the families even without models, and none for local servers', () => {
+    expect(groupByFamily('gemini', []).map((g) => g.models)).toEqual([
+      [],
+      [],
+      [],
+    ]);
+    expect(groupByFamily('ollama', ['llama3'])).toEqual([]);
   });
 });

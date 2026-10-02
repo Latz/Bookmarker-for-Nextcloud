@@ -70,12 +70,14 @@
   --tier-yellow: light-dark(#a16207, #fde047);
 }
 option[data-tier='1'],
-select[data-tier='1'] {
+select[data-tier='1'],
+li[data-tier='1'] {
   color: var(--tier-green);
   font-weight: 600;
 }
 option[data-tier='2'],
-select[data-tier='2'] {
+select[data-tier='2'],
+li[data-tier='2'] {
   color: var(--tier-yellow);
   font-weight: 600;
 }
@@ -85,4 +87,11 @@ select[data-tier='2'] {
 select[data-tier] option:not([data-tier]) {
   color: var(--color-base-content);
   font-weight: normal;
+}
+/* the hints box: the border of a model family in the colour of its tier */
+li[data-tier='1'] {
+  border-color: var(--tier-green);
+}
+li[data-tier='2'] {
+  border-color: var(--tier-yellow);
 }

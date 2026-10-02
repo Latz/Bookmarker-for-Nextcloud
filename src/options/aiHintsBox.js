@@ -1,8 +1,13 @@
-// The box on the right of the AI tab: for every provider a short sentence on
-// which of its models are the cheap ones (src/lib/aiHints.js). The provider
-// that is chosen in the dropdown is marked.
+// The box on the right of the AI tab: for the provider chosen in the dropdown
+// a short sentence on its cheap models, its model families from the cheapest
+// to the dearest with the cheap ones highlighted (green, yellow -- like in the
+// model dropdown), the models the provider really offers sorted into them (once
+// the list is loaded), and a link to the provider's own price page.
 import { AI_PROVIDERS } from '../lib/aiProviders.js';
 import { HINTS, HINTS_AS_OF } from '../lib/aiHints.js';
+import { groupByFamily } from '../lib/aiTiers.js';
+
+const MAX_LISTED = 4;
 
 /**
  * @param {string} tag
@@ -20,59 +25,71 @@ function node(tag, text = '', className = '') {
 /**
  * Fills the box.
  * @param {HTMLElement} container
+ * @param {string} providerId - The chosen provider, 'off' for none.
+ * @param {string[]} [offered] - The model ids the provider offers, if the list
+ *   is loaded.
  */
-export function renderHintsBox(container) {
+export function renderHintsBox(container, providerId, offered = []) {
   const t = (key, substitutions) => chrome.i18n.getMessage(key, substitutions);
-  const label = (id) => AI_PROVIDERS.find((p) => p.id === id)?.label ?? id;
+  const hint = HINTS.find((candidate) => candidate.id === providerId);
+  const provider = AI_PROVIDERS.find(
+    (candidate) => candidate.id === providerId,
+  );
 
-  const sections = HINTS.map((hint) => {
-    const section = node(
-      'section',
-      '',
-      'border-l-2 border-transparent pl-2 transition-colors',
+  if (!hint || !provider) {
+    container.replaceChildren(
+      node('h3', t('aiHintsTitle'), 'font-medium'),
+      node('p', t('aiHintsChoose'), 'mt-2 text-sm opacity-80'),
     );
-    section.dataset.provider = hint.id;
+    return;
+  }
 
-    const head = node('div', '', 'flex items-baseline justify-between gap-2');
-    head.append(node('h4', label(hint.id), 'font-medium'));
-    if (hint.pricingUrl) {
-      const link = node(
-        'a',
-        `${t('aiHintsPrices')} ↗`,
-        'link link-info text-xs',
+  const head = node('div', '', 'flex items-baseline justify-between gap-2');
+  head.append(node('h3', provider.label, 'font-medium'));
+  if (hint.pricingUrl) {
+    const link = node('a', `${t('aiHintsPrices')} ↗`, 'link link-info text-sm');
+    link.href = hint.pricingUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    head.append(link);
+  }
+
+  const children = [
+    node('p', t(`aiHint_${provider.id}`), 'mt-2 text-sm opacity-80'),
+  ];
+
+  const groups = groupByFamily(provider.id, offered);
+  if (groups.length > 0) {
+    const list = node('ul', '', 'mt-3 space-y-2 text-sm');
+    for (const { family, models } of groups) {
+      const item = node('li', '', 'rounded border-l-4 border-base-300 pl-2');
+      item.dataset.tier = String(family.tier);
+      const name = family.name ?? t(family.nameKey ?? 'aiFamilyOther');
+      const line = node('div', '', 'flex items-baseline justify-between gap-2');
+      line.append(
+        node('span', name, 'font-medium'),
+        node('span', t(`aiTier${family.tier}`), 'text-xs opacity-70'),
       );
-      link.href = hint.pricingUrl;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      head.append(link);
+      item.append(line);
+      if (models.length > 0) {
+        const shown = models.slice(0, MAX_LISTED).join(', ');
+        const more = models.length - MAX_LISTED;
+        item.append(
+          node(
+            'div',
+            more > 0 ? `${shown}, +${more}` : shown,
+            'break-all text-xs opacity-70',
+          ),
+        );
+      }
+      list.append(item);
     }
-    section.append(
-      head,
-      node('p', t(`aiHint_${hint.id}`), 'text-sm opacity-80'),
-    );
-    return section;
-  });
+    children.push(list);
+  }
 
-  container.replaceChildren(
-    node('h3', t('aiHintsTitle'), 'font-medium'),
-    node('div', '', 'mt-2 space-y-3'),
+  children.push(
     node('p', t('aiHintsLegend'), 'mt-3 text-xs'),
     node('p', t('aiHintsNote', [HINTS_AS_OF]), 'mt-1 text-xs opacity-70'),
   );
-  container.children[1].append(...sections);
-}
-
-/**
- * Marks the section of the provider that is chosen ("off": none).
- * @param {HTMLElement} container
- * @param {string} providerId
- */
-export function markChosenProvider(container, providerId) {
-  for (const section of container.querySelectorAll('section[data-provider]')) {
-    const chosen = section.dataset.provider === providerId;
-    section.classList.toggle('border-info', chosen);
-    section.classList.toggle('border-transparent', !chosen);
-    if (chosen) section.setAttribute('aria-current', 'true');
-    else section.removeAttribute('aria-current');
-  }
+  container.replaceChildren(head, ...children);
 }

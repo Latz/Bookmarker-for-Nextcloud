@@ -22,7 +22,7 @@ import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 import { listModels, testProvider } from '../lib/aiClient.js';
 import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
 import { renderAiPanel, setModelOptions, showAiProvider } from './aiPanel.js';
-import { markChosenProvider, renderHintsBox } from './aiHintsBox.js';
+import { renderHintsBox } from './aiHintsBox.js';
 import { initAiUsage } from './aiUsagePanel.js';
 import {
   clampTimeoutSetting,
@@ -348,8 +348,15 @@ async function setOptions() {
  */
 function setupAiOptions(selected = 'off') {
   initAiUsage();
+  // The box on the right: the cheap models of the chosen provider, with the
+  // models it offers sorted into the families once its list is loaded
   const hints = document.getElementById('ai_hints');
-  renderHintsBox(hints);
+  const refreshHints = () => {
+    const id = document.getElementById('select_aiProvider').value;
+    const field = document.getElementById(`input_${id}Model`);
+    const offered = Array.from(field?.options ?? [], (option) => option.value);
+    renderHintsBox(hints, id, offered);
+  };
   const select = document.getElementById('select_aiProvider');
   const panels = document.getElementById('ai_panels');
   const errorBox = document.getElementById('ai_error');
@@ -390,6 +397,7 @@ function setupAiOptions(selected = 'off') {
         document.getElementById(`input_${provider.id}Model`),
         models,
       );
+      refreshHints();
       showError('');
     } catch (error) {
       if (!silent) {
@@ -479,7 +487,7 @@ function setupAiOptions(selected = 'off') {
   const current = getProvider(selected);
   select.value = current ? selected : 'off';
   showAiProvider(panels, select.value);
-  markChosenProvider(hints, select.value);
+  refreshHints();
   showFeatures(select.value);
   if (current) void loadModels(current, { silent: true });
 
@@ -487,10 +495,10 @@ function setupAiOptions(selected = 'off') {
   // the host permission of its server.
   const chooseProvider = async (id) => {
     showError('');
-    markChosenProvider(hints, id);
     void store_data(OPTION_STORE, { select_aiProvider: id });
     showAiProvider(panels, id);
     showFeatures(id);
+    refreshHints();
     const provider = getProvider(id);
     if (!provider) return;
     const origin = aiOrigin(
