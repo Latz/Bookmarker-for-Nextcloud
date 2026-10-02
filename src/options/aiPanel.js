@@ -4,6 +4,7 @@
 // btn_<id>Models, btn_<id>Test, ai_test_<id> (test result); the model field
 // is a dropdown, or an input with datalist models_<id> (freeModel providers).
 import { AI_PROVIDERS } from '../lib/aiProviders.js';
+import { modelTier } from '../lib/aiTiers.js';
 
 /**
  * @param {string} tag
@@ -101,6 +102,17 @@ function row(label, id, field) {
 }
 
 /**
+ * A closed dropdown shows the colour of the dropdown itself, not of the
+ * selected option, so the selected option's tier is copied onto it.
+ * @param {HTMLSelectElement} select
+ */
+function syncTier(select) {
+  const tier = select.selectedOptions?.[0]?.dataset.tier;
+  if (tier) select.dataset.tier = tier;
+  else delete select.dataset.tier;
+}
+
+/**
  * Sets the models offered by a model field: the options of a dropdown (the
  * current value always stays selectable) or the suggestions of a text input.
  * @param {HTMLElement} field - The `input_<id>Model` element.
@@ -116,15 +128,26 @@ export function setModelOptions(field, models, current = field.value) {
   ) {
     entries.unshift({ id: current, label: current });
   }
+  // field ids are input_<provider>Model; the cheap models of a dropdown are
+  // coloured (data-tier: 1 green, 2 yellow; see aiTiers.js)
+  const providerId = field.id.replace(/^input_/, '').replace(/Model$/, '');
+  const isSelect = field.tagName === 'SELECT';
   const options = entries.map((model) => {
     const option = document.createElement('option');
     option.value = model.id;
     option.textContent = model.label;
+    const tier = isSelect ? modelTier(providerId, model.id) : 0;
+    if (tier) option.dataset.tier = String(tier);
     return option;
   });
-  if (field.tagName === 'SELECT') {
+  if (isSelect) {
     field.replaceChildren(...options);
     field.value = current;
+    syncTier(field);
+    if (!field.dataset.tierBound) {
+      field.dataset.tierBound = 'true';
+      field.addEventListener('change', () => syncTier(field));
+    }
   } else {
     document
       .getElementById(field.getAttribute('list'))

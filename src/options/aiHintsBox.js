@@ -56,7 +56,8 @@ export function renderHintsBox(container) {
   container.replaceChildren(
     node('h3', t('aiHintsTitle'), 'font-medium'),
     node('div', '', 'mt-2 space-y-3'),
-    node('p', t('aiHintsNote', [HINTS_AS_OF]), 'mt-3 text-xs opacity-70'),
+    node('p', t('aiHintsLegend'), 'mt-3 text-xs'),
+    node('p', t('aiHintsNote', [HINTS_AS_OF]), 'mt-1 text-xs opacity-70'),
   );
   container.children[1].append(...sections);
 }

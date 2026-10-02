@@ -124,6 +124,59 @@ describe('aiPanel', () => {
     expect(field.options).toHaveLength(1);
   });
 
+  describe('colours for the cheap models', () => {
+    const ids = (...list) => list.map((id) => ({ id, label: id }));
+    const tierOf = (field, id) =>
+      [...field.options].find((o) => o.value === id).dataset.tier;
+
+    it('marks the cheapest family 1 (green) and the next 2 (yellow), others nothing', () => {
+      const field = document.getElementById('input_openaiModel');
+      setModelOptions(
+        field,
+        ids('gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-4.1-nano'),
+        'gpt-5',
+      );
+
+      expect(tierOf(field, 'gpt-5-nano')).toBe('1');
+      expect(tierOf(field, 'gpt-4.1-nano')).toBe('1');
+      expect(tierOf(field, 'gpt-5-mini')).toBe('2');
+      expect(tierOf(field, 'gpt-5')).toBeUndefined();
+    });
+
+    it('copies the tier of the selected model onto the closed dropdown, also after a change', () => {
+      const field = document.getElementById('input_claudeModel');
+      setModelOptions(
+        field,
+        ids('claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-4-5'),
+        'claude-haiku-4-5',
+      );
+      expect(field.dataset.tier).toBe('1');
+
+      field.value = 'claude-sonnet-5-5';
+      field.dispatchEvent(new Event('change'));
+      expect(field.dataset.tier).toBe('2');
+
+      field.value = 'claude-opus-5-5';
+      field.dispatchEvent(new Event('change'));
+      expect(field.dataset.tier).toBeUndefined();
+    });
+
+    it('colours the stored model too when it is not in the loaded list', () => {
+      const field = document.getElementById('input_geminiModel');
+      setModelOptions(field, [], 'gemini-2.5-flash-lite');
+      expect(field.options[0].dataset.tier).toBe('1');
+      expect(field.dataset.tier).toBe('1');
+    });
+
+    it('colours nothing in the suggestions of text-input providers', () => {
+      const field = document.getElementById('input_ollamaModel');
+      setModelOptions(field, ids('llama3-mini', 'qwen-nano'));
+      expect(
+        document.querySelectorAll('#models_ollama [data-tier]'),
+      ).toHaveLength(0);
+    });
+  });
+
   it('uses a text input with suggestions for Ollama and custom servers', () => {
     const field = document.getElementById('input_ollamaModel');
     expect(field.tagName).toBe('INPUT');

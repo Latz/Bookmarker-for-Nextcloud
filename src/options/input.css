@@ -62,3 +62,27 @@
   opacity: 1;
   color: var(--color-info);
 }
+
+/* AI tab, model dropdowns: the cheapest models green, the next cheapest yellow
+   (darker shades in light mode, lighter ones in dark mode). */
+:root {
+  --tier-green: light-dark(#15803d, #86efac);
+  --tier-yellow: light-dark(#a16207, #fde047);
+}
+option[data-tier='1'],
+select[data-tier='1'] {
+  color: var(--tier-green);
+  font-weight: 600;
+}
+option[data-tier='2'],
+select[data-tier='2'] {
+  color: var(--tier-yellow);
+  font-weight: 600;
+}
+/* Options without a tier inherit the colour of the dropdown, so with a green
+   model selected the whole list would turn green: give them the normal text
+   colour back. */
+select[data-tier] option:not([data-tier]) {
+  color: var(--color-base-content);
+  font-weight: normal;
+}

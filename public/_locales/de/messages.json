@@ -56,6 +56,7 @@
   "aiUsageSince": { "message": "Gezählt seit" },
   "aiHintsTitle": {"message": "Günstige Modelle je Anbieter"},
   "aiHintsPrices": {"message": "Preise"},
+  "aiHintsLegend": { "message": "In den Modell-Dropdowns sind die günstigsten Modelle grün und die nächstgünstigen gelb." },
   "aiHintsNote": {"message": "Stand $date$, nach den Preisseiten der Anbieter. Preise ändern sich: maßgeblich ist die Seite des Anbieters.", "placeholders": {"date": {"content": "$1"}}},
   "aiHint_claude": {"message": "Die Haiku-Modelle sind am günstigsten. Sonnet kostet etwa das Doppelte, Opus etwa das Vierfache."},
   "aiHint_openai": {"message": "Die nano-Modelle sind am günstigsten, danach die mini-Modelle. Die vollen Modelle kosten ein Mehrfaches."},

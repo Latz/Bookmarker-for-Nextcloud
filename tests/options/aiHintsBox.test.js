@@ -33,6 +33,10 @@ describe('aiHintsBox', () => {
     );
   });
 
+  it('explains the colours of the model dropdowns', () => {
+    expect(container.textContent).toContain('aiHintsLegend');
+  });
+
   it('names the provider and says in a sentence which models are cheap', () => {
     const claude = container.querySelector('section[data-provider="claude"]');
     expect(claude.querySelector('h4').textContent).toBe('Claude');

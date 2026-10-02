@@ -56,6 +56,7 @@
   "aiUsageSince": { "message": "Counting since" },
   "aiHintsTitle": {"message": "Cheap models by provider"},
   "aiHintsPrices": {"message": "Prices"},
+  "aiHintsLegend": { "message": "In the model dropdowns the cheapest models are green and the next cheapest yellow." },
   "aiHintsNote": {"message": "As of $date$, from the providers' price pages. Prices change: the provider's own page is what counts.", "placeholders": {"date": {"content": "$1"}}},
   "aiHint_claude": {"message": "The Haiku models are the cheapest. Sonnet costs about twice as much, Opus about four times."},
   "aiHint_openai": {"message": "The nano models are the cheapest, then the mini models. The full-size models cost several times more."},
