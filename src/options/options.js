@@ -22,6 +22,7 @@ import { buildFolderOptions } from '../popup/modules/fillFolders.js';
 import { listModels, testProvider } from '../lib/aiClient.js';
 import { AI_PROVIDERS, getProvider } from '../lib/aiProviders.js';
 import { renderAiPanel, setModelOptions, showAiProvider } from './aiPanel.js';
+import { markChosenProvider, renderHintsBox } from './aiHintsBox.js';
 import { initAiUsage } from './aiUsagePanel.js';
 import {
   clampTimeoutSetting,
@@ -347,6 +348,8 @@ async function setOptions() {
  */
 function setupAiOptions(selected = 'off') {
   initAiUsage();
+  const hints = document.getElementById('ai_hints');
+  renderHintsBox(hints);
   const select = document.getElementById('select_aiProvider');
   const panels = document.getElementById('ai_panels');
   const errorBox = document.getElementById('ai_error');
@@ -476,6 +479,7 @@ function setupAiOptions(selected = 'off') {
   const current = getProvider(selected);
   select.value = current ? selected : 'off';
   showAiProvider(panels, select.value);
+  markChosenProvider(hints, select.value);
   showFeatures(select.value);
   if (current) void loadModels(current, { silent: true });
 
@@ -483,6 +487,7 @@ function setupAiOptions(selected = 'off') {
   // the host permission of its server.
   const chooseProvider = async (id) => {
     showError('');
+    markChosenProvider(hints, id);
     void store_data(OPTION_STORE, { select_aiProvider: id });
     showAiProvider(panels, id);
     showFeatures(id);

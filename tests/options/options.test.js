@@ -18,6 +18,11 @@ globalThis.chrome = {
 };
 
 // Mock Tagify - needs to be a constructor function
+vi.mock('../../src/options/aiHintsBox.js', () => ({
+  renderHintsBox: vi.fn(),
+  markChosenProvider: vi.fn(),
+}));
+
 vi.mock('../../src/options/aiUsagePanel.js', () => ({
   initAiUsage: vi.fn(),
 }));
@@ -71,6 +76,7 @@ vi.mock('../../src/popup/modules/fillFolders.js', () => ({
 import Tagify from '@yaireo/tagify';
 import { AI_PROVIDERS } from '../../src/lib/aiProviders.js';
 import { setModelOptions, showAiProvider } from '../../src/options/aiPanel.js';
+import { markChosenProvider } from '../../src/options/aiHintsBox.js';
 import {
   load_data_all,
   load_data,
@@ -200,6 +206,7 @@ describe('options.js', () => {
         addEventListener: vi.fn(),
       },
       ai_panels: { id: 'ai_panels' },
+      ai_hints: { id: 'ai_hints' },
       ai_features: { id: 'ai_features', classList: { toggle: vi.fn() } },
       ...Object.fromEntries(
         AI_PROVIDERS.flatMap((provider) => [
@@ -692,6 +699,27 @@ describe('options.js', () => {
       expect(showAiProvider).toHaveBeenCalledWith(
         mockElements.ai_panels,
         'openai',
+      );
+    });
+
+    it('marks the chosen provider in the hints box, at the start and on every choice', async () => {
+      expect(markChosenProvider).toHaveBeenCalledWith(
+        mockElements.ai_hints,
+        'openai',
+      );
+
+      mockElements.select_aiProvider.value = 'gemini';
+      await handler(mockElements.select_aiProvider, 'change')();
+      expect(markChosenProvider).toHaveBeenLastCalledWith(
+        mockElements.ai_hints,
+        'gemini',
+      );
+
+      mockElements.select_aiProvider.value = 'off';
+      await handler(mockElements.select_aiProvider, 'change')();
+      expect(markChosenProvider).toHaveBeenLastCalledWith(
+        mockElements.ai_hints,
+        'off',
       );
     });
 
