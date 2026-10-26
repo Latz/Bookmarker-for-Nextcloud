@@ -205,7 +205,10 @@ async function addTempTags(type, newTags) {
     item: type,
     value: cachedTags
       .concat(added)
-      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+      .sort((a, b) => {
+        if (a === b) return 0;
+        return a < b ? -1 : 1;
+      }),
   });
 }
 

@@ -60,7 +60,7 @@ export async function getDataWithRetry(request = { msg: 'getData' }) {
   let lastError = null;
 
   for (let attempt = 0; attempt < retryCount; attempt++) {
-    const data = await (pending ?? requestData(request));
+    const data = await (pending ?? requestData(request)); // NOSONAR: retries are sequential
     pending = null;
 
     // If the data is ok, return it immediately
@@ -84,8 +84,8 @@ export async function getDataWithRetry(request = { msg: 'getData' }) {
         showRetryMessage(attempt + 1, retryCount);
       }
       // Wait 500ms before retrying (exponential backoff could be added)
-      // NOSONAR: retries are sequential by design
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Retries are sequential by design
+      await new Promise((resolve) => setTimeout(resolve, 500)); // NOSONAR
     }
   }
 

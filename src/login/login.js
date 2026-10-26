@@ -258,11 +258,11 @@ async function loginPoll(request, flow) {
   // The server answers with an error status (404) until the user has
   // authorized the app; `ok` turns true exactly once, with the credentials in
   // the body. Network errors are only logged, the next round retries.
-  while (!authorized && attempts < maxAttempts && flow === currentFlow) {
-    // NOSONAR: currentFlow is changed by newer login attempts
+  // NOSONAR below: currentFlow is changed by newer login attempts
+  while (!authorized && attempts < maxAttempts && flow === currentFlow) { // NOSONAR
     try {
-      // NOSONAR: polling must be sequential
-      authCheck = await fetch(request.poll.endpoint, {
+      // Polling must be sequential
+      authCheck = await fetch(request.poll.endpoint, { // NOSONAR
         credentials: 'omit',
         method: 'POST',
         headers: {
@@ -275,8 +275,8 @@ async function loginPoll(request, flow) {
       console.log('!!!', e);
     }
     // put a little pause between requests
-    // NOSONAR: sequential by design
-    await new Promise((resolve) => {
+    // Sequential by design
+    await new Promise((resolve) => { // NOSONAR
       setTimeout(() => resolve(), 1000);
     });
     attempts++;

@@ -126,16 +126,14 @@ export async function load_data(storeName, ...items) {
 
   let result = {};
 
-  for (let item of items) {
-    // A failed read is treated like a missing record (the catch returns an
-    // object without `.value`, so the entry ends up undefined below).
-    // NOSONAR: reads are kept sequential on purpose
-    const data = await db.get(storeName, item).catch(() => {
-      return result;
-    });
-
-    result[item] = data !== undefined ? data.value : undefined;
-  }
+  // A failed read is treated like a missing record (the catch returns an
+  // object without `.value`, so the entry ends up undefined below).
+  const records = await Promise.all(
+    items.map((item) => db.get(storeName, item).catch(() => result)),
+  );
+  items.forEach((item, i) => {
+    result[item] = records[i] !== undefined ? records[i].value : undefined;
+  });
 
   // if there's only 1 item in the object return the value instead of the object
   if (Object.keys(result).length === 1) {
