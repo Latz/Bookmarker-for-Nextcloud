@@ -15,3 +15,8 @@ export async function getOption(name) {
 export async function getOptions(names) {
   return Object.fromEntries(names.map((name) => [name, OPTIONS[name] ?? false]));
 }
+
+// Imported by apiCall.js (pulled in by getData.js); never called here.
+export async function load_data() {
+  return {};
+}

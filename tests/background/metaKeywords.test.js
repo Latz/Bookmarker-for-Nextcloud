@@ -20,6 +20,12 @@ describe('extractMetaKeywords', () => {
     expect(extractMetaKeywords(doc)).toEqual(['one', 'two', 'three']);
   });
 
+  it('drops parts that are only dividers', () => {
+    const doc = docWith('[name="keywords" i]', [{ content: ',, | ;; ,a' }]);
+
+    expect(extractMetaKeywords(doc)).toEqual(['a']);
+  });
+
   it('keeps a lone article:tag with spaces unsplit', () => {
     const doc = docWith('[property="article:tag" i]', [
       { content: 'Fatty Liver Disease' },

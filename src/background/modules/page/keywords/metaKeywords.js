@@ -55,7 +55,9 @@ function splitMetaKeywords(metaKeywords, splitOnSpace) {
       : metaKeywords; // several values (or an empty one): already a list
   return keywords
     .map((keyword) => keyword.replaceAll('"', ''))
-    .map((keyword) => keyword.trim());
+    .map((keyword) => keyword.trim())
+    // Dividers only (",,, | ;;") are no keyword.
+    .filter((keyword) => /[\p{L}\p{N}]/u.test(keyword));
 }
 
 /**
