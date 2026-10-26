@@ -1,7 +1,8 @@
 // @ts-check
 // Local cache (IndexedDB database "BookmarkerCache") for data that is expensive
 // to get from the Nextcloud server:
-//   - keywords / folders: cached for 24 hours (cacheGet / cacheAdd)
+//   - keywords / folders: cached for 24 hours (cacheGet / cacheAdd); after that
+//     the old list is still served while a fresh one loads in the background
 //   - bookmarkChecks: "is this URL already bookmarked?" results, cached for a
 //     configurable number of minutes (cacheBookmarkCheck & co)
 // The database schema lives in cacheSchema.js.
@@ -25,7 +26,10 @@ const CONNECTION_IDLE_TIME = 5 * 60 * 1000; // 5 minutes
 // ---------------------------------------------------------------------
 /**
  * Returns the cached list for `type`, loading it from the server if there is
- * no usable cache entry (missing, in an outdated format or older than 24h).
+ * no usable cache entry (missing or in an outdated format). A non-empty entry
+ * older than 24h is returned as is (stale-while-revalidate) and refreshed in
+ * the background, so the popup never waits on the server for it and an offline
+ * user keeps their suggestions.
  *
  * Each entry is stored as two records in its store: `{item: type, value}` with
  * the data and `{item: '<type>_created', value: timestamp}` for expiry.
@@ -36,7 +40,11 @@ const CONNECTION_IDLE_TIME = 5 * 60 * 1000; // 5 minutes
  */
 export async function cacheGet(type, forceServer = false) {
   const cached = await readCached(await getDBConnection(), type, forceServer);
-  if (cached) return cached.value;
+  if (cached && !cached.expired) return cached.value;
+  if (cached?.value.length > 0) {
+    refreshInBackground(type);
+    return cached.value;
+  }
 
   // Not usable: load from the server -- but only one context at a time. The
   // popup and the service worker both ask for the keyword list while it is
@@ -46,19 +54,20 @@ export async function cacheGet(type, forceServer = false) {
   return withFetchLock(type, async () => {
     if (!forceServer) {
       const filled = await readCached(await getDBConnection(), type, false);
-      if (filled) return filled.value;
+      if (filled && !filled.expired) return filled.value;
     }
     return fetchAndCache(type, forceServer);
   });
 }
 
 /**
- * Reads a cache entry and returns it only if it is usable: present, in the
- * current format and younger than 24h. Never usable when `forceServer` is set.
+ * Reads a cache entry and returns it if it is present and in the current
+ * format; `expired` says whether it is older than 24h. Always a miss when
+ * `forceServer` is set.
  * @param {any} db - Open database.
  * @param {'keywords'|'folders'} type
  * @param {boolean} forceServer
- * @returns {Promise<{value: Array<any>}|null>} The stored record, or null on a miss.
+ * @returns {Promise<{value: Array<any>, expired: boolean}|null>} The stored list, or null on a miss.
  */
 async function readCached(db, type, forceServer) {
   if (forceServer) return null;
@@ -84,12 +93,34 @@ async function readCached(db, type, forceServer) {
   if (
     element === undefined ||
     Object.keys(element).length === 0 ||
-    staleFormat ||
-    elementExpired(db, type, created, false)
+    staleFormat
   ) {
     return null;
   }
-  return element;
+  return { value: element.value, expired: elementExpired(created) };
+}
+
+// Types whose background refresh is already running in this context.
+const refreshing = new Map();
+
+/**
+ * Reloads an expired list without making the caller wait. The lock and the
+ * re-read keep the popup, service worker and options page from all fetching;
+ * a failed fetch leaves the old entry in place, so the next call tries again.
+ * @param {'keywords'|'folders'} type
+ */
+function refreshInBackground(type) {
+  if (refreshing.has(type)) return;
+  const run = withFetchLock(type, async () => {
+    const filled = await readCached(await getDBConnection(), type, false);
+    if (filled && !filled.expired) return; // another context was faster
+    await fetchAndCache(type, false);
+  })
+    .catch((error) => {
+      console.warn(`Background refresh of ${type} failed:`, error);
+    })
+    .finally(() => refreshing.delete(type));
+  refreshing.set(type, run);
 }
 
 /**
@@ -214,34 +245,15 @@ async function addTempTags(type, newTags) {
 
 // ---------------------------------------------------------------------
 /**
- * Whether a cache entry has to be refetched: always when forced or when it
- * has no creation record, and when it is older than 24 hours (in which case
- * the stale records are also deleted in the background).
- * @param {any} db - Open database.
- * @param {string} type - Store name.
+ * Whether a cache entry is due for a refetch: it has no creation record or is
+ * older than 24 hours. The old data is kept; fetchAndCache overwrites it.
  * @param {{value: number}|undefined} created - The `<type>_created` record.
- * @param {boolean} forceServer
  * @returns {boolean}
  */
-function elementExpired(db, type, created, forceServer) {
-  // if the refresh is forced or no entry has been created, return true
-  // fetch can be forced by setting forceServer to true
-  if (forceServer || created === undefined) return true;
-
+function elementExpired(created) {
+  if (created === undefined) return true;
   const one_day = 60 * 60 * 24 * 1000; // one day in milliseconds
-  const diff = Date.now() - created.value;
-  if (diff > one_day) {
-    // remove entry
-    // Best effort: the caller refetches either way.
-    Promise.all([
-      db.delete(type, type),
-      db.delete(type, `${type}_created`),
-    ]).catch((error) => {
-      console.warn(`Could not remove expired ${type} cache entry:`, error);
-    });
-    return true;
-  }
-  return false;
+  return Date.now() - created.value > one_day;
 }
 
 // ---------------------------------------------------------------------

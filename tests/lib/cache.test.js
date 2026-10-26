@@ -105,21 +105,56 @@ describe('cache.js', () => {
       expect(result).toEqual(['tag1', 'tag2']);
     });
 
-    it('should fetch from server when cache is expired', async () => {
+    it('should serve an expired entry at once and refresh it in the background', async () => {
       const oneDayAgo = Date.now() - 25 * 60 * 60 * 1000; // 25 hours ago
       mockDB.get
         .mockResolvedValueOnce({ item: 'keywords', value: ['old-tag'] }) // element
-        .mockResolvedValueOnce({ value: oneDayAgo }); // created (expired)
+        .mockResolvedValueOnce({ value: oneDayAgo }) // created (expired)
+        .mockResolvedValue(undefined); // background re-read inside the lock
+      let finishFetch;
+      apiCall.mockReturnValue(
+        new Promise((resolve) => (finishFetch = () => resolve({ data: ['new-tag'] }))),
+      );
 
-      const mockServerData = { data: ['new-tag'] };
-      apiCall.mockResolvedValue(mockServerData);
+      // Returns the old list although the server has not answered yet.
+      expect(await cacheGet('keywords')).toEqual(['old-tag']);
+      await vi.waitFor(() => expect(apiCall).toHaveBeenCalledTimes(1));
+      expect(mockDB.delete).not.toHaveBeenCalled();
 
-      const result = await cacheGet('keywords');
+      finishFetch();
+      await vi.waitFor(() =>
+        expect(mockDB.put).toHaveBeenCalledWith('keywords', {
+          item: 'keywords',
+          value: ['new-tag'],
+        }),
+      );
+    });
 
-      expect(apiCall).toHaveBeenCalled();
-      expect(mockDB.delete).toHaveBeenCalled();
-      // cacheGet now returns just the array, not the full API response
-      expect(result).toEqual(['new-tag']);
+    it('should keep the expired entry when the background refresh fails', async () => {
+      const oneDayAgo = Date.now() - 25 * 60 * 60 * 1000;
+      mockDB.get
+        .mockResolvedValueOnce({ item: 'keywords', value: ['old-tag'] })
+        .mockResolvedValueOnce({ value: oneDayAgo })
+        .mockResolvedValue(undefined);
+      apiCall.mockResolvedValue({ status: -1, statusText: 'Failed to fetch' });
+
+      expect(await cacheGet('keywords')).toEqual(['old-tag']);
+      await vi.waitFor(() => expect(apiCall).toHaveBeenCalledTimes(1));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockDB.put).not.toHaveBeenCalled();
+      expect(mockDB.delete).not.toHaveBeenCalled();
+    });
+
+    it('should wait for the server when the expired entry is empty', async () => {
+      const oneDayAgo = Date.now() - 25 * 60 * 60 * 1000;
+      mockDB.get
+        .mockResolvedValueOnce({ item: 'keywords', value: [] })
+        .mockResolvedValueOnce({ value: oneDayAgo })
+        .mockResolvedValue(undefined);
+      apiCall.mockResolvedValue({ data: ['new-tag'] });
+
+      expect(await cacheGet('keywords')).toEqual(['new-tag']);
     });
 
     it('should handle folders with preRenderFolders', async () => {
