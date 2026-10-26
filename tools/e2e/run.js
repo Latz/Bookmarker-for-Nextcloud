@@ -1,6 +1,6 @@
 // Loads dist/ into a real Chromium and asks the background for getData on a
 // list of pages. Checks what unit tests cannot: what Chrome lets us script.
-// Usage: npm run build && npm run test:e2e [-- <url> ...]
+// Usage: npm run build && npm run test:e2e [-- [--headed] <url> ...]
 import { chromium } from 'playwright';
 import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -17,9 +17,12 @@ const PAGES = [
   ],
   ['chrome://version/', 'fail'],
 ];
+// --headed: show the browser window.
+const headed = process.argv.includes('--headed');
+const args = process.argv.slice(2).filter((a) => a !== '--headed');
 // --hn <file>: take the links of the Hacker News front page and write those
 // without keywords and description to <file>.
-const hnFile = process.argv[2] === '--hn' ? (process.argv[3] ?? 'hn-untagged.txt') : null;
+const hnFile = args[0] === '--hn' ? (args[1] ?? 'hn-untagged.txt') : null;
 let pages;
 if (hnFile) {
   const html = await (await fetch('https://news.ycombinator.com/')).text();
@@ -28,8 +31,8 @@ if (hnFile) {
   );
   pages = links.map((u) => [u, null]);
 } else {
-  pages = process.argv.slice(2).length
-    ? process.argv.slice(2).map((u) => [u, null])
+  pages = args.length
+    ? args.map((u) => [u, null])
     : PAGES;
 }
 const untagged = [];
@@ -46,6 +49,7 @@ writeFileSync(manifestPath, JSON.stringify(manifest));
 
 const context = await chromium.launchPersistentContext(join(ext, 'profile'), {
   channel: 'chromium',
+  headless: !headed,
   args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`],
 });
 const worker =
