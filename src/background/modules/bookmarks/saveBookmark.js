@@ -1,7 +1,12 @@
 // @ts-check
 import apiCall from '../../../lib/apiCall.js';
 import { store_data } from '../../../lib/storage.js';
-import { cacheGet, cacheTempAdd } from '../../../lib/cache.js';
+import {
+  cacheGet,
+  cacheTempAdd,
+  invalidateBookmarkCache,
+} from '../../../lib/cache.js';
+import { normalizeUrl } from '../../../lib/urlNormalizer.js';
 import { notifyUser } from '../browser/notification.js';
 
 /**
@@ -51,6 +56,23 @@ export async function saveBookmark(data, folderIDs, bookmarkID) {
     updateKeywordCache(data).catch((error) => {
       console.error('Error updating cache:', error);
     });
+    invalidateBookmarkChecks(data);
+  }
+}
+
+/**
+ * Drops the cached "is this URL bookmarked?" result for the saved page, so the
+ * next popup open sees the new state instead of the pre-save answer. The check
+ * is cached under the exact or the normalized URL (depending on fuzzy
+ * matching), so both are cleared.
+ * @param {object} data - The saved bookmark's form data (URLSearchParams-compatible).
+ */
+function invalidateBookmarkChecks(data) {
+  const url = new URLSearchParams(data).get('url');
+  if (!url) return;
+  for (const key of new Set([url, normalizeUrl(url)])) {
+    // invalidateBookmarkCache logs its own errors and never rejects.
+    void invalidateBookmarkCache(key);
   }
 }
 

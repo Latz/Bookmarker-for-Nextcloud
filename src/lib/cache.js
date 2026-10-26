@@ -411,7 +411,8 @@ export async function getCachedBookmarkCheck(url, options = null) {
 
     // Don't close - keep connection pooled
 
-    if (!cached) return null;
+    // The key is a 32-bit hash plus length, so a different URL can land on it.
+    if (!cached || cached.url !== url) return null;
 
     // Check TTL (in minutes) - use pre-fetched option if available
     const ttl =

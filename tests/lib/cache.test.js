@@ -470,6 +470,20 @@ describe('cache.js', () => {
       expect(result).toEqual(cachedResult);
     });
 
+    it('should return null when the record belongs to another URL (hash collision)', async () => {
+      // No Once-chain: the TTL is never read here, a leftover would leak on.
+      getOption.mockResolvedValue(true);
+      mockDB.get.mockResolvedValue({
+        url: 'https://other.example',
+        value: { bookmarked: true },
+        timestamp: Date.now(),
+      });
+
+      const result = await getCachedBookmarkCheck('https://example.com');
+
+      expect(result).toBe(null);
+    });
+
     it('should return null when cache is disabled', async () => {
       getOption.mockResolvedValue(false);
 

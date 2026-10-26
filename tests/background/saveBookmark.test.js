@@ -8,6 +8,7 @@ vi.mock('../../src/lib/storage.js', () => ({ store_data: vi.fn() }));
 vi.mock('../../src/lib/cache.js', () => ({
   cacheGet: vi.fn(),
   cacheTempAdd: vi.fn(),
+  invalidateBookmarkCache: vi.fn(),
 }));
 vi.mock('../../src/background/modules/browser/notification.js', () => ({
   notifyUser: vi.fn(),
@@ -15,8 +16,13 @@ vi.mock('../../src/background/modules/browser/notification.js', () => ({
 
 import apiCall from '../../src/lib/apiCall.js';
 import { store_data } from '../../src/lib/storage.js';
-import { cacheGet, cacheTempAdd } from '../../src/lib/cache.js';
+import {
+  cacheGet,
+  cacheTempAdd,
+  invalidateBookmarkCache,
+} from '../../src/lib/cache.js';
 import { notifyUser } from '../../src/background/modules/browser/notification.js';
+import { normalizeUrl } from '../../src/lib/urlNormalizer.js';
 import { saveBookmark } from '../../src/background/modules/bookmarks/saveBookmark.js';
 
 const BASE = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
@@ -70,6 +76,26 @@ describe('saveBookmark', () => {
       folderIDs: ['3', '4'],
     });
     expect(notifyUser).toHaveBeenCalledWith(response);
+  });
+
+  describe('bookmark check cache', () => {
+    it('invalidates the exact and the normalized URL after a successful save', async () => {
+      const data = new URLSearchParams({ url: 'https://www.example.com/a/' });
+
+      await saveBookmark(data, [], 0);
+
+      const keys = invalidateBookmarkCache.mock.calls.map(([key]) => key);
+      expect(keys).toContain('https://www.example.com/a/');
+      expect(keys).toContain(normalizeUrl('https://www.example.com/a/'));
+    });
+
+    it('leaves the cache alone when the save failed', async () => {
+      apiCall.mockResolvedValue({ status: 'error' });
+
+      await saveBookmark(new URLSearchParams({ url: 'https://example.com' }), [], 0);
+
+      expect(invalidateBookmarkCache).not.toHaveBeenCalled();
+    });
   });
 
   describe('keyword cache update', () => {
