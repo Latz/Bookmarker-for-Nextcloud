@@ -199,7 +199,7 @@ describe('getData with offscreen document parsing', () => {
     expect(chrome.scripting.executeScript).not.toHaveBeenCalled();
   });
 
-  it('should handle content extraction errors', async () => {
+  it('should still return url and title when content extraction is refused', async () => {
     chrome.tabs.query.mockResolvedValue([{
       id: 1,
       url: 'https://example.com',
@@ -211,8 +211,9 @@ describe('getData with offscreen document parsing', () => {
 
     const result = await getData();
 
-    expect(result.ok).toBe(false);
-    expect(result.error).toBe('Cannot access page');
+    expect(result.ok).toBe(true);
+    expect(result.url).toBe('https://example.com');
+    expect(result.title).toBe('Example');
   });
 
   it('should start the server check before page extraction finishes', async () => {

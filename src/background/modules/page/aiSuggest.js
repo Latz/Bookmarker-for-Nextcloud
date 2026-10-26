@@ -191,11 +191,15 @@ export async function getAiSuggestions(request) {
     });
     if (!activeTab?.id) return result;
 
-    const injection = await chrome.scripting.executeScript({
-      target: { tabId: activeTab.id },
-      func: extractPageText,
-      args: [MAX_PAGE_CHARS],
-    });
+    // Chrome refuses injection on some pages (the Web Store): the AI then
+    // works from title and URL alone.
+    const injection = await chrome.scripting
+      .executeScript({
+        target: { tabId: activeTab.id },
+        func: extractPageText,
+        args: [MAX_PAGE_CHARS],
+      })
+      .catch(() => [{ result: { headings: [], text: '' } }]);
     const page = injection?.[0]?.result;
     if (!page || 'error' in page) return result;
 

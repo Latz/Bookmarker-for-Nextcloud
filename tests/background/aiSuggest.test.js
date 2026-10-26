@@ -130,6 +130,22 @@ describe('aiSuggest', () => {
       );
     });
 
+    it('still asks the AI (title and URL only) when injection is refused', async () => {
+      chrome.scripting.executeScript.mockRejectedValue(
+        new Error('The extensions gallery cannot be scripted.'),
+      );
+      askAI.mockResolvedValue('{"tags":["adblock"]}');
+
+      const result = await getAiSuggestions({
+        tags: true,
+        title: 'Luna Adblock',
+        url: 'https://chromewebstore.google.com/x',
+      });
+
+      expect(result.keywords).toEqual(['adblock']);
+      expect(askAI.mock.calls[0][0]).toContain('Luna Adblock');
+    });
+
     it('returns only the requested fields', async () => {
       askAI.mockResolvedValue('{"tags":["a"],"description":"d"}');
       expect(await getAiSuggestions({ tags: true })).toEqual({

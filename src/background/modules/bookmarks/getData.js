@@ -140,16 +140,21 @@ export default async function getData(options) {
   try {
     parsedData = await getContent(tabId, headingLevel);
   } catch (error) {
-    data = {
-      ok: false,
-      error: error.message,
-      // Script injection was refused (restricted page, missing host access).
-      // That will not change between attempts.
-      retryable: false,
+    // Script injection was refused (e.g. the Chrome Web Store). The page can
+    // still be bookmarked from the tab's url/title, just without keywords.
+    log(DEBUG, 'Page extraction refused:', error.message);
+    parsedData = {
+      metaTags: [],
+      aRelTag: [],
+      aRelCategory: [],
+      jsonLdScripts: [],
+      scripts: [],
+      githubTopics: [],
+      nextData: '',
+      headlines: {},
+      xplKeywords: [],
+      bruteForceKeywords: [],
     };
-  }
-  if (!data.ok) {
-    return data;
   }
 
   // The injected function catches its own errors and reports them as data.
