@@ -5,11 +5,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('../../src/lib/storage.js', () => ({
   store_data: vi.fn(),
-  createOldDatabase: vi.fn(),
 }));
 vi.mock('../../src/lib/cache.js', () => ({ cacheGet: vi.fn() }));
 
-import { store_data, createOldDatabase } from '../../src/lib/storage.js';
+import { store_data } from '../../src/lib/storage.js';
 import { cacheGet } from '../../src/lib/cache.js';
 import {
   createContextMenus,
@@ -40,12 +39,6 @@ describe('contextMenu', () => {
 
       expect(cacheGet).toHaveBeenCalledWith('keywords', true);
       expect(cacheGet).toHaveBeenCalledWith('folders', true);
-    });
-
-    it('creates the old database', () => {
-      handleContextMenuClick({ menuItemId: 'menuOldDatabase' });
-
-      expect(createOldDatabase).toHaveBeenCalled();
     });
 
     it('stores zen mode on and marks the menu item', () => {
@@ -96,7 +89,6 @@ describe('contextMenu', () => {
 
       expect(cacheGet).not.toHaveBeenCalled();
       expect(store_data).not.toHaveBeenCalled();
-      expect(createOldDatabase).not.toHaveBeenCalled();
     });
   });
 

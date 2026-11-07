@@ -12,7 +12,6 @@ import {
   store_data,
   initDefaults,
   clearData,
-  createOldDatabase,
 } from '../lib/storage.js';
 import Tagify from '@yaireo/tagify';
 import '@yaireo/tagify/dist/tagify.css';
@@ -30,9 +29,6 @@ import {
 } from '../lib/networkTimeout.js';
 
 const OPTION_STORE = 'options';
-// `vite build --mode development` keeps the developer tools; production hides them.
-const IS_DEV_BUILD =
-  import.meta.env?.DEV || import.meta.env?.MODE === 'development';
 // The Tagify instance of the zen keywords field (used by saveZenTags).
 let tagify;
 
@@ -270,14 +266,6 @@ async function setOptions() {
     optionsData.find((option) => option.item === 'select_aiProvider')?.value,
   );
 
-  if (!IS_DEV_BUILD) {
-    // "Create old database" deletes the real database and installs fake
-    // credentials; it exists for development only.
-    document
-      .getElementById('input_dbVersion')
-      ?.parentElement?.classList.add('hidden');
-  }
-
   // One delegated click listener for the whole options area: checkboxes are
   // stored immediately, buttons trigger the maintenance actions below.
   options.addEventListener('click', async (event) => {
@@ -318,8 +306,6 @@ async function setOptions() {
           case 'btn_forget_credentials':
             await clearData('credentials');
             break;
-          case 'btn_create_db':
-            if (IS_DEV_BUILD) await createDB();
         }
       } catch (error) {
         console.error(`[options] ${button.id} failed:`, error);
@@ -534,14 +520,4 @@ function aiOrigin(baseUrl) {
   } catch {
     return null;
   }
-}
-
-/**
- * Development helper: recreates the database in an older schema version (the
- * version is taken from the input field) to test upgrades.
- * @returns {Promise<any>}
- */
-function createDB() {
-  const dbVersion = document.getElementById('input_dbVersion').value;
-  return createOldDatabase(dbVersion);
 }

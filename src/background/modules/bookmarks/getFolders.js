@@ -1,7 +1,6 @@
 // @ts-check
 import { getOption } from '../../../lib/storage.js';
-import apiCall from '../../../lib/apiCall.js';
-import { cacheGet, cacheAdd } from '../../../lib/cache.js';
+import { cacheGet } from '../../../lib/cache.js';
 import log from '../../../lib/log.js';
 
 const DEBUG = false;
@@ -9,8 +8,8 @@ const DEBUG = false;
 /**
  * Returns the user's Nextcloud folders as flat option descriptors.
  *
- * Lookup order: cache first (folders change rarely, entries live 24h), then
- * the server, whose result is written back to the cache.
+ * cacheGet does the work: cache first (folders change rarely, entries live
+ * 24h), otherwise the server, whose result it renders and writes back.
  *
  * @param {boolean} [force] - Fetch even if the user turned folder display off
  *   (used by the options page to let the user pick their zen-mode folders).
@@ -18,31 +17,11 @@ const DEBUG = false;
  *   Root, or [] when folders are disabled or could not be loaded.
  */
 export async function getFolders(force = false) {
-  // User does not use folders, so we returns
-  // Empty list, not '' -- the return type is a descriptor array now.
   if (!(await getOption('cbx_displayFolders')) && !force) return [];
 
-  let folders = await cacheGet('folders');
-  // Array check also rejects the pre-0.33 HTML-string cache format, in case a
-  // stale entry reaches this far.
-  if (!Array.isArray(folders) || folders.length === 0) {
-    const serverFolders = await apiCall(
-      'index.php/apps/bookmarks/public/rest/v2/folder',
-      'GET',
-    );
-    // A failed call has no data array. preRenderFolders(undefined) would yield
-    // just [Root], and caching that would hide every folder for 24h.
-    if (!Array.isArray(serverFolders?.data)) return [];
-    folders = preRenderFolders(serverFolders.data);
-    try {
-      await cacheAdd('folders', folders);
-    } catch (error) {
-      // The folders are in hand; a failed cache write must not lose them.
-      console.error('Error caching folders:', error);
-    }
-  }
+  const folders = await cacheGet('folders');
   log(DEBUG, 'folders', folders);
-  return folders;
+  return Array.isArray(folders) ? folders : [];
 }
 
 // ---------------------------------------------------------------------------------------------------

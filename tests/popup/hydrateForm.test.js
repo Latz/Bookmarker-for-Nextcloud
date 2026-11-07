@@ -826,6 +826,31 @@ describe('pending lookup', () => {
       checkBookmark: { ok: true },
     };
 
+    it('selects the folders the stored bookmark is in, not the last-used ones', async () => {
+      const options = [
+        { value: '-1', selected: true },
+        { value: '7', selected: false },
+        { value: '9', selected: false },
+      ];
+      elements.folders = { options, dataset: {} };
+
+      await applyBookmarkStatus({ ...stored, folders: [7, 9] });
+
+      expect(options.map((o) => o.selected)).toEqual([false, true, true]);
+    });
+
+    it('keeps a folder selection the user already changed', async () => {
+      const options = [
+        { value: '-1', selected: true },
+        { value: '7', selected: false },
+      ];
+      elements.folders = { options, dataset: { touched: 'true' } };
+
+      await applyBookmarkStatus({ ...stored, folders: [7] });
+
+      expect(options.map((o) => o.selected)).toEqual([true, false]);
+    });
+
     it('swaps in the stored bookmark for a page that is already bookmarked', async () => {
       await applyBookmarkStatus(stored);
 

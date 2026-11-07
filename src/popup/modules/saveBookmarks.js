@@ -75,17 +75,22 @@ async function saveBookmark(event) {
     if (showDescription && rawDescription.length > 0) {
       params.set('description', rawDescription);
     }
-    // The leading empty tags[] entry is preserved from the original payload:
-    // the parameter has to be present for the API to clear existing tags.
-    params.append('tags[]', '');
-    for (const keyword of keywords) {
-      params.append('tags[]', keyword.value);
+    // An update (PUT) replaces the bookmark's tags and folders with whatever
+    // is sent, so fields the user cannot see are left out entirely -- otherwise
+    // a hidden keyword field would wipe the tags and a hidden folder list would
+    // move the bookmark to the root folder.
+    if (showKeywords) {
+      // The leading empty entry keeps the parameter present when every tag
+      // was removed, which is how the API clears existing tags.
+      params.append('tags[]', '');
+      for (const keyword of keywords) {
+        params.append('tags[]', keyword.value);
+      }
     }
-    // Without a folder selector the bookmark always goes to the root folder
-    // (ID -1).
     if (displayFolders) {
       for (const id of folderIDs) params.append('folders[]', id);
-    } else {
+    } else if (!(bookmarkID > 0)) {
+      // A new bookmark without a folder selector goes to the root folder (-1).
       params.append('folders[]', '-1');
     }
     params.set('page', '-1');

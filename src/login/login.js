@@ -13,38 +13,6 @@
 import apiCall from '../lib/apiCall.js';
 import { store_data } from '../lib/storage.js';
 
-// Simple HTTP status code to reason phrase mapping (replaces http-status-codes dependency)
-const httpStatusReasons = {
-  200: 'OK',
-  201: 'Created',
-  202: 'Accepted',
-  204: 'No Content',
-  301: 'Moved Permanently',
-  302: 'Found',
-  304: 'Not Modified',
-  400: 'Bad Request',
-  401: 'Unauthorized',
-  403: 'Forbidden',
-  404: 'Not Found',
-  405: 'Method Not Allowed',
-  408: 'Request Timeout',
-  409: 'Conflict',
-  422: 'Unprocessable Entity',
-  429: 'Too Many Requests',
-  500: 'Internal Server Error',
-  502: 'Bad Gateway',
-  503: 'Service Unavailable',
-  504: 'Gateway Timeout',
-};
-
-/**
- * @param {number} statusCode - HTTP status code.
- * @returns {string} Its reason phrase, or 'Unknown Status' for codes not in the table.
- */
-function getReasonPhrase(statusCode) {
-  return httpStatusReasons[statusCode] || 'Unknown Status';
-}
-
 /**
  * True when the entered server address explicitly uses a non-https scheme.
  *
@@ -316,9 +284,8 @@ async function loginPoll(request, flow) {
 }
 
 /**
- * Shows a login error: a generic headline plus, if available, the HTTP status
- * with its reason phrase or the error text.
- * @param {{status?: number|string, statusText?: string}} response
+ * Shows a login error: a generic headline plus, if available, the error text.
+ * @param {{statusText?: string}} response
  */
 function serverError(response) {
   // display error message
@@ -328,9 +295,9 @@ function serverError(response) {
 
   errorDiv.innerText = `${chrome.i18n.getMessage('LoginServerError')}!`;
 
-  if (response.status > 0) {
-    msg.innerText = `${response.status}  - ${getReasonPhrase(response.status)}`;
-  } else if (response.statusText) {
+  // apiCall's error results carry the reason in statusText (HTTP status text,
+  // 'Timeout', 'Invalid response', ...).
+  if (response.statusText) {
     msg.innerText = ` ${response.statusText}`;
   }
   testServer.textContent = chrome.i18n.getMessage('OpenLoginPage');

@@ -28,7 +28,7 @@ globalThis.chrome = {
 };
 
 // Import modules to test
-import { normalizeUrl, urlsAreEquivalent } from '../../src/lib/urlNormalizer.js';
+import { normalizeUrl } from '../../src/lib/urlNormalizer.js';
 import {
   calculateSimilarity,
   isSimilar,

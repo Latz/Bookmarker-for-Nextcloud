@@ -4,6 +4,7 @@ import getData from './getData.js';
 import { getAiSuggestions } from '../page/aiSuggest.js';
 import apiCall from '../../../lib/apiCall.js';
 import { notifyUser } from '../browser/notification.js';
+import { afterSuccessfulSave } from './saveBookmark.js';
 
 /**
  * "Zen mode": saves the active tab as a bookmark in one step, without opening
@@ -78,16 +79,20 @@ export async function zenMode() {
 
   const endpoint = 'index.php/apps/bookmarks/public/rest/v2/bookmark';
 
+  const body = params.toString();
   let response;
   // Show a disk badge on the toolbar icon while the request is in flight, as
   // feedback because there is no popup. The finally guarantees it is removed
   // even if the request throws.
   chrome.action.setBadgeText({ text: '💾' });
   try {
-    response = await apiCall(endpoint, 'POST', params.toString());
+    response = await apiCall(endpoint, 'POST', body);
   } finally {
     chrome.action.setBadgeText({ text: '' });
   }
+  // getData above cached "not bookmarked" for this URL; without this the popup
+  // would offer to save the page again for the whole cache TTL.
+  if (response.status === 'success') afterSuccessfulSave(body);
   // Errors are always shown; success only if the user has not turned the
   // notification off (the option is on unless explicitly set to false).
   if (response.status === 'error' || zenNotify !== false) {

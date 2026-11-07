@@ -53,7 +53,6 @@ vi.mock('../../src/lib/storage.js', () => ({
   getOption: vi.fn(),
   initDefaults: vi.fn(),
   clearData: vi.fn(),
-  createOldDatabase: vi.fn(),
 }));
 
 vi.mock('../../src/background/modules/bookmarks/getFolders.js', () => ({
@@ -83,7 +82,6 @@ import {
   getOption,
   initDefaults,
   clearData,
-  createOldDatabase,
 } from '../../src/lib/storage.js';
 import { getFolders } from '../../src/background/modules/bookmarks/getFolders.js';
 
@@ -244,18 +242,11 @@ describe('options.js', () => {
         type: 'submit',
         textContent: 'Clear cache',
       },
-      btn_create_db: {
-        id: 'btn_create_db',
-        type: 'submit',
-        textContent: 'Create',
-      },
       btn_show_options: { id: 'btn_show_options' },
       btn_show_cache: { id: 'btn_show_cache' },
       // Checkboxes
       cbx_enableZen: { id: 'cbx_enableZen', type: 'checkbox', checked: false },
       cbx_autoTags: { id: 'cbx_autoTags', type: 'checkbox', checked: false },
-      // Database version input
-      input_dbVersion: { id: 'input_dbVersion', value: '1.0' },
       // I18n elements
       i18nElement1: { getAttribute: vi.fn(() => 'test_key'), innerText: '' },
       i18nElement2: { getAttribute: vi.fn(() => 'another_key'), innerText: '' },
@@ -990,15 +981,6 @@ describe('options.js', () => {
       await clickHandler({ target: mockElements.btn_clear_cache });
 
       expect(clearData).toHaveBeenCalledWith('cache');
-    });
-
-    it('should handle create database button', async () => {
-      const clickHandler =
-        mockElements.content.addEventListener.mock.calls[0][1];
-
-      clickHandler({ target: mockElements.btn_create_db });
-
-      expect(createOldDatabase).toHaveBeenCalledWith('1.0');
     });
 
     it('should open options display window', async () => {

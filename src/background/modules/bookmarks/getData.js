@@ -411,11 +411,15 @@ async function checkBookmark(url, title, signal = null) {
   const cacheKey = allOptions.cbx_fuzzyUrlMatch ? normalizedUrl : url;
 
   // Deduplicate: two callers checking the same URL at the same time share one
-  // server request.
-  if (inflightChecks.has(cacheKey)) {
+  // server request -- unless it was started under a signal that is aborted
+  // by now (e.g. the popup was reopened on the same tab): joining it would
+  // only hand this caller the AbortError.
+  const inflight = inflightChecks.get(cacheKey);
+  if (inflight && !inflight.signal?.aborted) {
     log(DEBUG, 'Request deduplication - waiting for in-flight check', url);
-    return waitForInflightRequest(inflightChecks.get(cacheKey), signal);
+    return waitForInflightRequest(inflight.promise, signal);
   }
+  const entry = { signal, promise: null };
 
   log(DEBUG, 'Cache miss - fetching bookmark check from server for', url);
 
@@ -428,13 +432,23 @@ async function checkBookmark(url, title, signal = null) {
     const abortTitle = () => titleAbort.abort();
     signal?.addEventListener('abort', abortTitle);
     try {
-      const urlLookup = checkByUrl(cacheKey, signal);
+      // The server's url filter is an exact match and bookmarks are stored
+      // under the tab's own URL, so that is always searched. Fuzzy matching
+      // adds the normalized form, which finds a bookmark saved as a variant
+      // (http, www, fragment, ...).
+      const urlLookups = [checkByUrl(url, signal)];
+      if (cacheKey !== url) urlLookups.push(checkByUrl(cacheKey, signal));
       const titleLookup =
         allOptions.cbx_titleSimilarityCheck && title
           ? checkByTitle(title, titleAbort.signal) // never rejects
           : null;
 
-      let urlMatches = await urlLookup;
+      const urlResults = await Promise.all(urlLookups);
+      // A hit wins; otherwise a failed lookup, so it is not cached as "new".
+      let urlMatches =
+        urlResults.find((r) => r.found) ??
+        urlResults.find((r) => !r.ok) ??
+        urlResults[0];
 
       if (signal?.aborted) {
         throw new DOMException('Request aborted', 'AbortError');
@@ -475,12 +489,13 @@ async function checkBookmark(url, title, signal = null) {
     } finally {
       signal?.removeEventListener('abort', abortTitle);
       titleAbort.abort(); // no-op once the title request has finished
-      inflightChecks.delete(cacheKey);
+      // A newer request may have taken the slot after this one was aborted.
+      if (inflightChecks.get(cacheKey) === entry) inflightChecks.delete(cacheKey);
     }
   })();
 
-  // Store the promise
-  inflightChecks.set(cacheKey, checkPromise);
+  entry.promise = checkPromise;
+  inflightChecks.set(cacheKey, entry);
 
   return checkPromise;
 }

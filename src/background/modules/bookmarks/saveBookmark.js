@@ -50,14 +50,21 @@ export async function saveBookmark(data, folderIDs, bookmarkID) {
   // Success or error notification (which one is decided by response.status).
   void notifyUser(response);
 
-  // Only successful saves feed the keyword cache. Not awaited: the user
-  // already has their notification, and a cache failure is only logged.
-  if (response.status === 'success') {
-    updateKeywordCache(data).catch((error) => {
-      console.error('Error updating cache:', error);
-    });
-    invalidateBookmarkChecks(data);
-  }
+  if (response.status === 'success') afterSuccessfulSave(data);
+}
+
+/**
+ * Cache upkeep after a successful save (popup or zen mode): newly used tags
+ * join the keyword suggestions, and the stale "is this URL bookmarked?" answer
+ * is dropped. Not awaited: the user already has their notification, and a
+ * cache failure is only logged.
+ * @param {string} data - The saved bookmark's form data (URLSearchParams-compatible).
+ */
+export function afterSuccessfulSave(data) {
+  updateKeywordCache(data).catch((error) => {
+    console.error('Error updating cache:', error);
+  });
+  invalidateBookmarkChecks(data);
 }
 
 /**

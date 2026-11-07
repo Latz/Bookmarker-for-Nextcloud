@@ -539,7 +539,7 @@ describe('login.js', () => {
 
       // Mock API response with server error
       apiCall.mockResolvedValue({
-        status: 401,
+        status: 'error',
         statusText: 'Unauthorized',
       });
 
@@ -553,7 +553,7 @@ describe('login.js', () => {
       expect(mockElements.error.innerText).toBe('Login Server Error!');
 
       // Verify status message was displayed
-      expect(mockElements.msg.innerText).toBe('401  - Unauthorized');
+      expect(mockElements.msg.innerText).toBe(' Unauthorized');
 
       // Verify testServer button text was reset
       expect(mockElements.testServer.textContent).toBe('Open Login Page');
@@ -724,82 +724,19 @@ describe('login.js', () => {
   });
 
   describe('serverError function', () => {
-    it('should display error message with status code and reason phrase', async () => {
-      // Import and initialize
+    it('should show the statusText of an apiCall error result', async () => {
       await import('../../src/login/login.js');
       await mockDocument.onreadystatechange();
-
-      // Get the click handler
       const clickHandler =
         mockElements.testServer.addEventListener.mock.calls[0][1];
+      // apiCall's real failure shape: status is the string 'error'
+      apiCall.mockResolvedValue({ status: 'error', statusText: 'Not Found' });
 
-      // Mock API response with server error
-      apiCall.mockResolvedValue({
-        status: 404,
-        statusText: 'Not Found',
-      });
-
-      // Call openServerPage
       clickHandler();
-
-      // Wait for async operations
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      // Verify error message
       expect(mockElements.error.innerText).toBe('Login Server Error!');
-
-      // Verify status with reason phrase
-      expect(mockElements.msg.innerText).toBe('404  - Not Found');
-    });
-
-    it('should handle 500 Internal Server Error', async () => {
-      // Import and initialize
-      await import('../../src/login/login.js');
-      await mockDocument.onreadystatechange();
-
-      // Get the click handler
-      const clickHandler =
-        mockElements.testServer.addEventListener.mock.calls[0][1];
-
-      // Mock API response with 500 error
-      apiCall.mockResolvedValue({
-        status: 500,
-        statusText: 'Internal Server Error',
-      });
-
-      // Call openServerPage
-      clickHandler();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Verify status with reason phrase
-      expect(mockElements.msg.innerText).toBe('500  - Internal Server Error');
-    });
-
-    it('should handle unknown status codes', async () => {
-      // Import and initialize
-      await import('../../src/login/login.js');
-      await mockDocument.onreadystatechange();
-
-      // Get the click handler
-      const clickHandler =
-        mockElements.testServer.addEventListener.mock.calls[0][1];
-
-      // Mock API response with unknown status code
-      apiCall.mockResolvedValue({
-        status: 999,
-        statusText: 'Unknown',
-      });
-
-      // Call openServerPage
-      clickHandler();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Verify unknown status handling
-      expect(mockElements.msg.innerText).toBe('999  - Unknown Status');
+      expect(mockElements.msg.innerText).toBe(' Not Found');
     });
   });
 
@@ -865,75 +802,4 @@ describe('login.js', () => {
     });
   });
 
-  describe('getReasonPhrase function', () => {
-    it('should return correct reason phrases for common status codes', async () => {
-      // Import and initialize
-      await import('../../src/login/login.js');
-      await mockDocument.onreadystatechange();
-
-      // Get the click handler
-      const clickHandler =
-        mockElements.testServer.addEventListener.mock.calls[0][1];
-
-      const testCases = [
-        { status: 200, expected: 'OK' },
-        { status: 201, expected: 'Created' },
-        { status: 400, expected: 'Bad Request' },
-        { status: 401, expected: 'Unauthorized' },
-        { status: 403, expected: 'Forbidden' },
-        { status: 404, expected: 'Not Found' },
-        { status: 500, expected: 'Internal Server Error' },
-        { status: 502, expected: 'Bad Gateway' },
-        { status: 503, expected: 'Service Unavailable' },
-      ];
-
-      for (const { status, expected } of testCases) {
-        // Reset mocks
-        vi.clearAllMocks();
-        mockElements.msg.innerText = '';
-        mockElements.error.innerText = '';
-        mockElements.testServer.innerHTML = '';
-
-        // Mock API response
-        apiCall.mockResolvedValue({
-          status,
-          statusText: 'Test',
-        });
-
-        // Call openServerPage
-        clickHandler();
-
-        // Wait for async operations
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        // Verify reason phrase
-        expect(mockElements.msg.innerText).toContain(expected);
-      }
-    });
-
-    it('should return "Unknown Status" for unknown status codes', async () => {
-      // Import and initialize
-      await import('../../src/login/login.js');
-      await mockDocument.onreadystatechange();
-
-      // Get the click handler
-      const clickHandler =
-        mockElements.testServer.addEventListener.mock.calls[0][1];
-
-      // Mock API response with unknown status
-      apiCall.mockResolvedValue({
-        status: 999,
-        statusText: 'Unknown',
-      });
-
-      // Call openServerPage
-      clickHandler();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Verify unknown status handling
-      expect(mockElements.msg.innerText).toContain('Unknown Status');
-    });
-  });
 });

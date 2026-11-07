@@ -30,7 +30,7 @@ import {
 } from '../../src/background/modules/bookmarks/getFolders.js';
 import { getOption } from '../../src/lib/storage.js';
 import apiCall from '../../src/lib/apiCall.js';
-import { cacheGet, cacheAdd } from '../../src/lib/cache.js';
+import { cacheGet } from '../../src/lib/cache.js';
 
 describe('getFolders', () => {
   beforeEach(() => {
@@ -51,18 +51,17 @@ describe('getFolders', () => {
     expect(apiCall).not.toHaveBeenCalled();
   });
 
-  it('should fetch folders when forced even if user disabled folders', async () => {
+  it('should load folders when forced even if user disabled folders', async () => {
     getOption.mockResolvedValue(false);
-    cacheGet.mockResolvedValue(undefined);
-    apiCall.mockResolvedValue({ data: [] });
+    cacheGet.mockResolvedValue([{ value: '-1', name: 'Root' }]);
 
-    await getFolders(true);
+    const result = await getFolders(true);
 
-    expect(getOption).toHaveBeenCalledWith('cbx_displayFolders');
-    expect(apiCall).toHaveBeenCalled();
+    expect(cacheGet).toHaveBeenCalledWith('folders');
+    expect(result).toEqual([{ value: '-1', name: 'Root' }]);
   });
 
-  it('should return cached folders when available', async () => {
+  it('should return what cacheGet returns (it handles cache and server)', async () => {
     getOption.mockResolvedValue(true);
     const cachedFolders = [{ value: '1', name: 'Folder 1' }];
     cacheGet.mockResolvedValue(cachedFolders);
@@ -71,107 +70,24 @@ describe('getFolders', () => {
 
     expect(result).toBe(cachedFolders);
     expect(cacheGet).toHaveBeenCalledWith('folders');
+  });
+
+  it('should not ask the server a second time when cacheGet found nothing', async () => {
+    // cacheGet already tried the server; repeating it doubled the wait offline.
+    getOption.mockResolvedValue(true);
+    cacheGet.mockResolvedValue([]);
+
+    const result = await getFolders();
+
+    expect(result).toEqual([]);
     expect(apiCall).not.toHaveBeenCalled();
   });
 
-  it('should fetch folders from API when cache is empty', async () => {
-    getOption.mockResolvedValue(true);
-    cacheGet.mockResolvedValue(undefined);
-    apiCall.mockResolvedValue({ data: [] });
-
-    await getFolders();
-
-    expect(cacheGet).toHaveBeenCalledWith('folders');
-    expect(apiCall).toHaveBeenCalledWith(
-      'index.php/apps/bookmarks/public/rest/v2/folder',
-      'GET',
-    );
-    expect(cacheAdd).toHaveBeenCalled();
-  });
-
-  it('should fetch folders from API when cache has empty array', async () => {
-    getOption.mockResolvedValue(true);
-    cacheGet.mockResolvedValue([]);
-    apiCall.mockResolvedValue({ data: [] });
-
-    await getFolders();
-
-    expect(apiCall).toHaveBeenCalled();
-  });
-
-  it('should process API response and cache the result', async () => {
+  it('should return an empty list for an unusable cache value', async () => {
     getOption.mockResolvedValue(true);
     cacheGet.mockResolvedValue(undefined);
 
-    const mockFolders = [
-      { id: '1', title: 'Folder 1' },
-      { id: '2', title: 'Folder 2' },
-    ];
-    apiCall.mockResolvedValue({ data: mockFolders });
-
-    const result = await getFolders();
-
-    expect(cacheAdd).toHaveBeenCalledWith('folders', expect.any(Array));
-    expect(result).toContainEqual({ value: '1', name: 'Folder 1' });
-    expect(result).toContainEqual({ value: '2', name: 'Folder 2' });
-  });
-
-  it('should handle nested folder structures', async () => {
-    getOption.mockResolvedValue(true);
-    cacheGet.mockResolvedValue(undefined);
-
-    const mockFolders = [
-      {
-        id: '1',
-        title: 'Parent',
-        children: [
-          { id: '2', title: 'Child 1' },
-          { id: '3', title: 'Child 2' },
-        ],
-      },
-    ];
-    apiCall.mockResolvedValue({ data: mockFolders });
-
-    const result = await getFolders();
-
-    expect(result).toContainEqual({ value: '1', name: 'Parent' });
-    expect(result).toContainEqual({ value: '2', name: '  Child 1' });
-    expect(result).toContainEqual({ value: '3', name: '  Child 2' });
-  });
-
-  it('should handle empty folder response', async () => {
-    getOption.mockResolvedValue(true);
-    cacheGet.mockResolvedValue(undefined);
-    apiCall.mockResolvedValue({ data: [] });
-
-    const result = await getFolders();
-
-    expect(result).toEqual([{ value: '-1', name: 'Root' }]);
-  });
-
-  it('should handle undefined folder data without caching a bare Root', async () => {
-    getOption.mockResolvedValue(true);
-    cacheGet.mockResolvedValue(undefined);
-    apiCall.mockResolvedValue({ data: undefined });
-
-    const result = await getFolders();
-
-    // A failed request must not be cached as "just Root" for 24h.
-    expect(result).toEqual([]);
-    expect(cacheAdd).not.toHaveBeenCalled();
-  });
-
-  it('should return the folders even when writing the cache fails', async () => {
-    getOption.mockResolvedValue(true);
-    cacheGet.mockResolvedValue([]);
-    apiCall.mockResolvedValue({ data: [{ id: 1, title: 'Docs' }] });
-    cacheAdd.mockRejectedValueOnce(new Error('quota'));
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-    const result = await getFolders();
-
-    expect(result.map((f) => f.name)).toContain('Docs');
-    consoleError.mockRestore();
+    expect(await getFolders()).toEqual([]);
   });
 });
 

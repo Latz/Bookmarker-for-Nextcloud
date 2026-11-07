@@ -72,7 +72,6 @@ vi.mock('../../src/background/modules/bookmarks/getData.js', () => ({
 vi.mock('../../src/lib/storage.js', () => ({
   store_data: vi.fn(() => Promise.resolve()),
   ensureDefaults: vi.fn(() => Promise.resolve()),
-  createOldDatabase: vi.fn(() => Promise.resolve()),
   getOption: vi.fn((key) => {
     const options = {
       cbx_enableZen: false,
@@ -119,7 +118,6 @@ import getData, {
 import {
   store_data,
   getOption,
-  createOldDatabase,
 } from '../../src/lib/storage.js';
 import { notifyUser } from '../../src/background/modules/browser/notification.js';
 import getBrowserTheme from '../../src/background/modules/browser/getBrowserTheme.js';
@@ -870,16 +868,6 @@ describe('background.js', () => {
 
       expect(cacheGet).toHaveBeenCalledWith('keywords', true);
       expect(cacheGet).toHaveBeenCalledWith('folders', true);
-    });
-
-    it('should handle menuOldDatabase click', async () => {
-      const info = { menuItemId: 'menuOldDatabase' };
-
-      contextMenuListener(info);
-
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      expect(createOldDatabase).toHaveBeenCalled();
     });
 
     it('should handle menuEnableZen click when checked', async () => {

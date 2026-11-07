@@ -1,5 +1,5 @@
 // @ts-check
-import { store_data, createOldDatabase } from '../../../lib/storage.js';
+import { store_data } from '../../../lib/storage.js';
 import { cacheGet } from '../../../lib/cache.js';
 
 /**
@@ -46,10 +46,6 @@ export function handleContextMenuClick(info) {
         console.error(`[contextMenu] refreshing ${type} failed:`, error);
       });
     }
-  }
-  // Development helper (its menu entry is commented out in createContextMenus).
-  if (info.menuItemId === 'menuOldDatabase') {
-    void createOldDatabase();
   }
   // Zen Mode checkbox: persist the new state so the popup and the toolbar
   // click behaviour follow it, then update the menu title.
@@ -100,11 +96,4 @@ export async function createContextMenus(zenModeEnabled) {
   } catch (error) {
     console.log(error);
   }
-
-  // only for development purposes
-  // chrome.contextMenus.create({
-  //   id: 'menuOldDatabase',
-  //   title: 'Create old database',
-  //   contexts: ['action'],
-  // });
 }

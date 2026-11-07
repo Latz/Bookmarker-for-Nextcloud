@@ -19,14 +19,12 @@ import {
   load_data_all,
   store_data,
   delete_data,
-  store_hash,
   getOption,
   getOptions,
   clearData,
   initDatabase,
   initDefaults,
   ensureDefaults,
-  createOldDatabase,
   clearOptionsCache,
   _resetMainConnectionForTesting,
 } from '../../src/lib/storage.js';
@@ -279,39 +277,6 @@ describe('storage.js', () => {
       await delete_data('credentials', 'appPassword');
 
       expect(deleteResolved).toBe(true);
-    });
-  });
-
-  describe('store_hash', () => {
-    it('should store hash with timestamp', async () => {
-      const mockDate = 1234567890000;
-      vi.spyOn(Date, 'now').mockReturnValue(mockDate);
-
-      await store_hash('test-hash');
-
-      expect(mockDB.put).toHaveBeenCalledWith('hashes', {
-        item: 'test-hash',
-        value: mockDate,
-      });
-
-      vi.restoreAllMocks();
-    });
-
-    it('should await db.put before returning', async () => {
-      let putResolved = false;
-      mockDB.put.mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(() => {
-              putResolved = true;
-              resolve();
-            }, 10),
-          ),
-      );
-
-      await store_hash('test-hash');
-
-      expect(putResolved).toBe(true);
     });
   });
 
@@ -631,50 +596,6 @@ describe('storage.js', () => {
       // The migration path should be triggered
       // Verify that store_data was called for the migrated options
       expect(mockDB.put).toHaveBeenCalled();
-    });
-  });
-
-  describe('createOldDatabase', () => {
-    it('should create version 1 database', async () => {
-      const mockDb = {
-        put: vi.fn(),
-      };
-      const mockCacheDb = {
-        createObjectStore: vi.fn(),
-      };
-
-      // Mock deleteDB to return a resolved promise
-      deleteDB.mockResolvedValue(undefined);
-
-      // Mock openDB to return different mock DBs based on database name
-      // The function calls openDB twice - once for Bookmarker (awaited), once for Cache (not awaited)
-      openDB.mockImplementation((dbName, version, options) => {
-        if (dbName === 'Bookmarker') {
-          return Promise.resolve(mockDb);
-        }
-        if (dbName === 'Cache') {
-          return Promise.resolve(mockCacheDb);
-        }
-        return Promise.resolve(mockDb);
-      });
-
-      // Call the function with version as number (the function checks version === 1)
-      await createOldDatabase(1);
-
-      // Check deleteDB calls first - should be called twice
-      expect(deleteDB).toHaveBeenCalledTimes(2);
-      expect(deleteDB).toHaveBeenCalledWith('Bookmarker');
-      expect(deleteDB).toHaveBeenCalledWith('Cache');
-
-      // Check openDB calls
-      expect(openDB).toHaveBeenCalledWith('Bookmarker', 1, expect.any(Object));
-      expect(openDB).toHaveBeenCalledWith('Cache', 2, expect.any(Object));
-
-      // Check that put was called on the mock DB
-      expect(mockDb.put).toHaveBeenCalledWith('credentials', {
-        item: 'appPassword',
-        value: 'ThisistheApppassword',
-      });
     });
   });
 

@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { normalizeUrl, urlsAreEquivalent } from '../../src/lib/urlNormalizer.js';
+import { normalizeUrl } from '../../src/lib/urlNormalizer.js';
 
 describe('urlNormalizer.js', () => {
   describe('normalizeUrl', () => {
@@ -272,76 +272,6 @@ describe('urlNormalizer.js', () => {
         const result = normalizeUrl('https://example.com/path%20with%20spaces');
         expect(result).toBe('https://example.com/path%20with%20spaces');
       });
-    });
-  });
-
-  describe('urlsAreEquivalent', () => {
-    it('should return true for identical URLs', async () => {
-      const { urlsAreEquivalent } = await import('../../src/lib/urlNormalizer.js');
-      expect(
-        urlsAreEquivalent('https://example.com', 'https://example.com'),
-      ).toBe(true);
-    });
-
-    it('should return true for equivalent URLs after normalization', async () => {
-      const { urlsAreEquivalent } = await import('../../src/lib/urlNormalizer.js');
-      expect(
-        urlsAreEquivalent('http://www.example.com/', 'https://example.com'),
-      ).toBe(true);
-    });
-
-    it('should return false for different URLs', async () => {
-      const { urlsAreEquivalent } = await import('../../src/lib/urlNormalizer.js');
-      expect(
-        urlsAreEquivalent('https://example.com', 'https://example.org'),
-      ).toBe(false);
-    });
-
-    it('should handle query parameter differences', async () => {
-      const { urlsAreEquivalent } = await import('../../src/lib/urlNormalizer.js');
-      expect(
-        urlsAreEquivalent(
-          'https://example.com?a=1&b=2',
-          'https://example.com?b=2&a=1',
-        ),
-      ).toBe(true);
-    });
-
-    it('should handle trailing slash differences', async () => {
-      const { urlsAreEquivalent } = await import('../../src/lib/urlNormalizer.js');
-      expect(
-        urlsAreEquivalent(
-          'https://example.com/page/',
-          'https://example.com/page',
-        ),
-      ).toBe(true);
-    });
-
-    it('should handle fragment differences', async () => {
-      const { urlsAreEquivalent } = await import('../../src/lib/urlNormalizer.js');
-      expect(
-        urlsAreEquivalent('https://example.com#section', 'https://example.com'),
-      ).toBe(true);
-    });
-
-    it('should respect custom options', async () => {
-      const { urlsAreEquivalent } = await import('../../src/lib/urlNormalizer.js');
-      // With default options, these are equivalent
-      expect(
-        urlsAreEquivalent('http://example.com', 'https://example.com'),
-      ).toBe(true);
-      // With protocol normalization disabled, they are different
-      expect(
-        urlsAreEquivalent('http://example.com', 'https://example.com', {
-          normalizeProtocol: false,
-        }),
-      ).toBe(false);
-    });
-
-    it('should handle invalid URLs', async () => {
-      const { urlsAreEquivalent } = await import('../../src/lib/urlNormalizer.js');
-      expect(urlsAreEquivalent('not-a-url', 'not-a-url')).toBe(true);
-      expect(urlsAreEquivalent('not-a-url', 'different')).toBe(false);
     });
   });
 });

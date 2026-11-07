@@ -378,7 +378,7 @@ const CASES = {
     const { storage } = await prepareStorage();
     if (typeof storage.ensureDefaults !== 'function') return { skipped: 'not in this revision' };
     const missing = ['cbx_fuzzyUrlMatch', 'cbx_cacheBookmarkChecks', 'input_bookmarkCacheTTL',
-      'select_duplicateStrategy', 'input_titleCheckLimit'];
+      'cbx_titleSimilarityCheck', 'input_titleCheckLimit'];
     const stats = await bench(() => storage.ensureDefaults(), {
       warmup: 5, min: 30, max: 500,
       beforeEach: () => storage.delete_data('options', ...missing),

@@ -103,13 +103,3 @@ export function normalizeUrl(urlString, options = {}) {
   }
 }
 
-/**
- * Check if two URLs are equivalent after normalization
- * @param {string} url1 - First URL
- * @param {string} url2 - Second URL
- * @param {Object} options - Normalization options (passed to normalizeUrl)
- * @returns {boolean} True if URLs are equivalent
- */
-export function urlsAreEquivalent(url1, url2, options = {}) {
-  return normalizeUrl(url1, options) === normalizeUrl(url2, options);
-}

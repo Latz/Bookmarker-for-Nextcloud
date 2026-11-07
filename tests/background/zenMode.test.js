@@ -28,6 +28,10 @@ vi.mock('../../src/background/modules/browser/notification.js', () => ({
   notifyUser: vi.fn(),
 }));
 
+vi.mock('../../src/background/modules/bookmarks/saveBookmark.js', () => ({
+  afterSuccessfulSave: vi.fn(),
+}));
+
 // Mock chrome APIs
 globalThis.chrome = {
   action: {
@@ -42,6 +46,7 @@ import apiCall from '../../src/lib/apiCall.js';
 import { notifyUser } from '../../src/background/modules/browser/notification.js';
 import { getOptions, load_data } from '../../src/lib/storage.js';
 import { getAiSuggestions } from '../../src/background/modules/page/aiSuggest.js';
+import { afterSuccessfulSave } from '../../src/background/modules/bookmarks/saveBookmark.js';
 
 describe('zenMode', () => {
   let mockData;
@@ -493,6 +498,30 @@ describe('zenMode', () => {
         'POST',
         expect.any(String),
       );
+    });
+  });
+
+  describe('Cache upkeep', () => {
+    beforeEach(() => {
+      load_data.mockResolvedValue(undefined);
+    });
+
+    it('drops the cached bookmark check after a successful save', async () => {
+      getData.mockResolvedValue(mockData);
+      apiCall.mockResolvedValue({ status: 'success' });
+
+      await zenMode();
+
+      expect(afterSuccessfulSave).toHaveBeenCalledWith(apiCall.mock.calls[0][2]);
+    });
+
+    it('leaves the caches alone when the save failed', async () => {
+      getData.mockResolvedValue(mockData);
+      apiCall.mockResolvedValue({ status: 'error', statusText: 'Timeout' });
+
+      await zenMode();
+
+      expect(afterSuccessfulSave).not.toHaveBeenCalled();
     });
   });
 

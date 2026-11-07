@@ -296,11 +296,32 @@ describe('addSaveBookmarkButtonListener', () => {
       clickHandler(mockEvent);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          parameters: expect.stringContaining('tags%5B%5D='),
-        }),
+      // Hidden field: no tags[] at all, so an update cannot wipe the tags.
+      const sent = chrome.runtime.sendMessage.mock.calls.at(-1)[0];
+      expect(new URLSearchParams(sent.parameters).has('tags[]')).toBe(false);
+    });
+
+    it('should leave tags and folders alone when updating with both fields hidden', async () => {
+      mockBookmarkIdInput.value = '456';
+      getOption.mockImplementation((key) =>
+        Promise.resolve(
+          {
+            cbx_showDescription: true,
+            cbx_showKeywords: false,
+            cbx_displayFolders: false,
+          }[key],
+        ),
       );
+
+      addSaveBookmarkButtonListener();
+      clickHandler(mockEvent);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      const sent = chrome.runtime.sendMessage.mock.calls.at(-1)[0];
+      const parsed = new URLSearchParams(sent.parameters);
+      expect(sent.bookmarkID).toBe(456);
+      expect(parsed.has('tags[]')).toBe(false);
+      expect(parsed.has('folders[]')).toBe(false);
     });
 
     it('should include selected folders when displayFolders is true', async () => {

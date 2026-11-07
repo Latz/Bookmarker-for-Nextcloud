@@ -375,10 +375,42 @@ describe('getData - bookmark check cache', () => {
       expect.objectContaining({ ok: true, found: false }),
       expect.any(Object),
     );
-    // The lookup URL sent to the server is the normalized one, too.
-    expect(apiCall.mock.calls[0][2]).toContain(
-      encodeURIComponent('https://example.com/a-normalized'),
+    // The server's url filter is exact: the tab's own URL is searched, and
+    // the normalized variant in addition.
+    const searched = apiCall.mock.calls.map((c) =>
+      new URLSearchParams(c[2]).get('url'),
     );
+    expect(searched).toEqual([URL_A, 'https://example.com/a-normalized']);
+  });
+
+  it('finds a bookmark stored under the exact URL when fuzzy matching is on', async () => {
+    options.cbx_fuzzyUrlMatch = true;
+    normalizeUrl.mockReturnValue('https://example.com/a-normalized');
+    const stored = { id: 42, url: URL_A, title: 'Stored', tags: [] };
+    apiCall.mockImplementation((endpoint, method, data) =>
+      Promise.resolve({
+        status: 'success',
+        data: new URLSearchParams(data).get('url') === URL_A ? [stored] : [],
+      }),
+    );
+
+    const result = await getData();
+
+    expect(result.bookmarkID).toBe(42);
+  });
+
+  it('does not cache "not found" when one of the two URL lookups failed', async () => {
+    options.cbx_fuzzyUrlMatch = true;
+    options.cbx_cacheBookmarkChecks = true;
+    normalizeUrl.mockReturnValue('https://example.com/a-normalized');
+    apiCall
+      .mockResolvedValueOnce({ status: 'success', data: [] })
+      .mockResolvedValueOnce({ status: 'error', statusText: 'Timeout' });
+
+    const result = await getData();
+
+    expect(result.checkBookmark.ok).toBe(false);
+    expect(cacheBookmarkCheck).not.toHaveBeenCalled();
   });
 });
 
@@ -546,6 +578,26 @@ describe('getData - title similarity check', () => {
 });
 
 describe('getData - concurrent requests', () => {
+  it('does not join a lookup of the same tab that it just aborted (popup reopened)', async () => {
+    const first = deferred();
+    apiCall
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValueOnce({ status: 'success', data: [] });
+    chrome.tabs.query
+      .mockResolvedValueOnce([tab(1)])
+      .mockResolvedValueOnce([tab(1)]);
+
+    const firstStatus = getBookmarkStatus();
+    firstStatus.catch(() => {});
+    await vi.waitFor(() => expect(apiCall).toHaveBeenCalledTimes(1));
+    const secondStatus = getBookmarkStatus();
+
+    await expect(secondStatus).resolves.toMatchObject({ ok: true });
+    expect(apiCall).toHaveBeenCalledTimes(2);
+    first.resolve({ status: 'success', data: [] });
+    await expect(firstStatus).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
   it('shares one server request between two tabs checking the same URL', async () => {
     const pending = deferred();
     apiCall.mockReturnValueOnce(pending.promise);

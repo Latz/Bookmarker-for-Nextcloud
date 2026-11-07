@@ -114,7 +114,7 @@ export async function createForm() {
 
   // applyBookmarkStatus must not overwrite what the user has typed by the time
   // the server answers: fields they touch are marked.
-  for (const id of ['url', 'title', 'description']) {
+  for (const id of ['url', 'title', 'description', 'folders']) {
     document.getElementById(id)?.addEventListener('input', (event) => {
       event.target.dataset.touched = 'true';
     });
@@ -237,6 +237,22 @@ async function fillStoredFields(stored) {
   };
   setIfUntouched('url', stored.url);
   setIfUntouched('title', stored.title);
+
+  // An update replaces the bookmark's folders with the selection, so it must
+  // start from the folders it is in, not from the last-used ones.
+  const select = /** @type {HTMLSelectElement | null} */ (
+    document.getElementById('folders')
+  );
+  if (
+    select &&
+    Array.isArray(stored.folders) &&
+    select.dataset?.touched !== 'true'
+  ) {
+    const ids = stored.folders.map(String);
+    for (const option of select.options) {
+      option.selected = ids.includes(option.value);
+    }
+  }
 
   // Same rule as hydrateForm for the extracted description.
   const options = await getOptions(['cbx_showDescription', 'cbx_autoDescription']);

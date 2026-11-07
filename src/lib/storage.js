@@ -12,7 +12,7 @@
 const database = 'Bookmarker';
 const dbVersion = 2; // since v0.3 -- bump when a store is added; upgrade steps go in initDatabase
 
-import { openDB, deleteDB } from 'idb';
+import { openDB } from 'idb';
 import { clearAiCache } from './aiCache.js';
 import { aiProviderDefaults } from './aiProviders.js';
 import { cacheDbVersion, initCacheStores } from './cacheSchema.js';
@@ -223,16 +223,6 @@ export async function delete_data(storeName, ...items) {
   await Promise.all(deletes);
 }
 
-// ----------------------------------------------------------------------------
-/**
- * Store a hash in the database with the current timestamp.
- *
- * @param {string} hash - The hash to be stored.
- */
-export async function store_hash(hash) {
-  const db = await getMainDBConnection();
-  await db.put('hashes', { item: hash, value: Date.now() });
-}
 // -----------------------------------------------------------------------
 /**
  * Retrieves the value of the specified option.
@@ -506,7 +496,6 @@ const DEFAULT_OPTIONS = {
   cbx_fuzzyUrlMatch: true, // Normalize URLs to catch variants
   cbx_cacheBookmarkChecks: true, // Cache bookmark duplicate checks
   input_bookmarkCacheTTL: 10, // Cache TTL in minutes
-  select_duplicateStrategy: 'update_existing', // Default duplicate handling
   cbx_titleSimilarityCheck: false, // Title similarity check (off by default)
   input_titleSimilarityThreshold: 75, // Title similarity threshold (0-100)
   input_titleCheckLimit: 20, // Limit bookmarks fetched for title check (performance)
@@ -518,44 +507,3 @@ const DEFAULT_OPTIONS = {
   cbx_aiDescription: false,
   cbx_zenUseAi: false, // Zen mode: ask the AI for missing tags/description
 };
-
-// -----------------------------------------------------------------------
-
-/**
- * Development helper: deletes the real databases and, for version 1, recreates
- * the old schema with fake credentials, to test the upgrade path in
- * initDatabase. Destructive -- the options page only offers it in dev builds.
- * @param {number} [version] - The schema version to recreate (only 1 is supported).
- * @returns {Promise<void>}
- */
-export async function createOldDatabase(version) {
-  await deleteDB('Bookmarker');
-  await deleteDB('Cache');
-
-  if (version === 1) {
-    let db = await openDB('Bookmarker', 1, {
-      upgrade(db) {
-        InitializeStores(db);
-      },
-    });
-    void db.put('credentials', {
-      item: 'appPassword',
-      value: 'ThisistheApppassword',
-    });
-    void db.put('credentials', { item: 'loginname', value: 'admin' });
-    void db.put('credentials', {
-      item: 'server',
-      value: 'https://pascal:9025',
-    });
-    void db.put('options', { item: 'cbx_autoDesc', value: true });
-    void db.put('options', { item: 'cbx_autoTags', value: true });
-    void db.put('options', { item: 'cbx_displayFolders', value: true });
-
-    void openDB('Cache', dbVersion, {
-      upgrade(db) {
-        db.createObjectStore('folders', { keyPath: 'item' });
-        db.createObjectStore('tags', { keyPath: 'item' });
-      },
-    });
-  }
-}
