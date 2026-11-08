@@ -1,8 +1,21 @@
 # Changelog
 
-## [Unreleased]
+## [0.33.0] — 2026-11-08
+
+### Added
+
+- **AI suggestions** for tags and description (popup and zen mode), with several providers (Claude, OpenAI, OpenRouter, Mistral, DeepSeek, Groq, Ollama, custom), a Test button per provider, per-page answer cache, and usage statistics (requests, tokens, estimated cost) per provider.
+- AI tab shows the cheapest models of each provider, with an optional weekly switch to a cheaper model.
+- Keywords are now merged from all page sources (meta, JSON-LD, `rel="tag"`/`rel="category"` links, dataLayer scripts) instead of using only the first one found.
 
 ### Fixed
+
+- Login and options are now kept in `chrome.storage.local` instead of IndexedDB. Browsers that clear site data on exit (e.g. Vivaldi) no longer forget the login on every restart. Existing data is migrated once.
+- Updating an existing bookmark keeps its folders and tags; the duplicate check looks up the exact URL first, then the fuzzy match.
+- The bookmark check cache is invalidated after saving.
+- The bookmark form and AI suggestions also work on pages the browser does not allow extensions to script (e.g. the Web Store).
+- Expired keyword/folder caches are served while being refreshed in the background, so the popup does not wait for the server.
+- Several keyword extraction fixes (single meta keyword without dividers, keywords made only of dividers, JSON-LD in all article types, dataLayer scripts).
 
 - Added the missing `storage` permission. Without it `chrome.storage` does not exist in the extension, so the session caches for the browser theme and the notification-icon check (meant to spare a service worker cold start the offscreen round trip and two fetches) silently never worked.
 - Fixed the keywords field never suggesting existing Nextcloud tags: the tag endpoint returns a plain array, which was read as `{ data }` and cached as empty. Failed tag/folder fetches are no longer cached for 24h, and broken cache entries are refetched.
