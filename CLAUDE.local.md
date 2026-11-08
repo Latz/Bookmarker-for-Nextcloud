@@ -18,7 +18,7 @@
 - 2026-02-24 evening: +6 commits — fixed all 4 code review bugs (items 2–5)
 - 828 tests passing across 37 files (`npx vitest run --pool=threads`)
 - **Keyword coverage tool**: `npm run check:hn -- [--url <u>] [--limit N] [--json f] [-v]` — runs real `src` extraction (storage/cache stubbed via `module.registerHooks`) on links from HN/lobsters/dev.to/algolia (`--source`) or any RSS/Atom `--feed` vs. an independent detector; exit 1 on `MISS-*`. getKeywords merges all sources, so `partial` points to a real gap.
-- SonarCloud: 308 issues total; 33 critical in `critical.md`; S4123 (10 issues) all false positives
+- SonarCloud (public API, last analysis 2026-09-29): 8 open issues (2 bugs, 6 smells), 0 vulnerabilities; most are false positives or by-design loops (2026-10-26 triage: NOSONAR moved onto the flagged lines, `background.js` `init().catch` stays because service workers have no top-level await). Re-scan needs SONAR_TOKEN.
 - **Environment**: Native Windows (no longer WSL2) — no disk-cache pre-warm needed. Suite uses `node` env by default, `happy-dom` per file via `// @vitest-environment happy-dom` (branch `happydom`, 2026-09-28). `isolate: false` breaks tests — keep isolation on.
 
 ## Critical Preferences
@@ -64,6 +64,8 @@
 **2026-09-28 (final)**: Ran the `--review` workflow on a fresh 14-page batch (had to widen to `--pages 6` per source -- 577 unique URLs already covered this session). Manually verified all 14 against raw HTML; no extension bugs. Found a tool-only gap: `reference.js`'s tag-link hint regex missed `/tags/{id}/{slug}` (NPR's shape, numeric id segment) -- widened `TAG_LINK_PATH` to allow one numeric segment, 2 new tests. Does not add tag links as extension keywords (that stays deliberately out of scope, per [[hn-checker-no-feeds]]-adjacent decision).
 
 **2026-09-28 (final, jsdom)**: Ran 3 more `--review` batches (42 pages hand-checked, no extension bugs) -- one real fix: `reference.js`'s `DESCRIPTION_METAS` was missing `name="og:description"` (non-standard but real, jimmyhmiller.com) and `http-equiv=description`, both of which `getDescription.js` already checks; added, mirrors the real code now. Bigger finding: happy-dom's HTML parser silently truncates the DOM on real-world malformed markup (domainnamewire.com -- lost 58/79 `<a>` elements after a stray `<meta ></span>`) instead of recovering like a real browser. Switched `tools/hn-keyword-check/{sources,check}.js` from happy-dom to jsdom (new devDep, `^30.1.1`; Node 25 triggers an EBADENGINE warning on install but works fine) per explicit user instruction ("correctness is more important than speed") -- jsdom recovers correctly on the same page. Scoped to the checker tool only; the project's `@vitest-environment happy-dom` test setup is untouched (small controlled fixtures, not wild external HTML -- no evidence of the same failure mode there). 833 tests still pass.
+
+**2026-11-08**: Vivaldi forgot the login on restart — IndexedDB is origin site data, wiped by "clear site data on exit". Moved credentials/options/misc/hashes to `chrome.storage.local` (keys `<store>.<item>`), one-time migration from the old "Bookmarker" IDB which is then deleted (07c7ad2, pushed). Tests use `tests/storageArea.js` in-memory area (fresh per test in setup.js). User confirmed it works in Vivaldi.
 
 ---
 *For detailed history, see memory/registers/*
