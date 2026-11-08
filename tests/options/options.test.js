@@ -46,6 +46,11 @@ vi.mock('@yaireo/tagify', () => {
 });
 
 // Mock modules
+vi.mock('../../src/lib/aiClient.js', () => ({
+  listModels: vi.fn(),
+  testProvider: vi.fn(),
+}));
+
 vi.mock('../../src/lib/storage.js', () => ({
   load_data_all: vi.fn(),
   load_data: vi.fn(),
@@ -84,6 +89,7 @@ import {
   clearData,
 } from '../../src/lib/storage.js';
 import { getFolders } from '../../src/background/modules/bookmarks/getFolders.js';
+import { listModels, testProvider } from '../../src/lib/aiClient.js';
 
 describe('options.js', () => {
   let mockDocument;
@@ -218,6 +224,14 @@ describe('options.js', () => {
           [
             `btn_${provider.id}Test`,
             { id: `btn_${provider.id}Test`, addEventListener: vi.fn() },
+          ],
+          [
+            `ai_test_${provider.id}`,
+            {
+              id: `ai_test_${provider.id}`,
+              textContent: '',
+              classList: { toggle: vi.fn(), remove: vi.fn() },
+            },
           ],
         ]),
       ),
@@ -567,6 +581,19 @@ describe('options.js', () => {
         input_zenKeywords: ['tag1', 'tag2'],
       });
     });
+
+    it('adds a new tag to the whitelist once, so the dropdown can match it', () => {
+      const whitelistHandler = mockTagifyInstance.on.mock.calls.find(
+        (call) => call[0] === 'add',
+      )[1];
+      mockTagifyInstance.whitelist = ['keyword1'];
+
+      whitelistHandler({ detail: { data: { value: 'fresh' } } });
+      whitelistHandler({ detail: { data: { value: 'fresh' } } });
+      whitelistHandler({ detail: { data: { value: 'keyword1' } } });
+
+      expect(mockTagifyInstance.whitelist).toEqual(['keyword1', 'fresh']);
+    });
   });
 
   describe('Heading slider', () => {
@@ -765,6 +792,275 @@ describe('options.js', () => {
         'off',
       );
       expect(chrome.permissions.request).not.toHaveBeenCalled();
+    });
+
+    it('reports an error from the permission request instead of dropping it', async () => {
+      mockElements.input_geminiBaseUrl.value = 'https://g.example.com/v1';
+      chrome.permissions.request.mockRejectedValue(new Error('boom'));
+      mockElements.select_aiProvider.value = 'gemini';
+
+      await handler(mockElements.select_aiProvider, 'change')();
+
+      expect(mockElements.ai_error.textContent).toBe('boom');
+    });
+  });
+
+  describe('AI tab: models, test button, inputs', () => {
+    const handler = (element, event) =>
+      element.addEventListener.mock.calls.find((call) => call[0] === event)[1];
+    // Click handlers fire `void loadModels()`; wait until its awaits are done.
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+    const el = (id) => mockElements[id];
+    const fill = (provider, { key = '', url = '', model = '' }) => {
+      el(`input_${provider}ApiKey`).value = key;
+      el(`input_${provider}BaseUrl`).value = url;
+      el(`input_${provider}Model`).value = model;
+    };
+    const clickModels = async (id) => {
+      handler(el(`btn_${id}Models`), 'click')();
+      await flush();
+    };
+    const clickTest = async (id) => {
+      handler(el(`btn_${id}Test`), 'click')();
+      await flush();
+    };
+
+    beforeEach(async () => {
+      load_data.mockImplementation((store, key) =>
+        Promise.resolve(key === 'input_networkTimeout' ? 20 : undefined),
+      );
+      load_data_all.mockResolvedValue([]);
+      getOption.mockResolvedValue(false);
+      getFolders.mockResolvedValue('<option value="1">Folder 1</option>');
+      listModels.mockResolvedValue(['gpt-a', 'gpt-b']);
+      testProvider.mockResolvedValue(undefined);
+      globalThis.chrome.permissions = {
+        request: vi.fn().mockResolvedValue(true),
+        contains: vi.fn().mockResolvedValue(true),
+      };
+
+      await import('../../src/options/options.js');
+      await mockDocument.onreadystatechange();
+      store_data.mockClear();
+    });
+
+    describe('model list button', () => {
+      it('needs an API key before it asks anything', async () => {
+        fill('openai', { url: 'https://api.openai.com/v1' });
+        await clickModels('openai');
+
+        expect(chrome.permissions.request).not.toHaveBeenCalled();
+        expect(listModels).not.toHaveBeenCalled();
+        expect(el('ai_error').textContent).toBe('[i18n:aiModelsFailed]');
+      });
+
+      it('needs no key for a provider without one (Ollama)', async () => {
+        fill('ollama', { url: 'http://localhost:11434/v1' });
+        await clickModels('ollama');
+
+        expect(listModels).toHaveBeenCalled();
+      });
+
+      it('says so when the host permission is refused', async () => {
+        chrome.permissions.request.mockResolvedValue(false);
+        fill('openai', { key: 'sk', url: 'https://api.openai.com/v1' });
+        await clickModels('openai');
+
+        expect(listModels).not.toHaveBeenCalled();
+        expect(el('ai_error').textContent).toBe('[i18n:aiPermissionDenied]');
+      });
+
+      it('loads the models with the typed values and fills the field', async () => {
+        el('ai_error').textContent = 'old error';
+        fill('openai', { key: ' sk ', url: ' https://api.openai.com/v1 ' });
+        await clickModels('openai');
+
+        expect(chrome.permissions.request).toHaveBeenCalledWith({
+          origins: ['https://api.openai.com/*'],
+        });
+        expect(listModels).toHaveBeenCalledWith(
+          'openai',
+          'sk',
+          'https://api.openai.com/v1',
+          20,
+        );
+        expect(setModelOptions).toHaveBeenLastCalledWith(
+          el('input_openaiModel'),
+          ['gpt-a', 'gpt-b'],
+        );
+        expect(el('ai_error').textContent).toBe('');
+      });
+
+      it('shows why loading failed', async () => {
+        listModels.mockRejectedValue(new Error('HTTP 500'));
+        fill('openai', { key: 'sk', url: 'https://api.openai.com/v1' });
+        await clickModels('openai');
+
+        expect(el('ai_error').textContent).toBe('[i18n:aiModelsFailed]: HTTP 500');
+      });
+    });
+
+    describe('automatic model loading while typing', () => {
+      beforeEach(() => vi.useFakeTimers());
+      afterEach(() => vi.useRealTimers());
+
+      const type = (id, value) => {
+        el(id).value = value;
+        handler(el(id), 'input')();
+      };
+
+      it('stores every field at once, trimmed', () => {
+        type('input_openaiModel', ' gpt-a ');
+        expect(store_data).toHaveBeenCalledWith('options', {
+          input_openaiModel: 'gpt-a',
+        });
+      });
+
+      it('loads once after typing in the key pauses, only checking the permission', async () => {
+        el('input_openaiBaseUrl').value = 'https://api.openai.com/v1';
+        type('input_openaiApiKey', 's');
+        type('input_openaiApiKey', 'sk');
+        await vi.advanceTimersByTimeAsync(599);
+        expect(listModels).not.toHaveBeenCalled();
+
+        await vi.advanceTimersByTimeAsync(1);
+        expect(chrome.permissions.contains).toHaveBeenCalledWith({
+          origins: ['https://api.openai.com/*'],
+        });
+        expect(chrome.permissions.request).not.toHaveBeenCalled();
+        expect(listModels).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not reload when only the model is typed', async () => {
+        fill('openai', { key: 'sk', url: 'https://api.openai.com/v1' });
+        type('input_openaiModel', 'gpt-a');
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(listModels).not.toHaveBeenCalled();
+      });
+
+      it('stays quiet when the silent load fails', async () => {
+        listModels.mockRejectedValue(new Error('HTTP 500'));
+        el('input_openaiBaseUrl').value = 'https://api.openai.com/v1';
+        type('input_openaiApiKey', 'sk');
+        await vi.advanceTimersByTimeAsync(600);
+
+        expect(listModels).toHaveBeenCalled();
+        expect(el('ai_error').textContent).not.toContain('HTTP 500');
+      });
+    });
+
+    describe('choosing a provider', () => {
+      const choose = async (id) => {
+        el('select_aiProvider').value = id;
+        handler(el('select_aiProvider'), 'change')();
+        await flush();
+      };
+
+      it('loads its models once the permission is granted', async () => {
+        fill('openai', { key: 'sk', url: 'https://api.openai.com/v1' });
+        await choose('openai');
+
+        expect(listModels).toHaveBeenCalledWith(
+          'openai',
+          'sk',
+          'https://api.openai.com/v1',
+          20,
+        );
+        expect(el('ai_error').textContent).toBe('');
+      });
+
+      it('says the permission is missing when refused or without a valid URL', async () => {
+        chrome.permissions.request.mockResolvedValue(false);
+        fill('openai', { key: 'sk', url: 'https://api.openai.com/v1' });
+        await choose('openai');
+        expect(el('ai_error').textContent).toBe('[i18n:aiPermissionDenied]');
+        expect(listModels).not.toHaveBeenCalled();
+
+        chrome.permissions.request.mockClear();
+        fill('gemini', { key: 'sk', url: 'not a url' });
+        await choose('gemini');
+        expect(chrome.permissions.request).not.toHaveBeenCalled();
+        expect(el('ai_error').textContent).toBe('[i18n:aiPermissionDenied]');
+      });
+    });
+
+    describe('test button', () => {
+      const result = () => el('ai_test_openai');
+
+      it('sends the typed values and reports success', async () => {
+        fill('openai', {
+          key: ' sk ',
+          url: 'https://api.openai.com/v1',
+          model: ' gpt-a ',
+        });
+        await clickTest('openai');
+
+        expect(testProvider).toHaveBeenCalledWith('openai', {
+          apiKey: 'sk',
+          model: 'gpt-a',
+          baseUrl: 'https://api.openai.com/v1',
+          timeoutSeconds: 20,
+        });
+        expect(result().textContent).toBe('[i18n:aiTestOk]');
+        expect(result().classList.toggle).toHaveBeenCalledWith('text-success', true);
+        expect(result().classList.toggle).toHaveBeenCalledWith('text-error', false);
+      });
+
+      it.each([
+        [401, 'aiTestAuth'],
+        [403, 'aiTestAuth'],
+        [404, 'aiTestModel'],
+        [429, 'aiTestLimit'],
+      ])('explains HTTP %i as %s', async (status, reason) => {
+        testProvider.mockRejectedValue(Object.assign(new Error('x'), { status }));
+        fill('openai', { key: 'sk', url: 'https://api.openai.com/v1' });
+        await clickTest('openai');
+
+        expect(result().textContent).toBe(`[i18n:aiTestFailed]: [i18n:${reason}]`);
+        expect(result().classList.toggle).toHaveBeenCalledWith('text-error', true);
+      });
+
+      it('shows the message of any other failure', async () => {
+        testProvider.mockRejectedValue(new Error('network down'));
+        fill('openai', { key: 'sk', url: 'https://api.openai.com/v1' });
+        await clickTest('openai');
+
+        expect(result().textContent).toBe('[i18n:aiTestFailed]: network down');
+      });
+
+      it('does not test when the host permission is refused', async () => {
+        chrome.permissions.request.mockResolvedValue(false);
+        fill('openai', { key: 'sk', url: 'https://api.openai.com/v1' });
+        await clickTest('openai');
+
+        expect(testProvider).not.toHaveBeenCalled();
+        expect(result().textContent).toBe('[i18n:aiPermissionDenied]');
+      });
+
+      it.each([
+        ['plain http to a remote host', 'http://api.example.com/v1'],
+        ['another protocol', 'ftp://api.example.com'],
+        ['no URL at all', 'not a url'],
+      ])('refuses %s without asking for a permission', async (_label, url) => {
+        fill('openai', { key: 'sk', url });
+        await clickTest('openai');
+
+        expect(chrome.permissions.request).not.toHaveBeenCalled();
+        expect(testProvider).not.toHaveBeenCalled();
+        expect(result().textContent).toBe('[i18n:aiTestFailed]');
+        expect(result().classList.toggle).toHaveBeenCalledWith('text-error', true);
+      });
+
+      it.each([
+        ['http://localhost:11434/v1', 'http://localhost/*'],
+        ['http://127.0.0.1:8080/v1', 'http://127.0.0.1/*'],
+      ])('allows http for a local server and drops the port: %s', async (url, origin) => {
+        fill('ollama', { url });
+        await clickTest('ollama');
+
+        expect(chrome.permissions.request).toHaveBeenCalledWith({ origins: [origin] });
+        expect(testProvider).toHaveBeenCalled();
+      });
     });
   });
 
