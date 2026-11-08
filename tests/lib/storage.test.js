@@ -1,19 +1,13 @@
 // @vitest-environment node
 /**
- * Unit tests for storage.js
- * Tests IndexedDB operations, caching, and storage utilities
+ * Unit tests for storage.js: chrome.storage.local (in-memory area from
+ * tests/storageArea.js, fresh per test via setup.js), option caching, and the
+ * one-time migration from the old IndexedDB (fake-indexeddb).
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { openDB, deleteDB } from 'idb';
 
-// Mock idb module
-vi.mock('idb', () => ({
-  openDB: vi.fn(),
-  deleteDB: vi.fn(),
-}));
-
-// Import after mocking
 import {
   load_data,
   load_data_all,
@@ -22,79 +16,60 @@ import {
   getOption,
   getOptions,
   clearData,
-  initDatabase,
   initDefaults,
   ensureDefaults,
   clearOptionsCache,
-  _resetMainConnectionForTesting,
+  _resetForTesting,
 } from '../../src/lib/storage.js';
 
+const area = () => chrome.storage.local;
+
+/** Writes records into the old "Bookmarker" IndexedDB, v2 schema. */
+async function seedLegacyDb(records) {
+  const db = await openDB('Bookmarker', 2, {
+    upgrade(d) {
+      for (const s of ['credentials', 'options', 'misc', 'hashes']) {
+        d.createObjectStore(s, { keyPath: 'item' });
+      }
+    },
+  });
+  for (const [store, item, value] of records) {
+    await db.put(store, { item, value });
+  }
+  db.close();
+}
+
+async function legacyDbExists() {
+  return (await indexedDB.databases()).some((d) => d.name === 'Bookmarker');
+}
+
 describe('storage.js', () => {
-  let mockDB;
-  let mockTransaction;
-  let mockStore;
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    vi.useRealTimers(); // Ensure fake timers never leak between tests
-    vi.resetModules();
-
-    // Reset the connection pool so each test gets a fresh openDB call
-    _resetMainConnectionForTesting();
-
-    // Clear the options cache before each test
+  beforeEach(async () => {
+    vi.useRealTimers();
+    _resetForTesting();
     clearOptionsCache();
-
-    // Create mock store
-    mockStore = {
-      get: vi.fn(),
-      put: vi.fn(),
-      delete: vi.fn(),
-      clear: vi.fn(),
-      getAll: vi.fn(),
-    };
-
-    // Create mock transaction
-    mockTransaction = {
-      objectStore: vi.fn(() => mockStore),
-    };
-
-    // Create mock DB
-    mockDB = {
-      get: vi.fn(),
-      put: vi.fn(),
-      delete: vi.fn(),
-      clear: vi.fn(),
-      getAll: vi.fn(),
-      close: vi.fn(),
-      objectStoreNames: { contains: vi.fn(() => true) },
-    };
-
-    // Mock openDB to return our mock DB
-    openDB.mockResolvedValue(mockDB);
+    await deleteDB('Bookmarker');
+    chrome.runtime.sendMessage = vi.fn();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  describe('load_data', () => {
-    it('should load single item from store', async () => {
-      mockDB.get.mockResolvedValue({ item: 'appPassword', value: 'secret123' });
+  describe('load_data / store_data / delete_data', () => {
+    it('stores under "<store>.<item>" and reads a single value back', async () => {
+      await store_data('credentials', { appPassword: 'secret123' });
 
-      const result = await load_data('credentials', 'appPassword');
-
-      expect(mockDB.get).toHaveBeenCalledWith('credentials', 'appPassword');
-      expect(result).toBe('secret123');
+      expect(area().data['credentials.appPassword']).toBe('secret123');
+      expect(await load_data('credentials', 'appPassword')).toBe('secret123');
     });
 
-    it('should load multiple items from store', async () => {
-      mockDB.get
-        .mockResolvedValueOnce({ item: 'loginname', value: 'admin' })
-        .mockResolvedValueOnce({
-          item: 'server',
-          value: 'https://example.com',
-        });
+    it('reads several items as an object in one get', async () => {
+      await store_data('credentials', {
+        loginname: 'admin',
+        server: 'https://example.com',
+      });
+      area().get.mockClear();
 
       const result = await load_data('credentials', 'loginname', 'server');
 
@@ -102,529 +77,304 @@ describe('storage.js', () => {
         loginname: 'admin',
         server: 'https://example.com',
       });
+      expect(area().get).toHaveBeenCalledTimes(1);
     });
 
-    it('should return undefined for non-existent items', async () => {
-      mockDB.get.mockResolvedValue(undefined);
-
-      const result = await load_data('credentials', 'nonexistent');
-
-      expect(result).toBe(undefined);
+    it('returns undefined for items that were never stored', async () => {
+      expect(await load_data('credentials', 'nonexistent')).toBeUndefined();
     });
 
-    it('should handle DB errors gracefully', async () => {
-      // Mock get to return a rejected promise with .catch() method
-      const rejectedPromise = Promise.reject(new Error('DB error'));
-      rejectedPromise.catch(() => {}); // Add catch handler to prevent unhandled rejection
-      mockDB.get.mockReturnValue(rejectedPromise);
-
-      // Note: The actual code uses .catch() on the promise
-      // When the mock returns a promise with .catch(), the error is caught
-      // and the function returns undefined (result[item] = undefined)
-      const result = await load_data('credentials', 'appPassword');
-      expect(result).toBe(undefined);
+    it('keeps stores apart', async () => {
+      await store_data('options', { server: 'not a credential' });
+      expect(await load_data('credentials', 'server')).toBeUndefined();
     });
 
-    it('should return single value when only one item requested', async () => {
-      mockDB.get.mockResolvedValue({ item: 'cbx_enableZen', value: true });
+    it('stores several argument objects in one set', async () => {
+      await load_data('options', 'a'); // migration done
+      area().set.mockClear();
+      await store_data('options', { a: 1 }, { b: 2, c: 3 });
 
-      const result = await load_data('options', 'cbx_enableZen');
+      expect(area().set).toHaveBeenCalledTimes(1);
+      expect(await load_data('options', 'a', 'b', 'c')).toEqual({
+        a: 1,
+        b: 2,
+        c: 3,
+      });
+    });
 
-      expect(result).toBe(true);
+    it('deletes items', async () => {
+      await store_data('options', { a: 1, b: 2 });
+      await delete_data('options', 'a');
+
+      expect(await load_data('options', 'a', 'b')).toEqual({
+        a: undefined,
+        b: 2,
+      });
+    });
+
+    it('tells the service worker when credentials change', async () => {
+      await store_data('credentials', { server: 'https://x' });
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        msg: 'credentialsChanged',
+      });
     });
   });
 
   describe('load_data_all', () => {
-    it('should load all items from store', async () => {
-      const mockData = [
-        { item: 'cbx_enableZen', value: true },
-        { item: 'cbx_autoTags', value: false },
-      ];
-      mockDB.getAll.mockResolvedValue(mockData);
+    it('returns the records of one store as {item, value}', async () => {
+      await store_data('options', { cbx_enableZen: true, cbx_autoTags: false });
+      await store_data('credentials', { server: 'https://x' });
 
-      const result = await load_data_all('options');
+      const rows = await load_data_all('options');
 
-      expect(mockDB.getAll).toHaveBeenCalledWith('options');
-      expect(result).toEqual(mockData);
+      expect(rows).toEqual(
+        expect.arrayContaining([
+          { item: 'cbx_enableZen', value: true },
+          { item: 'cbx_autoTags', value: false },
+        ]),
+      );
+      expect(rows).toHaveLength(2);
     });
 
-    it('should handle empty store', async () => {
-      mockDB.getAll.mockResolvedValue([]);
-
-      const result = await load_data_all('options');
-
-      expect(result).toEqual([]);
-    });
-
-    it('should handle DB errors gracefully', async () => {
-      mockDB.getAll.mockRejectedValue(new Error('DB error'));
-
-      // Used to reject with a ReferenceError: the catch fallback referenced
-      // `result` inside its own initialiser. It now falls back to no rows.
-      await expect(load_data_all('options')).resolves.toEqual([]);
+    it('returns [] for an empty store', async () => {
+      expect(await load_data_all('hashes')).toEqual([]);
     });
   });
 
-  describe('store_data', () => {
-    it('should store single item', async () => {
+  describe('getOption / getOptions', () => {
+    it('reads as false when never stored', async () => {
+      expect(await getOption('nonexistent')).toBe(false);
+      expect(await getOptions(['nonexistent'])).toEqual({ nonexistent: false });
+    });
+
+    it('serves repeated reads from the cache', async () => {
       await store_data('options', { cbx_enableZen: true });
+      expect(await getOption('cbx_enableZen')).toBe(true);
+      area().get.mockClear();
 
-      expect(mockDB.put).toHaveBeenCalledWith('options', {
-        item: 'cbx_enableZen',
-        value: true,
-      });
+      expect(await getOption('cbx_enableZen')).toBe(true);
+      expect(area().get).not.toHaveBeenCalled();
     });
 
-    it('should store multiple items', async () => {
-      await store_data(
-        'options',
-        { cbx_enableZen: true },
-        { cbx_autoTags: false },
-      );
-
-      expect(mockDB.put).toHaveBeenCalledTimes(2);
-      expect(mockDB.put).toHaveBeenCalledWith('options', {
-        item: 'cbx_enableZen',
-        value: true,
-      });
-      expect(mockDB.put).toHaveBeenCalledWith('options', {
-        item: 'cbx_autoTags',
-        value: false,
-      });
-    });
-
-    it('should store multiple properties in one object', async () => {
-      await store_data('options', { cbx_enableZen: true, cbx_autoTags: false });
-
-      expect(mockDB.put).toHaveBeenCalledTimes(2);
-    });
-
-    it('should clear options cache when storing options', async () => {
-      // First, populate cache
-      mockDB.get.mockResolvedValue({ item: 'cbx_enableZen', value: true });
+    it('sees a new value right after store_data', async () => {
+      await store_data('options', { cbx_enableZen: true });
       await getOption('cbx_enableZen');
-
-      // Now store new data
-      mockDB.put.mockResolvedValue(undefined);
       await store_data('options', { cbx_enableZen: false });
 
-      // Cache should be cleared, so next getOption should fetch from DB
-      mockDB.get.mockResolvedValue({ item: 'cbx_enableZen', value: false });
-      const result = await getOption('cbx_enableZen');
-
-      expect(result).toBe(false);
+      expect(await getOption('cbx_enableZen')).toBe(false);
     });
 
-    it('should await db.put before returning', async () => {
-      let putResolved = false;
-      mockDB.put.mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(() => {
-              putResolved = true;
-              resolve();
-            }, 10),
-          ),
-      );
-
+    it('reads again once the cache entry expired', async () => {
       await store_data('options', { cbx_enableZen: true });
-
-      expect(putResolved).toBe(true);
-    });
-  });
-
-  describe('delete_data', () => {
-    it('should delete single item', async () => {
-      mockDB.delete.mockResolvedValue(undefined);
-
-      await delete_data('credentials', 'appPassword');
-
-      expect(mockDB.delete).toHaveBeenCalledWith('credentials', 'appPassword');
-    });
-
-    it('should delete multiple items', async () => {
-      // Note: The actual code calls db.delete().catch(), but the mock doesn't
-      // return a promise, causing a TypeError. We need to mock delete to return
-      // a promise with a catch method.
-      mockDB.delete.mockImplementation(() => Promise.resolve());
-
-      await delete_data('options', 'option1', 'option2');
-
-      expect(mockDB.delete).toHaveBeenCalledTimes(2);
-      expect(mockDB.delete).toHaveBeenCalledWith('options', 'option1');
-      expect(mockDB.delete).toHaveBeenCalledWith('options', 'option2');
-    });
-
-    it('should handle DB errors gracefully', async () => {
-      mockDB.delete.mockRejectedValue(new Error('DB error'));
-
-      // Should not throw
-      await expect(delete_data('options', 'test')).resolves.not.toThrow();
-    });
-
-    it('should await db.delete before returning', async () => {
-      let deleteResolved = false;
-      mockDB.delete.mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(() => {
-              deleteResolved = true;
-              resolve();
-            }, 10),
-          ),
-      );
-
-      await delete_data('credentials', 'appPassword');
-
-      expect(deleteResolved).toBe(true);
-    });
-  });
-
-  describe('getOption', () => {
-    it('should return cached value if available', async () => {
-      // First call - cache miss
-      mockDB.get.mockResolvedValue({ item: 'cbx_enableZen', value: true });
-      const result1 = await getOption('cbx_enableZen');
-      expect(result1).toBe(true);
-
-      // Second call - cache hit
-      mockDB.get.mockClear();
-      const result2 = await getOption('cbx_enableZen');
-      expect(result2).toBe(true);
-      expect(mockDB.get).not.toHaveBeenCalled();
-    });
-
-    it('should return false for undefined options', async () => {
-      mockDB.get.mockResolvedValue(undefined);
-
-      const result = await getOption('nonexistent');
-
-      expect(result).toBe(false);
-    });
-
-    it('should fetch from DB when cache expires', async () => {
-      vi.useFakeTimers();
-
-      // First call - cache miss
-      mockDB.get.mockResolvedValue({ item: 'cbx_enableZen', value: true });
-      const result1 = await getOption('cbx_enableZen');
-      expect(result1).toBe(true);
-
-      // Advance time past TTL (30 seconds)
-      vi.advanceTimersByTime(31000);
-
-      // Second call - cache expired, should fetch from DB
-      mockDB.get.mockResolvedValue({ item: 'cbx_enableZen', value: false });
-      const result2 = await getOption('cbx_enableZen');
-      expect(result2).toBe(false);
-      expect(mockDB.get).toHaveBeenCalled();
-
-      vi.useRealTimers();
-    });
-  });
-
-  describe('getOptions', () => {
-    it('should batch fetch multiple options', async () => {
-      mockDB.get
-        .mockResolvedValueOnce({ item: 'cbx_enableZen', value: true })
-        .mockResolvedValueOnce({ item: 'cbx_autoTags', value: false });
-
-      const result = await getOptions(['cbx_enableZen', 'cbx_autoTags']);
-
-      expect(result).toEqual({
-        cbx_enableZen: true,
-        cbx_autoTags: false,
-      });
-      expect(mockDB.get).toHaveBeenCalledTimes(2);
-    });
-
-    it('should use cache for some options and fetch others', async () => {
-      // First, populate cache for one option
-      mockDB.get.mockResolvedValue({ item: 'cbx_enableZen', value: true });
       await getOption('cbx_enableZen');
+      // Changed behind the cache's back (e.g. by another context)
+      area().data['options.cbx_enableZen'] = false;
 
-      // Now fetch multiple options - one cached, one not
-      mockDB.get.mockClear();
-      mockDB.get.mockResolvedValue({ item: 'cbx_autoTags', value: false });
-
-      const result = await getOptions(['cbx_enableZen', 'cbx_autoTags']);
-
-      expect(result).toEqual({
-        cbx_enableZen: true,
-        cbx_autoTags: false,
-      });
-      // Should only fetch the uncached option
-      expect(mockDB.get).toHaveBeenCalledTimes(1);
+      vi.useFakeTimers();
+      vi.advanceTimersByTime(31000);
+      expect(await getOption('cbx_enableZen')).toBe(false);
     });
 
-    it('should return false for undefined options in batch', async () => {
-      mockDB.get.mockResolvedValue(undefined);
+    it('fetches only the uncached options, in one get', async () => {
+      await store_data('options', { a: 1, b: 2, c: 3 });
+      await getOption('a');
+      area().get.mockClear();
 
-      const result = await getOptions(['nonexistent']);
-
-      expect(result).toEqual({ nonexistent: false });
+      expect(await getOptions(['a', 'b', 'c'])).toEqual({ a: 1, b: 2, c: 3 });
+      expect(area().get).toHaveBeenCalledTimes(1);
+      expect(area().get).toHaveBeenCalledWith(['options.b', 'options.c']);
     });
 
-    it('should not repeat a read that is still in flight', async () => {
-      mockDB.get.mockImplementation((store, name) =>
-        Promise.resolve({ item: name, value: `${name}-value` }),
-      );
+    it('does not repeat a read that is still in flight', async () => {
+      await store_data('options', { a: 'A', b: 'B', c: 'C' });
+      area().get.mockClear();
 
-      // Second call starts before the first has resolved (empty cache)
-      const [first, second] = await Promise.all([
+      const [first, second, single] = await Promise.all([
         getOptions(['a', 'b']),
         getOptions(['b', 'c']),
-      ]);
-
-      expect(first).toEqual({ a: 'a-value', b: 'b-value' });
-      expect(second).toEqual({ b: 'b-value', c: 'c-value' });
-      // a, b, c -- b is read once
-      expect(mockDB.get).toHaveBeenCalledTimes(3);
-    });
-
-    it('should let getOption join an in-flight getOptions read', async () => {
-      mockDB.get.mockResolvedValue({ item: 'a', value: 'a-value' });
-
-      const [batch, single] = await Promise.all([
-        getOptions(['a']),
         getOption('a'),
       ]);
 
-      expect(batch).toEqual({ a: 'a-value' });
-      expect(single).toBe('a-value');
-      expect(mockDB.get).toHaveBeenCalledTimes(1);
+      expect(first).toEqual({ a: 'A', b: 'B' });
+      expect(second).toEqual({ b: 'B', c: 'C' });
+      expect(single).toBe('A');
+      expect(area().get).toHaveBeenCalledTimes(2); // [a, b] and [c]
     });
 
-    it('should not join a failed read afterwards', async () => {
-      openDB.mockRejectedValueOnce(new Error('open failed'));
-      await expect(getOptions(['a'])).rejects.toThrow('open failed');
+    it('does not keep a failed read', async () => {
+      await store_data('options', { a: 'ok' });
+      area().get.mockRejectedValueOnce(new Error('read failed'));
+      await expect(getOptions(['a'])).rejects.toThrow('read failed');
 
-      // A failed open must not poison the pool: the retry opens again
-      openDB.mockResolvedValue(mockDB);
-      mockDB.get.mockResolvedValue({ item: 'a', value: 'ok' });
       await expect(getOptions(['a'])).resolves.toEqual({ a: 'ok' });
     });
   });
 
   describe('clearData', () => {
-    it('should clear all data', async () => {
+    beforeEach(async () => {
+      await store_data('credentials', { server: 'https://x', appPassword: 'p' });
+      await store_data('options', { cbx_enableZen: true });
+      await store_data('misc', { stamp: 1 });
+    });
+
+    it('credentials: removes only the credentials', async () => {
+      await clearData('credentials');
+
+      expect(await load_data('credentials', 'server')).toBeUndefined();
+      expect(await load_data('credentials', 'appPassword')).toBeUndefined();
+      expect(await load_data('options', 'cbx_enableZen')).toBe(true);
+      expect(await load_data('misc', 'stamp')).toBe(1);
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        msg: 'credentialsChanged',
+      });
+    });
+
+    it('options: restores the defaults and keeps the login', async () => {
+      await clearData('options');
+
+      expect(await load_data('options', 'cbx_enableZen')).toBe(false);
+      expect(await load_data('options', 'cbx_showUrl')).toBe(true);
+      expect(await load_data('credentials', 'server')).toBe('https://x');
+    });
+
+    it('all: removes everything, then restores the default options', async () => {
       await clearData('all');
 
-      expect(mockDB.clear).toHaveBeenCalledWith('credentials');
-      expect(mockDB.clear).toHaveBeenCalledWith('options');
-      expect(mockDB.clear).toHaveBeenCalledWith('misc');
-      expect(mockDB.clear).toHaveBeenCalledWith('hashes');
+      expect(await load_data('credentials', 'server')).toBeUndefined();
+      expect(await load_data('misc', 'stamp')).toBeUndefined();
+      expect(await load_data('options', 'cbx_showUrl')).toBe(true);
     });
 
-    it('should clear only options', async () => {
-      await clearData('options');
-      expect(mockDB.clear).toHaveBeenCalledWith('options');
+    it('does not fail when no service worker is listening', async () => {
+      chrome.runtime.sendMessage = vi
+        .fn()
+        .mockRejectedValue(new Error('no receiver'));
+      await expect(clearData('credentials')).resolves.toBeUndefined();
     });
 
-    it('should clear only credentials', async () => {
-      await clearData('credentials');
-      expect(mockDB.clear).toHaveBeenCalledWith('credentials');
-    });
-
-    it('should clear cache', async () => {
-      // Mock cache DB - needs objectStoreNames for validation
-      const mockCacheDB = {
-        clear: vi.fn(),
-        close: vi.fn(),
-        objectStoreNames: { contains: vi.fn(() => true) },
-      };
-      openDB.mockResolvedValue(mockCacheDB);
-
-      await clearData('cache');
-
-      expect(mockCacheDB.clear).toHaveBeenCalledWith('folders');
-      expect(mockCacheDB.clear).toHaveBeenCalledWith('keywords');
-    });
-
-    it('should also clear stale bookmark check results and close the cache connection', async () => {
-      const mockCacheDB = { clear: vi.fn(), close: vi.fn() };
-      openDB.mockResolvedValue(mockCacheDB);
-
-      await clearData('cache');
-
-      expect(mockCacheDB.clear).toHaveBeenCalledWith('bookmarkChecks');
-      expect(mockCacheDB.close).toHaveBeenCalled();
-    });
-
-    it('should not resolve before the clears have finished', async () => {
-      let cleared = false;
-      mockDB.clear.mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(() => {
-              cleared = true;
-              resolve();
-            }, 10),
-          ),
+    it('cache: empties the cache database stores', async () => {
+      const { cacheDbVersion, initCacheStores } = await import(
+        '../../src/lib/cacheSchema.js'
       );
+      const db = await openDB('BookmarkerCache', cacheDbVersion, {
+        upgrade: initCacheStores,
+      });
+      for (const store of ['folders', 'keywords', 'bookmarkChecks']) {
+        await db.put(store, { item: 'k', value: 1 });
+      }
+      db.close();
 
+      await clearData('cache');
+
+      const after = await openDB('BookmarkerCache', cacheDbVersion);
+      for (const store of ['folders', 'keywords', 'bookmarkChecks']) {
+        expect(await after.count(store)).toBe(0);
+      }
+      after.close();
+      // Login untouched
+      expect(await load_data('credentials', 'server')).toBe('https://x');
+    });
+  });
+
+  describe('defaults', () => {
+    it('initDefaults writes every default option', async () => {
+      await initDefaults();
+
+      expect(await load_data('options', 'cbx_showUrl')).toBe(true);
+      expect(await load_data('options', 'cbx_enableZen')).toBe(false);
+      expect(await load_data('options', 'input_networkTimeout')).toBe(10);
+    });
+
+    it('ensureDefaults adds only missing options and keeps existing values', async () => {
+      await store_data('options', { cbx_showUrl: false });
+
+      await ensureDefaults();
+
+      expect(await load_data('options', 'cbx_showUrl')).toBe(false);
+      expect(await load_data('options', 'cbx_fuzzyUrlMatch')).toBe(true);
+      expect(await load_data('options', 'input_titleCheckLimit')).toBe(20);
+    });
+
+    it('ensureDefaults writes nothing when every default is present', async () => {
+      await initDefaults();
+      area().set.mockClear();
+
+      await ensureDefaults();
+
+      expect(area().set).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('migration from the old IndexedDB', () => {
+    it('moves credentials and options over and deletes the old database', async () => {
+      await seedLegacyDb([
+        ['credentials', 'server', 'https://cloud.example'],
+        ['credentials', 'loginname', 'alice'],
+        ['credentials', 'appPassword', 'app-pw'],
+        ['options', 'cbx_enableZen', true],
+        ['misc', 'lastConnectionWarmup', 42],
+      ]);
+
+      expect(
+        await load_data('credentials', 'server', 'loginname', 'appPassword'),
+      ).toEqual({
+        server: 'https://cloud.example',
+        loginname: 'alice',
+        appPassword: 'app-pw',
+      });
+      expect(await getOption('cbx_enableZen')).toBe(true);
+      expect(await load_data('misc', 'lastConnectionWarmup')).toBe(42);
+      // No second copy of the app password left in site data
+      expect(await legacyDbExists()).toBe(false);
+    });
+
+    it('renames the v1 option cbx_autoDesc', async () => {
+      await seedLegacyDb([['options', 'cbx_autoDesc', false]]);
+
+      expect(await load_data('options', 'cbx_autoDescription')).toBe(false);
+      expect(await load_data('options', 'cbx_autoDesc')).toBeUndefined();
+    });
+
+    it('runs only once', async () => {
+      await seedLegacyDb([['credentials', 'server', 'https://old']]);
+      await load_data('credentials', 'server');
       await clearData('credentials');
 
-      expect(cleared).toBe(true);
+      // Even if an old database turned up again, it is not read a second time
+      await seedLegacyDb([['credentials', 'server', 'https://old']]);
+      _resetForTesting(); // e.g. a new service worker
+      expect(await load_data('credentials', 'server')).toBeUndefined();
     });
 
-    it('should restore the defaults after clearing options, once the clear is done', async () => {
-      const order = [];
-      mockDB.clear.mockImplementation(async () => order.push('clear'));
-      mockDB.put.mockImplementation(async () => order.push('put'));
+    it('does not overwrite values already in chrome.storage.local', async () => {
+      area().data['credentials.server'] = 'https://new';
+      await seedLegacyDb([['credentials', 'server', 'https://old']]);
 
-      await clearData('options');
-
-      // Otherwise every option would read back as false until the next restart.
-      expect(order[0]).toBe('clear');
-      expect(order.filter((o) => o === 'put').length).toBeGreaterThan(10);
+      expect(await load_data('credentials', 'server')).toBe('https://new');
     });
 
-    it('should tell the service worker to drop its cached credentials', async () => {
-      globalThis.chrome = { runtime: { sendMessage: vi.fn() } };
-      try {
-        await clearData('credentials');
-
-        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
-          msg: 'credentialsChanged',
-        });
-      } finally {
-        delete globalThis.chrome;
-      }
-    });
-
-    it('should not fail when no service worker is listening', async () => {
-      globalThis.chrome = {
-        runtime: { sendMessage: vi.fn().mockRejectedValue(new Error('none')) },
-      };
-      try {
-        await expect(clearData('credentials')).resolves.toBeUndefined();
-      } finally {
-        delete globalThis.chrome;
-      }
-    });
-  });
-
-  describe('ensureDefaults', () => {
-    it('should add only the options that are missing and keep existing values', async () => {
-      mockDB.getAllKeys = vi.fn().mockResolvedValue(['cbx_showUrl']);
-      mockDB.put.mockResolvedValue(undefined);
-
+    it('fresh install: nothing to move, ensureDefaults supplies the options', async () => {
+      expect(await load_data('credentials', 'server')).toBeUndefined();
       await ensureDefaults();
 
-      const written = mockDB.put.mock.calls.map(([, entry]) => entry.item);
-      expect(written).not.toContain('cbx_showUrl');
-      expect(written).toContain('cbx_fuzzyUrlMatch');
-      expect(written).toContain('input_titleCheckLimit');
+      expect(await getOption('cbx_showUrl')).toBe(true);
+      expect(await legacyDbExists()).toBe(false);
     });
 
-    it('should write nothing when every default is present', async () => {
-      const { initDefaults: init } = await import('../../src/lib/storage.js');
-      mockDB.put.mockResolvedValue(undefined);
-      await init();
-      const allKeys = mockDB.put.mock.calls.map(([, entry]) => entry.item);
-      mockDB.put.mockClear();
-      mockDB.getAllKeys = vi.fn().mockResolvedValue(allKeys);
-
-      await ensureDefaults();
-
-      expect(mockDB.put).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('initDefaults', () => {
-    it('should store all default options', async () => {
-      mockDB.put.mockResolvedValue(undefined);
-
-      initDefaults();
-
-      // Wait for async operations
-      await new Promise((resolve) => setTimeout(resolve, 0));
-
-      // Check that default options are stored
-      expect(mockDB.put).toHaveBeenCalledWith('options', {
-        item: 'cbx_showUrl',
-        value: true,
+    it('keeps working and retries later if the old database cannot be read', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const open = vi.spyOn(indexedDB, 'open').mockImplementationOnce(() => {
+        throw new Error('blocked');
       });
-      expect(mockDB.put).toHaveBeenCalledWith('options', {
-        item: 'cbx_enableZen',
-        value: false,
-      });
-      expect(mockDB.put).toHaveBeenCalledWith('options', {
-        item: 'input_networkTimeout',
-        value: 10,
-      });
-    });
-  });
 
-  describe('initDatabase', () => {
-    it('should initialize stores on fresh install', async () => {
-      const mockCreateObjectStore = vi.fn();
-      const mockDb = {
-        createObjectStore: mockCreateObjectStore,
-      };
+      await store_data('options', { a: 1 });
+      expect(await load_data('options', 'a')).toBe(1);
+      expect(area().data['storage.migrated']).toBeUndefined();
 
-      await initDatabase(mockDb, 0); // version 0 = fresh install
-
-      expect(mockCreateObjectStore).toHaveBeenCalledWith('credentials', {
-        keyPath: 'item',
-      });
-      expect(mockCreateObjectStore).toHaveBeenCalledWith('options', {
-        keyPath: 'item',
-      });
-    });
-
-    it('should handle version upgrade from v1 to v2', async () => {
-      const mockCreateObjectStore = vi.fn();
-      const mockDb = {
-        createObjectStore: mockCreateObjectStore,
-      };
-
-      // Mock load_data to return values for the migration
-      // The migration code calls load_data for old options
-      mockDB.get
-        .mockResolvedValueOnce({ item: 'cbx_autoDesc', value: true })
-        .mockResolvedValueOnce({ item: 'cbx_autoTags', value: true })
-        .mockResolvedValueOnce({ item: 'cbx_displayFolders', value: true });
-
-      // Mock store_data and delete_data to not throw
-      mockDB.put.mockResolvedValue(undefined);
-      mockDB.delete.mockResolvedValue(undefined);
-
-      await initDatabase(mockDb, 1);
-
-      // The migration path should be triggered
-      // Verify that store_data was called for the migrated options
-      expect(mockDB.put).toHaveBeenCalled();
-    });
-  });
-
-  describe('clearOptionsCache', () => {
-    it('should clear the options cache', async () => {
-      // Populate cache - need to mock openDB for getOption
-      const mockCacheDB = {
-        get: vi.fn(),
-        put: vi.fn(),
-        close: vi.fn(),
-        objectStoreNames: { contains: vi.fn(() => true) },
-      };
-      openDB.mockResolvedValue(mockCacheDB);
-      mockCacheDB.get.mockResolvedValue({ item: 'cbx_enableZen', value: true });
-
-      await getOption('cbx_enableZen');
-
-      // Clear cache
-      clearOptionsCache();
-
-      // Cache should be cleared, so next getOption should fetch from DB
-      mockCacheDB.get.mockResolvedValue({
-        item: 'cbx_enableZen',
-        value: false,
-      });
-      const result = await getOption('cbx_enableZen');
-
-      expect(result).toBe(false);
-      expect(mockCacheDB.get).toHaveBeenCalled();
+      open.mockRestore();
+      await seedLegacyDb([['credentials', 'server', 'https://old']]);
+      _resetForTesting();
+      expect(await load_data('credentials', 'server')).toBe('https://old');
     });
   });
 });

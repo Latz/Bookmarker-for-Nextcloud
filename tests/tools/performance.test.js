@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createStorageArea } from '../storageArea.js';
 
 // Mock Chrome APIs
 globalThis.chrome = {
@@ -25,6 +26,7 @@ globalThis.chrome = {
       addListener: vi.fn(),
     },
   },
+  storage: { local: createStorageArea() },
 };
 
 // Import modules to test

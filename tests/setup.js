@@ -3,7 +3,8 @@
  * Runs before all tests to configure the test environment
  */
 
-import { vi, afterEach } from 'vitest';
+import { vi, afterEach, beforeEach } from 'vitest';
+import { createStorageArea } from './storageArea.js';
 
 // Mock IndexedDB for testing
 import 'fake-indexeddb/auto';
@@ -38,11 +39,10 @@ global.chrome = {
     createDocument: vi.fn(),
     closeDocument: vi.fn(),
   },
+  // storage.js keeps credentials and options in chrome.storage.local; a fresh
+  // in-memory area per test (see beforeEach below).
   storage: {
-    local: {
-      get: vi.fn().mockResolvedValue({}),
-      set: vi.fn().mockResolvedValue(undefined),
-    },
+    local: createStorageArea(),
   },
   contextMenus: {
     removeAll: vi.fn(),
@@ -97,6 +97,10 @@ global.console = {
 // Vitest's own console interception and crashes the worker outright. That
 // leak has not reproduced since; if it returns, restore console.log's
 // individual property rather than the whole object.
+beforeEach(() => {
+  if (globalThis.chrome?.storage) globalThis.chrome.storage.local = createStorageArea();
+});
+
 const pristineDocument = globalThis.document;
 const pristineWindow = globalThis.window;
 const pristineNavigator = globalThis.navigator;

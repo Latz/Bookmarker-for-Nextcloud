@@ -1,24 +1,31 @@
 // @ts-check
-// Persistent storage of the extension, in the IndexedDB database "Bookmarker"
-// with the stores:
+// Persistent storage of the extension, in chrome.storage.local, grouped into
+// "stores" by key prefix (`<store>.<item>`):
 //   credentials - server, loginname, appPassword
 //   options     - all user settings (see DEFAULT_OPTIONS below)
-//   misc, hashes - reserved
-// Every record has the shape `{ item: <key>, value: <value> }`.
-// (The separate cache database is handled in cache.js.)
+//   misc, hashes - small internal values
+// (The separate cache database is handled in cache.js and stays IndexedDB.)
+//
+// This used to live in the IndexedDB database "Bookmarker". IndexedDB is site
+// data of the chrome-extension:// origin, and browsers set to clear site data
+// on exit (seen in Vivaldi) wiped the login on every restart.
+// chrome.storage.local is extension settings and is not touched by that.
+// migrateFromIndexedDB() moves the old data over once.
 //
 // Options are cached in memory for a short time, because the popup reads many
 // of them on every open.
-const database = 'Bookmarker';
-const dbVersion = 2; // since v0.3 -- bump when a store is added; upgrade steps go in initDatabase
+const legacyDatabase = 'Bookmarker';
+const legacyDbVersion = 2;
+const STORES = ['credentials', 'options', 'misc', 'hashes'];
+const MIGRATED_KEY = 'storage.migrated';
 
-import { openDB } from 'idb';
+import { openDB, deleteDB } from 'idb';
 import { clearAiCache } from './aiCache.js';
 import { aiProviderDefaults } from './aiProviders.js';
 import { cacheDbVersion, initCacheStores } from './cacheSchema.js';
 
 // -----------------------------------------------------------------------
-// Options caching for performance (reduce IndexedDB access)
+// Options caching for performance
 // -----------------------------------------------------------------------
 
 // Cache stores { value, timestamp } objects for per-option expiration
@@ -27,7 +34,7 @@ const CACHE_TTL = 30000; // 30 seconds TTL for options cache
 
 // In-flight reads (name -> Promise<value>). A read that has been dispatched but
 // not yet resolved is not in optionsCache, so without this a second caller
-// (e.g. the popup's prefetch followed by createForm) repeats the IndexedDB get.
+// (e.g. the popup's prefetch followed by createForm) repeats the storage get.
 const pendingOptions = new Map();
 
 /**
@@ -42,74 +49,76 @@ export function clearOptionsCache() {
 }
 
 // -----------------------------------------------------------------------
-// Main DB connection pool
+// chrome.storage.local access and the one-time IndexedDB migration
 // -----------------------------------------------------------------------
 
-let mainDbConnection = null;
-let mainDbConnectionPromise = null;
+const keyOf = (storeName, item) => `${storeName}.${item}`;
 
-/** Reset the main DB connection pool — for test isolation only. */
-export function _resetMainConnectionForTesting() {
-  mainDbConnection = null;
-  mainDbConnectionPromise = null;
+let ready = null;
+
+/** Forget that the migration ran in this context — for test isolation only. */
+export function _resetForTesting() {
+  ready = null;
 }
 
 /**
- * Returns the shared connection to the main database, opening it on first use
- * (or again after it was closed/invalidated). Concurrent callers share one
- * pending open. A schema upgrade runs initDatabase.
- * @returns {Promise<import('idb').IDBPDatabase<any>>}
+ * chrome.storage.local, once the old IndexedDB data has been moved there.
+ * @returns {Promise<chrome.storage.LocalStorageArea>}
  */
-async function getMainDBConnection() {
-  if (mainDbConnection) {
+async function getArea() {
+  ready ??= migrateFromIndexedDB();
+  await ready;
+  return chrome.storage.local;
+}
+
+/**
+ * Copies every record of the old "Bookmarker" IndexedDB into
+ * chrome.storage.local (keys already there win), then deletes the database so
+ * no second copy of the app password is left behind. Runs once; if IndexedDB
+ * cannot be read it is retried on the next start, and the extension carries on
+ * with what chrome.storage.local has.
+ * @returns {Promise<void>}
+ */
+async function migrateFromIndexedDB() {
+  const area = chrome.storage.local;
+  const existing = await area.get(null);
+  if (existing[MIGRATED_KEY]) return;
+
+  try {
+    const db = await openDB(legacyDatabase, legacyDbVersion, {
+      // Fresh install (or a pre-v2 database): create what is missing so the
+      // reads below work; the database is deleted right after anyway.
+      upgrade(upgradeDb) {
+        for (const store of STORES) {
+          if (!upgradeDb.objectStoreNames.contains(store)) {
+            upgradeDb.createObjectStore(store, { keyPath: 'item' });
+          }
+        }
+      },
+    });
+    const copy = {};
     try {
-      if (mainDbConnection.objectStoreNames?.contains('options')) {
-        return mainDbConnection;
+      for (const store of STORES) {
+        const records = await db.getAll(store).catch(() => []);
+        for (const { item, value } of records) {
+          // cbx_autoDesc is the v1 name of cbx_autoDescription
+          const name =
+            store === 'options' && item === 'cbx_autoDesc'
+              ? 'cbx_autoDescription'
+              : item;
+          const key = keyOf(store, name);
+          if (!(key in existing) && !(key in copy)) copy[key] = value;
+        }
       }
-    } catch (error) {
-      console.warn(
-        '[storage] DB connection invalid, resetting:',
-        error.message,
-      );
-      mainDbConnection = null;
+    } finally {
+      db.close();
     }
+    await area.set({ ...copy, [MIGRATED_KEY]: true });
+  } catch (error) {
+    console.error('[storage] could not migrate the old database:', error);
+    return;
   }
-
-  if (mainDbConnectionPromise) {
-    return mainDbConnectionPromise;
-  }
-
-  mainDbConnectionPromise = openDB(database, dbVersion, {
-    upgrade(db, oldVersion) {
-      initDatabase(db, oldVersion).catch((error) => {
-        console.error('[storage] database initialisation failed:', error);
-      });
-    },
-    // Another context wants to upgrade/delete the DB: release ours or it waits
-    // for this connection (which lives as long as the service worker).
-    blocking() {
-      mainDbConnection?.close();
-      mainDbConnection = null;
-    },
-    // The browser dropped the connection (e.g. site data cleared). Forget it so
-    // the next call reopens instead of failing with InvalidStateError.
-    terminated() {
-      mainDbConnection = null;
-    },
-  }).then(
-    (db) => {
-      mainDbConnection = db;
-      mainDbConnectionPromise = null;
-      return db;
-    },
-    (error) => {
-      // Don't keep the rejected promise, or every later call would fail with it
-      mainDbConnectionPromise = null;
-      throw error;
-    },
-  );
-
-  return mainDbConnectionPromise;
+  await deleteDB(legacyDatabase).catch(() => {});
 }
 
 // -----------------------------------------------------------------------
@@ -122,23 +131,14 @@ async function getMainDBConnection() {
  * @return {Promise<any>|any} - A promise that resolves to an object containing the loaded data for each item, or a single value if only one item is provided.
  */
 export async function load_data(storeName, ...items) {
-  const db = await getMainDBConnection();
+  const area = await getArea();
+  const stored = await area.get(items.map((item) => keyOf(storeName, item)));
 
-  let result = {};
-
-  // A failed read is treated like a missing record (the catch returns an
-  // object without `.value`, so the entry ends up undefined below).
-  const records = await Promise.all(
-    items.map((item) => db.get(storeName, item).catch(() => result)),
-  );
-  items.forEach((item, i) => {
-    result[item] = records[i] !== undefined ? records[i].value : undefined;
-  });
+  const result = {};
+  for (const item of items) result[item] = stored[keyOf(storeName, item)];
 
   // if there's only 1 item in the object return the value instead of the object
-  if (Object.keys(result).length === 1) {
-    return result[Object.keys(result)[0]];
-  }
+  if (items.length === 1) return result[items[0]];
 
   // Deliberately not logged: this path serves load_data('credentials',
   // 'loginname', 'appPassword'), so any logging here prints the app password.
@@ -147,16 +147,16 @@ export async function load_data(storeName, ...items) {
 
 // -----------------------------------------------------------------------------------------------------
 /**
- * Loads all data from the specified store in the database.
+ * Loads all records of the specified store.
  * @param {string} storeName - The name of the store to load data from.
- * @returns {Promise<Array>} - A promise that resolves with an array of data from the store.
+ * @returns {Promise<Array<{item: string, value: any}>>}
  */
 export async function load_data_all(storeName) {
-  const db = await getMainDBConnection();
-
-  // The fallback used to reference `result` inside its own initialiser (a
-  // ReferenceError whenever getAll rejected).
-  return db.getAll(storeName).catch(() => []);
+  const area = await getArea();
+  const prefix = `${storeName}.`;
+  return Object.entries(await area.get(null))
+    .filter(([key]) => key.startsWith(prefix))
+    .map(([key, value]) => ({ item: key.slice(prefix.length), value }));
 }
 
 // -----------------------------------------------------------------------------------------------------
@@ -169,17 +169,16 @@ export async function load_data_all(storeName) {
  */
 export async function store_data(storeName, ...items) {
   // Deliberately not logged: login.js writes the app password through here.
-  const db = await getMainDBConnection();
-  const puts = [];
-  // Each argument is an object; every key/value pair becomes one record, e.g.
-  // store_data('options', { a: 1, b: 2 }) writes {item:'a',value:1} and
-  // {item:'b',value:2}. All writes run in parallel.
+  const area = await getArea();
+  // Each argument is an object; every key/value pair becomes one entry, e.g.
+  // store_data('options', { a: 1, b: 2 }) writes options.a and options.b.
+  const values = {};
   for (const item of items) {
     for (const [key, value] of Object.entries(item)) {
-      puts.push(db.put(storeName, { item: key, value }));
+      values[keyOf(storeName, key)] = value;
     }
   }
-  await Promise.all(puts);
+  await area.set(values);
 
   // Clear cache if we're updating options, so the next read sees the new value
   if (storeName === 'options') {
@@ -207,20 +206,15 @@ async function notifyCredentialsChanged() {
 
 // --------------------------------------------------------------------------------
 /**
- * Deletes specified items from the given store in the database.
+ * Deletes specified items from the given store.
  *
  * @param {string} storeName - The name of the store from which to delete the items.
  * @param {...any} items - The items to be deleted.
  * @return {Promise<void>} - A promise that resolves when the deletion is complete.
  */
 export async function delete_data(storeName, ...items) {
-  const db = await getMainDBConnection();
-
-  const deletes = [];
-  for (let item of items) {
-    deletes.push(db.delete(storeName, item).catch(() => {}));
-  }
-  await Promise.all(deletes);
+  const area = await getArea();
+  await area.remove(items.map((item) => keyOf(storeName, item)));
 }
 
 // -----------------------------------------------------------------------
@@ -228,51 +222,16 @@ export async function delete_data(storeName, ...items) {
  * Retrieves the value of the specified option.
  * Cached for performance (30s TTL per option)
  * @param {string} optionName - The name of the option.
- * @returns {any} - The value of the option.
+ * @returns {Promise<any>} - The value of the option.
  */
 export async function getOption(optionName) {
-  // Check cache first
-  const now = Date.now();
-
-  if (optionsCache.has(optionName)) {
-    const cached = optionsCache.get(optionName);
-    // Check if this specific option's cache is still valid
-    if (now - cached.timestamp < CACHE_TTL) {
-      return cached.value;
-    }
-    // Cache expired for this option, remove it
-    optionsCache.delete(optionName);
-  }
-
-  // Join a read that is already in flight
-  if (pendingOptions.has(optionName)) {
-    return pendingOptions.get(optionName);
-  }
-
-  // Cache miss or expired - fetch from IndexedDB
-  const pending = (async () => {
-    let data = await load_data('options', optionName);
-    // An option that was never stored reads as `false`, so callers can use
-    // plain truthiness checks (`if (await getOption('cbx_...'))`).
-    if (data === undefined) data = false;
-
-    // Update cache with value and timestamp
-    optionsCache.set(optionName, { value: data, timestamp: now });
-
-    return data;
-  })().finally(() => {
-    if (pendingOptions.get(optionName) === pending) {
-      pendingOptions.delete(optionName);
-    }
-  });
-  pendingOptions.set(optionName, pending);
-
-  return pending;
+  return (await getOptions([optionName]))[optionName];
 }
 
 /**
- * Get multiple options at once (batched)
- * Much faster than individual getOption calls
+ * Get multiple options at once (one storage read for all uncached ones).
+ * An option that was never stored reads as `false`, so callers can use plain
+ * truthiness checks (`if (await getOption('cbx_...'))`).
  * @param {Array<string>} optionNames - Array of option names to retrieve
  * @returns {Promise<Object>} Object with key-value pairs
  */
@@ -286,12 +245,10 @@ export async function getOptions(optionNames) {
   for (const name of optionNames) {
     if (optionsCache.has(name)) {
       const cached = optionsCache.get(name);
-      // Check if this specific option's cache is still valid
       if (now - cached.timestamp < CACHE_TTL) {
         result[name] = cached.value;
         continue;
       }
-      // Cache expired for this option, will refetch
       optionsCache.delete(name);
     }
     // Already being read by another caller: wait for that read instead
@@ -306,25 +263,18 @@ export async function getOptions(optionNames) {
     namesToFetch.push(name);
   }
 
-  // Fetch missing/expired options from IndexedDB (truly batched with parallel gets)
   if (namesToFetch.length > 0) {
     const batch = (async () => {
-      const db = await getMainDBConnection();
-      // Fetch all options in parallel using Promise.all
-      return Promise.all(
-        namesToFetch.map((name) =>
-          db.get('options', name).catch(() => undefined),
-        ),
-      );
+      const area = await getArea();
+      return area.get(namesToFetch.map((name) => keyOf('options', name)));
     })();
 
     // Publish each name as pending so concurrent callers can join, and update
     // the cache with per-option timestamps as the batch resolves
-    namesToFetch.forEach((name, index) => {
+    for (const name of namesToFetch) {
       const pending = batch
-        .then((results) => {
-          const data = results[index];
-          const value = data !== undefined ? data.value : false;
+        .then((stored) => {
+          const value = stored[keyOf('options', name)] ?? false;
           optionsCache.set(name, { value, timestamp: now });
           return value;
         })
@@ -339,29 +289,14 @@ export async function getOptions(optionNames) {
           result[name] = value;
         }),
       );
-    });
+    }
   }
 
   await Promise.all(joined);
 
   return result;
 }
-// ---------------------------------------------------------------------
-/**
- * Initialize the necessary object stores in the given database.
- * Must run inside an upgrade transaction (createObjectStore is only allowed there).
- * @param {IDBDatabase} db - The database to initialize the object stores in.
- */
-async function InitializeStores(db) {
-  try {
-    db.createObjectStore('credentials', { keyPath: 'item' });
-    db.createObjectStore('options', { keyPath: 'item' });
-    db.createObjectStore('misc', { keyPath: 'item' });
-    db.createObjectStore('hashes', { keyPath: 'item' });
-  } catch (e) {
-    console.log(e);
-  }
-}
+
 // ---------------------------------------------------------------------
 /**
  * Clears stored data. Resolves only once everything is really cleared (and, for
@@ -387,80 +322,47 @@ export async function clearData(subject) {
     return;
   }
 
-  // The pooled connection is used (rather than a second, never-closed one), so
-  // the clears and the initDefaults() below are ordered on the same connection.
-  const db = await getMainDBConnection();
   const stores = {
-    all: ['credentials', 'options', 'misc', 'hashes'],
+    all: STORES,
     options: ['options'],
     credentials: ['credentials'],
   }[subject];
   if (!stores) return;
 
-  await Promise.all(stores.map((store) => db.clear(store)));
+  const area = await getArea();
+  const prefixes = stores.map((store) => `${store}.`);
+  const keys = Object.keys(await area.get(null)).filter((key) =>
+    prefixes.some((prefix) => key.startsWith(prefix)),
+  );
+  await area.remove(keys);
 
   clearOptionsCache();
   // An emptied options store would make every option read back as false.
   if (stores.includes('options')) await initDefaults();
   if (stores.includes('credentials')) await notifyCredentialsChanged();
 }
-// -----------------------------------------------------------------------
-/**
- * Runs the schema setup/migration when the 'Bookmarker' database is created
- * or upgraded.
- * @param {IDBDatabase} db - The database being upgraded.
- * @param {number} oldVersion - The version before the upgrade (0 = new install).
- * @returns {Promise<void>}
- */
-export async function initDatabase(db, oldVersion) {
-  console.log('oldversion', oldVersion);
-
-  //--- Clean installation
-  if (oldVersion === 0) {
-    console.log('freshstart');
-    await InitializeStores(db);
-    await initDefaults();
-  }
-  //---  v0.16
-  if (oldVersion === 1) {
-    // copy data from old version
-    const cbx_autoDesc = await load_data('options', 'cbx_autoDesc');
-    const cbx_autoTags = await load_data('options', 'cbx_autoTags');
-    const cbx_displayFolders = await load_data('options', 'cbx_displayFolders');
-    // set default values for new version
-    await initDefaults();
-    // restore data from previous version
-    await store_data('options', { cbx_autoTags: cbx_autoTags });
-    await store_data('options', { cbx_displayFolders: cbx_displayFolders });
-    await store_data('options', { cbx_autoDescription: cbx_autoDesc });
-    // delete old data name
-    await delete_data('options', 'cbx_autoDesc');
-  }
-}
 
 // -----------------------------------------------------------------------
 /**
- * Writes every default option, overwriting the stored values (used on a fresh
- * install and by "Reset options").
+ * Writes every default option, overwriting the stored values (used by
+ * "Reset options").
  * @returns {Promise<void>}
  */
 export function initDefaults() {
-  // One store_data call: it already iterates Object.entries internally and
-  // issues the puts in parallel, so this is a single pass over one connection
-  // instead of 20 sequential round trips.
   return store_data('options', DEFAULT_OPTIONS);
 }
 
 /**
  * Adds every default option that is missing, leaving existing values alone.
- * Runs on service worker start: the database version is not bumped when new
- * options are introduced, so users who updated from an older release would
- * otherwise never get them and the features would stay silently off.
+ * Runs on service worker start, so a fresh install and users who updated from
+ * an older release both get every option (otherwise new features would stay
+ * silently off).
  * @returns {Promise<void>}
  */
 export async function ensureDefaults() {
-  const db = await getMainDBConnection();
-  const existing = new Set(await db.getAllKeys('options'));
+  const existing = new Set(
+    (await load_data_all('options')).map(({ item }) => item),
+  );
   const missing = Object.fromEntries(
     Object.entries(DEFAULT_OPTIONS).filter(([key]) => !existing.has(key)),
   );

@@ -45,11 +45,9 @@ const WARMUP_STAMP_KEY = 'lastConnectionWarmup';
 
 /**
  * Whether a warm-up ran less than WARMUP_MIN_INTERVAL_MS ago; if not, records
- * this one. The stamp is kept in the 'misc' store of the extension's own
- * database: module state does not survive a worker restart, and
- * chrome.storage.session would need the "storage" permission the manifest does
- * not declare. If the store cannot be read or written it answers "no", i.e.
- * warms up every time.
+ * this one. The stamp is kept in the 'misc' store (storage.js), because module
+ * state does not survive a worker restart. If the store cannot be read or
+ * written it answers "no", i.e. warms up every time.
  * @returns {Promise<boolean>}
  */
 async function warmedUpRecently() {

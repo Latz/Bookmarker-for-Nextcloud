@@ -30,6 +30,21 @@ export function installChrome() {
           Object.assign(sessionStore, values);
         },
       },
+      // storage.js keeps credentials and options here
+      local: (() => {
+        const data = {};
+        const pick = (keys) =>
+          keys == null
+            ? { ...data }
+            : Object.fromEntries([keys].flat().filter((k) => k in data).map((k) => [k, data[k]]));
+        return {
+          get: async (keys) => structuredClone(pick(keys)),
+          set: async (values) => void Object.assign(data, structuredClone(values)),
+          remove: async (keys) => {
+            for (const k of [keys].flat()) delete data[k];
+          },
+        };
+      })(),
     },
     action: { setIcon: async () => {}, setBadgeText: async () => {} },
     contextMenus: {
