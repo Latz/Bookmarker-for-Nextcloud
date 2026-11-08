@@ -1,6 +1,7 @@
 /**
  * Unit tests for the site-specific keyword sources
  */
+import { timed } from '../timed.js';
 import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('../../src/lib/log.js', () => ({
@@ -159,7 +160,7 @@ describe('extractGtmKeywords', () => {
   });
 
   describe('hostile scripts', () => {
-    it('stays fast with many unclosed pushes', () => {
+    timed('stays fast with many unclosed pushes', () => {
       const text = 'dataLayer.push({"a":'.repeat(50000);
       const document = documentWith({ script: [scriptWith(text)] });
 
@@ -169,7 +170,7 @@ describe('extractGtmKeywords', () => {
       expect(performance.now() - start).toBeLessThan(1000);
     });
 
-    it('gives up on an object that never closes instead of scanning to the end', () => {
+    timed('gives up on an object that never closes instead of scanning to the end', () => {
       const text = `dataLayer.push({${'"k":"v",'.repeat(20000)}`; // ~160 kB, no }
       const document = documentWith({ script: [scriptWith(text)] });
 

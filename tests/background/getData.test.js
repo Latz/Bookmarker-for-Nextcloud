@@ -3,6 +3,7 @@
  * Tests the updated getData function with offscreen document parsing
  */
 
+import { timed } from '../timed.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock Chrome APIs
@@ -338,7 +339,7 @@ describe('getData with offscreen document parsing', () => {
     expect(result.keywords).toEqual(['keyword1', 'keyword2']);
   });
 
-  it('should handle parallel operations correctly', async () => {
+  timed('should handle parallel operations correctly', async () => {
     chrome.tabs.query.mockResolvedValue([{
       id: 1,
       url: 'https://example.com',

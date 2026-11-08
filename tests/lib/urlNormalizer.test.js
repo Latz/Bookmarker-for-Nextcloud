@@ -4,7 +4,7 @@
  * Tests URL normalization functionality and LRU cache behavior
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { normalizeUrl } from '../../src/lib/urlNormalizer.js';
 
 describe('urlNormalizer.js', () => {
@@ -34,6 +34,15 @@ describe('urlNormalizer.js', () => {
           normalizeProtocol: false,
         });
         expect(result).toBe('http://example.com/');
+      });
+    });
+
+    describe('Protocol normalization (non-http)', () => {
+      it('should leave other protocols unchanged', async () => {
+        const { normalizeUrl } = await import('../../src/lib/urlNormalizer.js');
+        expect(normalizeUrl('ftp://example.com/file')).toBe(
+          'ftp://example.com/file',
+        );
       });
     });
 
@@ -174,21 +183,51 @@ describe('urlNormalizer.js', () => {
         const result = normalizeUrl('http://');
         expect(result).toBe('http://');
       });
+
+      it('should warn when parsing fails', async () => {
+        const { normalizeUrl } = await import('../../src/lib/urlNormalizer.js');
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        normalizeUrl('not-a-url');
+        expect(warn).toHaveBeenCalledWith(
+          'URL normalization failed:',
+          expect.any(TypeError),
+        );
+        warn.mockRestore();
+      });
     });
 
     describe('LRU Cache behavior', () => {
-      it('should cache normalized results', async () => {
+      // The cache is only observable by whether the URL is parsed again,
+      // so count URL constructions.
+      let parses;
+      beforeEach(() => {
+        parses = 0;
+        const RealURL = globalThis.URL;
+        vi.stubGlobal(
+          'URL',
+          class extends RealURL {
+            constructor(...args) {
+              parses++;
+              super(...args);
+            }
+          },
+        );
+      });
+      afterEach(() => vi.unstubAllGlobals());
+
+      const isCached = (normalizeUrl, url) => {
+        const before = parses;
+        normalizeUrl(url);
+        return parses === before;
+      };
+
+      it('should not re-parse a cached URL', async () => {
         const { normalizeUrl } = await import('../../src/lib/urlNormalizer.js');
-        const url = 'https://example.com/test';
-
-        // First call - should compute
-        const result1 = normalizeUrl(url);
-
-        // Second call - should use cache
-        const result2 = normalizeUrl(url);
-
-        expect(result1).toBe(result2);
-        expect(result1).toBe('https://example.com/test');
+        expect(isCached(normalizeUrl, 'https://example.com/test')).toBe(false);
+        expect(isCached(normalizeUrl, 'https://example.com/test')).toBe(true);
+        expect(normalizeUrl('https://example.com/test')).toBe(
+          'https://example.com/test',
+        );
       });
 
       it('should cache based on URL and options', async () => {
@@ -197,48 +236,34 @@ describe('urlNormalizer.js', () => {
         const result1 = normalizeUrl('http://example.com', {
           normalizeProtocol: true,
         });
+        const before = parses;
         const result2 = normalizeUrl('http://example.com', {
           normalizeProtocol: false,
         });
 
-        expect(result1).not.toBe(result2);
         expect(result1).toBe('https://example.com/');
         expect(result2).toBe('http://example.com/');
+        expect(parses).toBeGreaterThan(before);
       });
 
-      it('should handle LRU eviction when cache is full', async () => {
+      it('should evict exactly the oldest entry beyond 1000', async () => {
         const { normalizeUrl } = await import('../../src/lib/urlNormalizer.js');
+        for (let i = 0; i <= 1000; i++) normalizeUrl(`https://example${i}.com`);
 
-        // Fill cache with 1001 unique URLs
-        for (let i = 0; i < 1001; i++) {
-          normalizeUrl(`https://example${i}.com`);
-        }
-
-        // First URL should be evicted
-        const result = normalizeUrl('https://example0.com');
-        expect(result).toBe('https://example0.com/');
+        expect(isCached(normalizeUrl, 'https://example1.com')).toBe(true);
+        expect(isCached(normalizeUrl, 'https://example1000.com')).toBe(true);
+        expect(isCached(normalizeUrl, 'https://example0.com')).toBe(false);
       });
 
-      it('should update LRU on cache hit', async () => {
+      it('should move a cache hit to the newest position', async () => {
         const { normalizeUrl } = await import('../../src/lib/urlNormalizer.js');
+        for (let i = 0; i < 1000; i++) normalizeUrl(`https://example${i}.com`);
 
-        // Add 3 URLs
-        normalizeUrl('https://example1.com');
-        normalizeUrl('https://example2.com');
-        normalizeUrl('https://example3.com');
+        normalizeUrl('https://example0.com'); // hit: now newest
+        normalizeUrl('https://new.com'); // evicts the oldest, example1
 
-        // Access first URL to make it recent
-        normalizeUrl('https://example1.com');
-
-        // Fill cache to trigger eviction
-        for (let i = 4; i <= 1003; i++) {
-          normalizeUrl(`https://example${i}.com`);
-        }
-
-        // example1.com should still be in cache (was accessed recently)
-        // example2.com and example3.com should be evicted first
-        const result = normalizeUrl('https://example1.com');
-        expect(result).toBe('https://example1.com/');
+        expect(isCached(normalizeUrl, 'https://example0.com')).toBe(true);
+        expect(isCached(normalizeUrl, 'https://example1.com')).toBe(false);
       });
     });
 

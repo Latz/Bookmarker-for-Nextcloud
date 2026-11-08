@@ -47,12 +47,15 @@
     "check:hn": "node tools/hn-keyword-check/check.js",
     "perf": "node tools/perf/case-runner.js --root . --case",
     "perf:compare": "node tools/perf/compare.js",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test:mutation": "stryker run"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^3.0.0",
     "@eslint/js": "^10.0.1",
     "@linthtml/linthtml": "^0.10.2",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
     "@tailwindcss/cli": "^4.3.3",
     "@vitest/coverage-v8": "^5.0.2",
     "@vitest/ui": "^5.0.2",

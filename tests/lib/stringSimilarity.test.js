@@ -4,6 +4,7 @@
  * Tests Jaro-Winkler similarity algorithm, caching, and batch operations
  */
 
+import { timed } from '../timed.js';
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   calculateSimilarity,
@@ -476,7 +477,7 @@ describe('stringSimilarity.js', () => {
   });
 
   describe('Performance considerations', () => {
-    it('should handle many similarity calculations efficiently', () => {
+    timed('should handle many similarity calculations efficiently', () => {
       const start = Date.now();
       for (let i = 0; i < 100; i++) {
         calculateSimilarity(`test string ${i}`, `test string ${i}x`);
@@ -488,7 +489,7 @@ describe('stringSimilarity.js', () => {
       expect(duration).toBeLessThan(1000);
     });
 
-    it('should benefit from caching for repeated calculations', () => {
+    timed('should benefit from caching for repeated calculations', () => {
       const str1 = 'test string';
       const str2 = 'test string x';
 

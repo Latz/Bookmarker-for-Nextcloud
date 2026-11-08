@@ -10,6 +10,7 @@
  * - Load testing
  */
 
+import { timed } from '../timed.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createStorageArea } from '../storageArea.js';
 
@@ -49,7 +50,7 @@ describe('Performance Optimizations Tests', () => {
   // 1. CONCURRENCY TESTS
   // =====================================================================
   describe('Concurrency Tests', () => {
-    it('should handle rapid successive URL normalization calls', async () => {
+    timed('should handle rapid successive URL normalization calls', async () => {
       const url = 'http://www.example.com/path/?z=3&a=1';
       const iterations = 1000;
 
@@ -408,7 +409,7 @@ describe('Performance Optimizations Tests', () => {
   // 6. LOAD TESTS
   // =====================================================================
   describe('Load Tests', () => {
-    it('should handle 1000+ bookmarks for title similarity check', () => {
+    timed('should handle 1000+ bookmarks for title similarity check', () => {
       // Generate 1500 fake bookmarks
       const bookmarks = Array(1500)
         .fill(null)
@@ -434,7 +435,7 @@ describe('Performance Optimizations Tests', () => {
       );
     });
 
-    it('should handle rapid cache operations', () => {
+    timed('should handle rapid cache operations', () => {
       clearSimilarityCache();
 
       const iterations = 10000;
@@ -455,7 +456,7 @@ describe('Performance Optimizations Tests', () => {
       );
     });
 
-    it('should handle many URL normalizations efficiently', () => {
+    timed('should handle many URL normalizations efficiently', () => {
       const urls = Array(5000)
         .fill(null)
         .map(
@@ -520,7 +521,7 @@ describe('Performance Optimizations Tests', () => {
       );
     });
 
-    it('should handle very long strings', () => {
+    timed('should handle very long strings', () => {
       const longString1 = 'a'.repeat(10000);
       const longString2 = 'b'.repeat(10000);
 

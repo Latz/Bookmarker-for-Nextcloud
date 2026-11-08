@@ -16,6 +16,7 @@
  * real function, so this is a coverage improvement, not just a migration.
  */
 
+import { timed } from '../timed.js';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { extractPageData } from '../../src/background/modules/page/extractPageData.js';
 import { createMockDocument } from '../../src/background/modules/page/mockDocument.js';
@@ -218,7 +219,7 @@ describe('extractPageData', () => {
   });
 
   describe('regex budget on hostile input', () => {
-    it('stays fast with many unclosed keywords:[ occurrences', () => {
+    timed('stays fast with many unclosed keywords:[ occurrences', () => {
       // Each unclosed `keywords:[` used to scan to the end of the text.
       const bait = 'keywords:['.repeat(60000);
       document.body.innerHTML = `<script>${bait}</script>`;
@@ -231,7 +232,7 @@ describe('extractPageData', () => {
       expect(elapsed).toBeLessThan(1500);
     });
 
-    it('stays fast with many unpaired quotes', () => {
+    timed('stays fast with many unpaired quotes', () => {
       const bait = 'keywords:"'.repeat(60000);
       document.body.innerHTML = `<script>${bait}</script>`;
 
@@ -247,7 +248,7 @@ describe('extractPageData', () => {
       expect(extractPageData(3).bruteForceKeywords).toEqual([]);
     });
 
-    it('locates the xplGlobal metadata without a regex scan', () => {
+    timed('locates the xplGlobal metadata without a regex scan', () => {
       const filler = 'xplGlobal.document.metadata='.repeat(20000); // never closed by ;
       document.body.innerHTML = `<script>${filler}</script>`;
 
