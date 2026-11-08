@@ -118,6 +118,13 @@ describe('storage.js', () => {
         msg: 'credentialsChanged',
       });
     });
+
+    it('does not reset the worker auth cache when only options change', async () => {
+      await store_data('options', { cbx_autoTags: true });
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith({
+        msg: 'credentialsChanged',
+      });
+    });
   });
 
   describe('load_data_all', () => {

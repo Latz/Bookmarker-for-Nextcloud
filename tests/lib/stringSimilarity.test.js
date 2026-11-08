@@ -110,8 +110,8 @@ describe('stringSimilarity.js', () => {
       });
 
       it('should handle transpositions correctly', () => {
-        const score = calculateSimilarity('ab', 'ba');
-        expect(score).toBeGreaterThan(0.6);
+        // Jaro-Winkler reference value; 'ab'/'ba' is 0 by definition (match window 0).
+        expect(calculateSimilarity('crate', 'trace')).toBeCloseTo(0.733, 3);
       });
     });
 
@@ -154,6 +154,21 @@ describe('stringSimilarity.js', () => {
         // With threshold, similar strings should still be calculated
         const score = calculateSimilarity('test', 'test', { threshold: 0.5 });
         expect(score).toBe(1.0);
+      });
+    });
+
+    describe('Reference values', () => {
+      it.each([
+        ['martha', 'marhta', 0.961],
+        ['dwayne', 'duane', 0.84],
+        ['dixon', 'dicksonx', 0.813],
+      ])('%s / %s scores the Jaro-Winkler value %f', (a, b, expected) => {
+        expect(calculateSimilarity(a, b)).toBeCloseTo(expected, 3);
+      });
+
+      it('does not score reordered strings as identical', () => {
+        expect(calculateSimilarity('abc', 'cba')).toBeLessThan(1);
+        expect(calculateSimilarity('react tutorial', 'tutorial react')).toBeLessThan(0.9);
       });
     });
 

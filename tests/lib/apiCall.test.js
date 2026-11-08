@@ -642,6 +642,51 @@ describe('apiCall.js - server URL cache', () => {
     expect(serverReads()).toBe(2);
   });
 
+  it('sends no browser cookies and the API headers', async () => {
+    stubCredentials(() => 'https://cloud.example.com');
+    await apiCall('a', 'GET');
+
+    const init = mockFetch.mock.calls[0][1];
+    expect(init.credentials).toBe('omit');
+    expect(init.headers).toMatchObject({
+      Accept: 'application/json',
+      'OCS-APIREQUEST': 'true',
+    });
+  });
+
+  it('reads the network timeout once, and again after the cache expired', async () => {
+    vi.useFakeTimers();
+    try {
+      stubCredentials(() => 'https://cloud.example.com');
+      await apiCall('a', 'GET');
+      await apiCall('b', 'GET');
+      expect(getOption).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(61 * 1000);
+      await apiCall('c', 'GET');
+      expect(getOption).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('aborts the request when the caller aborts, and detaches its listener', async () => {
+    stubCredentials(() => 'https://cloud.example.com');
+    const controller = new AbortController();
+    const removeSpy = vi.spyOn(controller.signal, 'removeEventListener');
+    let fetchSignal;
+    mockFetch.mockImplementation((url, init) => {
+      fetchSignal = init.signal;
+      controller.abort();
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    await apiCall('a', 'GET', '', controller.signal);
+
+    expect(fetchSignal.aborted).toBe(true);
+    expect(removeSpy).toHaveBeenCalledWith('abort', expect.any(Function));
+  });
+
   it('reads the server again once the cache has expired', async () => {
     vi.useFakeTimers();
     try {

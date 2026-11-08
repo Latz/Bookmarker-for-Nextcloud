@@ -55,10 +55,8 @@ function fastPreFilter(s1, s2, threshold = 0.75) {
   // If character overlap is too low, reject early
   if (charOverlap < threshold * 0.6) return 0.0;
 
-  // If very high overlap and similar length, likely a good match
-  if (charOverlap > 0.9 && lengthRatio > 0.9) return charOverlap;
-
-  // Otherwise, need full calculation
+  // No early accept: the same character set says nothing about order
+  // ("abc" vs "cba", reordered titles), so only the full calculation may score high.
   return null;
 }
 

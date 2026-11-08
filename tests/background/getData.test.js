@@ -215,6 +215,20 @@ describe('getData with offscreen document parsing', () => {
     expect(result.ok).toBe(true);
     expect(result.url).toBe('https://example.com');
     expect(result.title).toBe('Example');
+    // The keyword code iterates these fields, so the fallback must be empty, not missing.
+    const { default: getKeywords } = await import('../../src/background/modules/page/getKeywords.js');
+    expect(getKeywords.mock.calls.at(-1)[0]).toEqual({
+      metaTags: [],
+      aRelTag: [],
+      aRelCategory: [],
+      jsonLdScripts: [],
+      scripts: [],
+      githubTopics: [],
+      nextData: '',
+      headlines: {},
+      xplKeywords: [],
+      bruteForceKeywords: [],
+    });
   });
 
   it('should start the server check before page extraction finishes', async () => {
